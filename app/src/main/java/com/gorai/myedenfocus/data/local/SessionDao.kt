@@ -1,5 +1,6 @@
 package com.gorai.myedenfocus.data.local
 
+import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
@@ -23,8 +24,8 @@ interface SessionDao {
     fun getTotalSessionsDuration(): Flow<Long>
 
     @Query("SELECT SUM(duration) FROM Session WHERE sessionSubjectId = :subjectId")
-    fun getTotalSessionsDurationBySubjectId(): Flow<Int>
+    fun getTotalSessionsDurationBySubjectId(subjectId: Int): Flow<Long>
 
-    @Query("DELETE FROM Session WHERE sessionId = :sessionId")
+    @Query("DELETE FROM Session WHERE sessionId = :subjectId")
     fun deleteSessionBySubjectId(subjectId: Int)
 }

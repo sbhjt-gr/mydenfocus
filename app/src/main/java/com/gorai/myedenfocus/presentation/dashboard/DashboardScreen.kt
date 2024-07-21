@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.model.Task
@@ -59,6 +60,7 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 fun DashBoardScreenRoute(
     navigator: DestinationsNavigator
 ) {
+    val viewModel: DashboardViewModel = hiltViewModel()
     DashboardScreen(
         onSubjectCardClick = {
             subjectId -> subjectId?.let {
@@ -375,7 +377,7 @@ private fun SubjectCardSection(
                 SubjectCard(
                     subjectName = subject.name,
                     gradientColors = subject.colors,
-                    onClick = { onSubjectCardClick(subject.subjectId) }
+                    onClick = { subject.subjectId?.let { onSubjectCardClick(it) } }
                 )
             }
         }
