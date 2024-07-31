@@ -36,12 +36,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.presentation.components.DeleteDialog
 import com.gorai.myedenfocus.presentation.components.SubjectListBottomSheet
 import com.gorai.myedenfocus.presentation.components.studySessionsList
-import com.gorai.myedenfocus.presentation.sessions
-import com.gorai.myedenfocus.presentation.subjects
+import com.gorai.myedenfocus.sessions
+import com.gorai.myedenfocus.subjects
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch

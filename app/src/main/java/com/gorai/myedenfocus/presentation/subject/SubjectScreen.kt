@@ -41,7 +41,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
 import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.presentation.components.AddSubjectDialog
 import com.gorai.myedenfocus.presentation.components.CountCard
@@ -49,9 +48,9 @@ import com.gorai.myedenfocus.presentation.components.DeleteDialog
 import com.gorai.myedenfocus.presentation.components.studySessionsList
 import com.gorai.myedenfocus.presentation.components.tasksList
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
-import com.gorai.myedenfocus.presentation.sessions
+import com.gorai.myedenfocus.sessions
 import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
-import com.gorai.myedenfocus.presentation.tasks
+import com.gorai.myedenfocus.tasks
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 

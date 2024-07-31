@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -90,31 +91,31 @@ private fun DashboardScreen(
         Subject(
             name = "Biology",
             goalHours = 10f,
-            colors = Subject.subjectCardColors[0],
+            colors = Subject.subjectCardColors[0].map { it.toArgb() },
             subjectId = 1
         ),
         Subject(
             name = "Chemistry",
             goalHours = 10f,
-            colors = Subject.subjectCardColors[1],
+            colors = Subject.subjectCardColors[1].map { it.toArgb() },
             subjectId = 2
         ),
         Subject(
             name = "Physics",
             goalHours = 10f,
-            colors = Subject.subjectCardColors[2],
+            colors = Subject.subjectCardColors[2].map { it.toArgb() },
             subjectId = 3
         ),
         Subject(
             name = "Maths",
             goalHours = 10f,
-            colors = Subject.subjectCardColors[3],
+            colors = Subject.subjectCardColors[3].map { it.toArgb() },
             subjectId = 4
         ),
         Subject(
             name = "English",
             goalHours = 10f,
-            colors = Subject.subjectCardColors[4],
+            colors = Subject.subjectCardColors[4].map { it.toArgb() },
             subjectId = 5
         )
     )
@@ -376,7 +377,7 @@ private fun SubjectCardSection(
             items(subjectList) { subject ->
                 SubjectCard(
                     subjectName = subject.name,
-                    gradientColors = subject.colors,
+                    gradientColors = subject.colors.map { Color(it) },
                     onClick = { subject.subjectId?.let { onSubjectCardClick(it) } }
                 )
             }

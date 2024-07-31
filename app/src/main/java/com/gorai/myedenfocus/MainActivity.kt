@@ -1,12 +1,14 @@
-package com.gorai.myedenfocus.presentation
+package com.gorai.myedenfocus
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.ui.graphics.toArgb
 import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.model.Task
+import com.gorai.myedenfocus.presentation.NavGraphs
 import com.gorai.myedenfocus.presentation.theme.MyedenFocusTheme
 import com.ramcosta.composedestinations.DestinationsNavHost
 import dagger.hilt.android.AndroidEntryPoint
@@ -29,31 +31,31 @@ val subjects = listOf(
     Subject(
         name = "Biology",
         goalHours = 10f,
-        colors = Subject.subjectCardColors[0],
+        colors = Subject.subjectCardColors[0].map { it.toArgb() },
         subjectId = 1
     ),
     Subject(
         name = "Chemistry",
         goalHours = 10f,
-        colors = Subject.subjectCardColors[1],
+        colors = Subject.subjectCardColors[1].map { it.toArgb() },
         subjectId = 2
     ),
     Subject(
         name = "Physics",
         goalHours = 10f,
-        colors = Subject.subjectCardColors[2],
+        colors = Subject.subjectCardColors[2].map { it.toArgb() },
         subjectId = 3
     ),
     Subject(
         name = "Maths",
         goalHours = 10f,
-        colors = Subject.subjectCardColors[3],
+        colors = Subject.subjectCardColors[3].map { it.toArgb() },
         subjectId = 4
     ),
     Subject(
         name = "English",
         goalHours = 10f,
-        colors = Subject.subjectCardColors[4],
+        colors = Subject.subjectCardColors[4].map { it.toArgb() },
         subjectId = 5
     )
 )

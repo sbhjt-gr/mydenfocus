@@ -47,7 +47,7 @@ import com.gorai.myedenfocus.presentation.components.DeleteDialog
 import com.gorai.myedenfocus.presentation.components.SubjectListBottomSheet
 import com.gorai.myedenfocus.presentation.components.TaskCheckBox
 import com.gorai.myedenfocus.presentation.components.TaskDatePicker
-import com.gorai.myedenfocus.presentation.subjects
+import com.gorai.myedenfocus.subjects
 import com.gorai.myedenfocus.presentation.theme.Red
 import com.gorai.myedenfocus.util.Priority
 import com.gorai.myedenfocus.util.changeMillsToDateString

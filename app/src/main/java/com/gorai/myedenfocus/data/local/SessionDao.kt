@@ -7,6 +7,7 @@ import androidx.room.Query
 import com.gorai.myedenfocus.domain.model.Session
 import kotlinx.coroutines.flow.Flow
 
+@Dao
 interface SessionDao {
     @Insert
     suspend fun insertSession(session: Session)
