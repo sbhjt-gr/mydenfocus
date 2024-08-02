@@ -1,6 +1,6 @@
-# MyEdenFocus Kotlin
+# MyedenFocus Android Application
 
-MyEdenFocus is a Kotlin-based project aimed at improving academic performance by integrating study session scheduling, resulting in better time management for students.
+MyedenFocus is a project aimed at improving academic performance by integrating study session scheduling, resulting in better time management for students.
 
 ## Table of Contents
 
