@@ -3,6 +3,7 @@ package com.gorai.myedenfocus.data.di
 import android.app.Application
 import androidx.room.Room
 import com.gorai.myedenfocus.data.local.AppDatabase
+import com.gorai.myedenfocus.data.local.SessionDao
 import com.gorai.myedenfocus.data.local.SubjectDao
 import com.gorai.myedenfocus.data.local.TaskDao
 import dagger.Module
@@ -37,7 +38,7 @@ object DatabaseModule {
     }
     @Provides
     @Singleton
-    fun provideSessionDao(database: AppDatabase): SubjectDao {
-        return database.subjectDao()
+    fun provideSessionDao(database: AppDatabase): SessionDao {
+        return database.sessionDao()
     }
 }
