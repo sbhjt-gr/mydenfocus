@@ -1,6 +1,5 @@
 package com.gorai.myedenfocus.data.di
 
-import android.se.omapi.Session
 import com.gorai.myedenfocus.data.repository.SessionRepositoryImpl
 import com.gorai.myedenfocus.data.repository.SubjectRepositoryImpl
 import com.gorai.myedenfocus.data.repository.TaskRepositoryImpl
@@ -33,5 +32,5 @@ abstract class RepositoryModule {
     @Binds
     abstract fun bindSessionRepository(
         impl: SessionRepositoryImpl
-): SessionRepository
+    ): SessionRepository
 }
