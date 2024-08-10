@@ -23,7 +23,7 @@ object DatabaseModule {
         return Room.databaseBuilder(
             application,
             AppDatabase::class.java,
-            "studysmart.db"
+            "database.db"
         ).build()
     }
     @Provides
