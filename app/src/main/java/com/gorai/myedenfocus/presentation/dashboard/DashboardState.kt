@@ -7,7 +7,7 @@ import androidx.compose.ui.graphics.Color
 data class DashboardState(
     val totalSubjectCount: Int = 0,
     val totalStudiedHours: String = "",
-    val totalGoalHours: String = "",
+    val totalGoalStudyHours: String = "",
     val subjects: List<Subject> = emptyList(),
     val subjectName: String = "",
     val goalStudyHours: String = "",
