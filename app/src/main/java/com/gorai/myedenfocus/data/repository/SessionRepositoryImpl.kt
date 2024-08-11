@@ -4,8 +4,9 @@ import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.repository.SessionRepository
 import kotlinx.coroutines.flow.Flow
 import  com.gorai.myedenfocus.data.local.SessionDao
+import javax.inject.Inject
 
-class SessionRepositoryImpl(
+class SessionRepositoryImpl @Inject constructor(
     private val sessionDao: SessionDao
 ): SessionRepository {
     override suspend fun insertSession(session: Session) {

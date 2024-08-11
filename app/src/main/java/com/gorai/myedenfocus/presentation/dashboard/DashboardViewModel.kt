@@ -19,7 +19,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val subjectRepository: SubjectRepository
+    private val subjectRepository: SubjectRepository,
     private val sessionRepository: SessionRepository
 ): ViewModel() {
     private val _state = MutableStateFlow(DashboardState())
@@ -79,5 +79,4 @@ class DashboardViewModel @Inject constructor(
                 )
             }
         }
-    }
 }

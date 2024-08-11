@@ -4,8 +4,9 @@ import com.gorai.myedenfocus.data.local.SubjectDao
 import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.repository.SubjectRepository
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
 
-class SubjectRepositoryImpl(
+class SubjectRepositoryImpl @Inject constructor(
     private val subjectDao: SubjectDao
 ): SubjectRepository {
     override suspend fun upsertSubject(subject: Subject) {

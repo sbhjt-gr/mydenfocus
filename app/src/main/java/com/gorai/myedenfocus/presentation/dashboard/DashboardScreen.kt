@@ -194,7 +194,7 @@ private fun DashboardScreen(
         subjectName = state.subjectName,
         goalHours = state.goalStudyHours,
         onSubjectNameChange = { onEvent(DashboardEvent.OnSubjectNameChange(it)) },
-        onGoalHoursChange = { onEvent(DashboardEvent.OnGoalHoursChange(it)) },
+        onGoalHoursChange = { onEvent(DashboardEvent.OnGoalStudyHoursChange(it)) },
         selectedColors = state.subjectCardColors,
         onColorChange = { onEvent(DashboardEvent.OnSubjectCardColorChange(it)) }
     )
