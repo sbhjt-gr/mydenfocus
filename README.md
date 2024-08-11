@@ -1,6 +1,6 @@
 # MyedenFocus Android Application
 
-MyedenFocus is a project aimed at improving academic performance by integrating study session scheduling, resulting in better time management for students.
+MyedenFocus is a project aimed at improving academic performance by integrating study session scheduling, resulting in better time management for students. I started learning Jetpack Compose recently and the app is in development. Partial features are working.
 
 ## Table of Contents
 
