@@ -1,8 +1,10 @@
 package com.gorai.myedenfocus.presentation.dashboard
 
 import androidx.compose.ui.graphics.Path.Companion.combine
+import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.repository.SessionRepository
 import com.gorai.myedenfocus.domain.repository.SubjectRepository
 import com.gorai.myedenfocus.util.toHours
@@ -11,6 +13,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -39,16 +43,40 @@ class DashboardViewModel @Inject constructor(
     fun onEvent(event: DashboardEvent) {
         when(event) {
             DashboardEvent.DeleteSubject -> TODO()
-            is DashboardEvent.OnDeleteSessionButtonClick -> TODO()
-            is DashboardEvent.OnGoalStudyHoursChange -> {
+            is DashboardEvent.OnDeleteSessionButtonClick -> {
                 _state.update {
-                    
+                    it.copy(subjectName = event.session.toString())
                 }
             }
-            is DashboardEvent.OnSubjectCardColorChange -> TODO()
-            is DashboardEvent.OnSubjectNameChange -> TODO()
+            is DashboardEvent.OnGoalStudyHoursChange -> {
+                _state.update {
+                    it.copy(subjectName = event.hours)
+                }
+            }
+            is DashboardEvent.OnSubjectCardColorChange -> {
+                _state.update {
+                    it.copy(subjectName = event.colors.toString())
+                }
+            }
+            is DashboardEvent.OnSubjectNameChange -> {
+                _state.update {
+                    it.copy(subjectName = event.name)
+                }
+            }
             is DashboardEvent.OnTaskIsCompleteChange -> TODO()
-            DashboardEvent.SaveSubject -> TODO()
+            DashboardEvent.SaveSubject -> saveSubject()
+        }
+    }
+
+    private fun saveSubject() {
+        viewModelScope.launch {
+            subjectRepository.upsertSubject(
+                subject = state.value.goalStudyHours.toFloatOrNull()?.let {
+                    Subject(
+                        name = state.value.subjectName,
+                        goalHours = it,
+                        colors = state.value.subjectCardColors.map { it.toArgb() }
+                }
         }
     }
 }
