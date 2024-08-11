@@ -66,6 +66,7 @@ fun DashBoardScreenRoute(
     val state by viewModel.state.collectAsState()
     DashboardScreen(
         state = state,
+        onEvent = viewModel::onEvent,
         onSubjectCardClick = {
             subjectId -> subjectId?.let {
                 val navArg = SubjectScreenNavArgs(subjectId = subjectId)
@@ -86,6 +87,7 @@ fun DashBoardScreenRoute(
 @Composable
 private fun DashboardScreen(
     state: DashboardState,
+    onEvent: (DashboardEvent) -> Unit,
     onSubjectCardClick: (Int?) -> Unit,
     onTaskCardClick: (Int?) -> Unit,
     onStartSessionButtonClick: () -> Unit
@@ -187,13 +189,14 @@ private fun DashboardScreen(
         onDismissRequest = { isAddSubjectDialogOpen = false },
         onConfirmButtonClick = {
             isAddSubjectDialogOpen = false
+            onEvent(DashboardEvent.SaveSubject)
         },
         subjectName = state.subjectName,
         goalHours = state.goalStudyHours,
-        onSubjectNameChange = { },
-        onGoalHoursChange = { },
+        onSubjectNameChange = { onEvent(DashboardEvent.OnSubjectNameChange(it)) },
+        onGoalHoursChange = { onEvent(DashboardEvent.OnGoalHoursChange(it)) },
         selectedColors = state.subjectCardColors,
-        onColorChange = { /*TODO*/ }
+        onColorChange = { onEvent(DashboardEvent.OnSubjectCardColorChange(it)) }
     )
 
     DeleteDialog(
@@ -201,7 +204,10 @@ private fun DashboardScreen(
         title = "Delete Session?",
         bodyText = "Are you sure you want to delete this session?",
         onDismissRequest = { isDeleteSubjectDialogOpen = false },
-        onConfirmButtonClick = { isDeleteSubjectDialogOpen = false }
+        onConfirmButtonClick = {
+            isDeleteSubjectDialogOpen = false
+            onEvent(DashboardEvent.DeleteSubject)
+        }
     )
 
     Scaffold(
@@ -249,7 +255,7 @@ private fun DashboardScreen(
                 emptyListText = "No upcoming tasks\n" + "Press + button to add new tasks",
                 tasks = tasks,
                 onTaskCardClick = onTaskCardClick,
-                onCheckBoxClick = { /*TODO*/ }
+                onCheckBoxClick = { onEvent(DashboardEvent.OnTaskIsCompleteChange(it)) }
             )
         item {
             Spacer(modifier = Modifier.height(20.dp))
@@ -259,6 +265,7 @@ private fun DashboardScreen(
                 emptyListText = "No study sessions\n" + "Start a study session to begin recording your progress",
                 sessions = sessions,
                 onDeleteIconClick = { isDeleteSubjectDialogOpen = true
+                    onEvent(DashboardEvent.OnDeleteSessionButtonClick(it))
                 }
             )
         }

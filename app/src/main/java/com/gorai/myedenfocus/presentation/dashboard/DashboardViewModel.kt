@@ -36,4 +36,19 @@ class DashboardViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = DashboardState()
     )
+    fun onEvent(event: DashboardEvent) {
+        when(event) {
+            DashboardEvent.DeleteSubject -> TODO()
+            is DashboardEvent.OnDeleteSessionButtonClick -> TODO()
+            is DashboardEvent.OnGoalStudyHoursChange -> {
+                _state.update {
+                    
+                }
+            }
+            is DashboardEvent.OnSubjectCardColorChange -> TODO()
+            is DashboardEvent.OnSubjectNameChange -> TODO()
+            is DashboardEvent.OnTaskIsCompleteChange -> TODO()
+            DashboardEvent.SaveSubject -> TODO()
+        }
+    }
 }
