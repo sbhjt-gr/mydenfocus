@@ -71,12 +71,13 @@ class DashboardViewModel @Inject constructor(
     private fun saveSubject() {
         viewModelScope.launch {
             subjectRepository.upsertSubject(
-                subject = state.value.goalStudyHours.toFloatOrNull()?.let {
-                    Subject(
+                subject =  Subject(
                         name = state.value.subjectName,
-                        goalHours = it,
+                        goalHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f,
                         colors = state.value.subjectCardColors.map { it.toArgb() }
-                }
+                    )
+                )
+            }
         }
     }
 }
