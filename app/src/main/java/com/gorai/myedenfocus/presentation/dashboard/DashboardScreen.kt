@@ -26,20 +26,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.model.Task
@@ -63,9 +61,14 @@ fun DashBoardScreenRoute(
     navigator: DestinationsNavigator
 ) {
     val viewModel: DashboardViewModel = hiltViewModel()
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val tasks by viewModel.tasks.collectAsStateWithLifecycle()
+    val recentSessions by viewModel.recentSessions.collectAsStateWithLifecycle()
+
     DashboardScreen(
         state = state,
+        tasks = tasks,
+        recentSessions = recentSessions,
         onEvent = viewModel::onEvent,
         onSubjectCardClick = {
             subjectId -> subjectId?.let {
@@ -87,6 +90,8 @@ fun DashBoardScreenRoute(
 @Composable
 private fun DashboardScreen(
     state: DashboardState,
+    tasks: List<Task>,
+    recentSessions: List<Session>,
     onEvent: (DashboardEvent) -> Unit,
     onSubjectCardClick: (Int?) -> Unit,
     onTaskCardClick: (Int?) -> Unit,
@@ -263,7 +268,7 @@ private fun DashboardScreen(
             studySessionsList(
                 sectionTitle = "Recent Study Sessions",
                 emptyListText = "No study sessions\n" + "Start a study session to begin recording your progress",
-                sessions = sessions,
+                sessions = recentSessions,
                 onDeleteIconClick = { isDeleteSubjectDialogOpen = true
                     onEvent(DashboardEvent.OnDeleteSessionButtonClick(it))
                 }

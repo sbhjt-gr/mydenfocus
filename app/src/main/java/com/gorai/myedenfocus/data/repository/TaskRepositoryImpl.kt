@@ -4,6 +4,7 @@ import com.gorai.myedenfocus.data.local.TaskDao
 import com.gorai.myedenfocus.domain.model.Task
 import com.gorai.myedenfocus.domain.repository.TaskRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 class TaskRepositoryImpl @Inject constructor(
@@ -30,6 +31,9 @@ class TaskRepositoryImpl @Inject constructor(
     }
 
     override fun getAllUpcomingTasks(): Flow<List<Task>> {
-        TODO("Not yet implemented")
+        return taskDao.getAllTasks().map { tasks -> tasks.filter { it.isComplete.not() } }
+    }
+    private fun sortTasks(tasks: List<Task>): List<Task> {
+        return tasks.sortedWith(compareBy<Task> { it.dueDate }.thenByDescending { it.priority })
     }
 }

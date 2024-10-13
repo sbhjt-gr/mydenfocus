@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Path.Companion.combine
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.model.Task
 import com.gorai.myedenfocus.domain.repository.SessionRepository
@@ -28,11 +29,11 @@ class DashboardViewModel @Inject constructor(
 ): ViewModel() {
     private val _state = MutableStateFlow(DashboardState())
     val state = combine(
-        _state,
-        subjectRepository.getTotalSubjectCount(),
-        subjectRepository.getTotalGoalHours(),
-        subjectRepository.getAllSubjects(),
-        sessionRepository.getTotalSessionsDuration()
+            _state,
+            subjectRepository.getTotalSubjectCount(),
+            subjectRepository.getTotalGoalHours(),
+            subjectRepository.getAllSubjects(),
+            sessionRepository.getTotalSessionsDuration()
         ) { state, subjectCount, goalHours, subjects, totalSessionDuration -> state.copy(
             totalSubjectCount = subjectCount,
             totalGoalStudyHours = goalHours.toString(),
@@ -44,8 +45,12 @@ class DashboardViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = DashboardState()
     )
-
     val tasks: StateFlow<List<Task>> = taskRepository.getAllUpcomingTasks().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+    val recentSessions: StateFlow<List<Session>> = sessionRepository.getRecentFiveSessions().stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
