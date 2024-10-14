@@ -1,5 +1,6 @@
 package com.gorai.myedenfocus.util
 
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.ui.graphics.Color
 import com.gorai.myedenfocus.presentation.theme.Green
 import com.gorai.myedenfocus.presentation.theme.Red
@@ -32,4 +33,11 @@ fun Long?.changeMillsToDateString(): String {
 fun Long.toHours(): Float {
     val hours = this.toFloat() / 3600f
     return "%.2f".format(hours).toFloat()
+}
+
+sealed class SnackbarEvent {
+    data class ShowSnackbar(
+        val message: String,
+        val duration: SnackbarDuration = SnackbarDuration.Short
+    ): SnackbarEvent()
 }

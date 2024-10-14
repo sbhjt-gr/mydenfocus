@@ -24,10 +24,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,8 +56,11 @@ import com.gorai.myedenfocus.presentation.destinations.SubjectScreenRouteDestina
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
 import com.gorai.myedenfocus.presentation.subject.SubjectScreenNavArgs
 import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
+import com.gorai.myedenfocus.util.SnackbarEvent
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.collectLatest
 
 @Destination(start = true)
 @Composable
@@ -70,6 +77,7 @@ fun DashBoardScreenRoute(
         tasks = tasks,
         recentSessions = recentSessions,
         onEvent = viewModel::onEvent,
+        snackbarEvent = viewModel.snackbarEventFlow,
         onSubjectCardClick = {
             subjectId -> subjectId?.let {
                 val navArg = SubjectScreenNavArgs(subjectId = subjectId)
@@ -93,6 +101,7 @@ private fun DashboardScreen(
     tasks: List<Task>,
     recentSessions: List<Session>,
     onEvent: (DashboardEvent) -> Unit,
+    snackbarEvent: SharedFlow<SnackbarEvent>,
     onSubjectCardClick: (Int?) -> Unit,
     onTaskCardClick: (Int?) -> Unit,
     onStartSessionButtonClick: () -> Unit
@@ -188,6 +197,21 @@ private fun DashboardScreen(
     var isDeleteSubjectDialogOpen by rememberSaveable {
         mutableStateOf(false)
     }
+    val snackbarHostState = remember {
+        SnackbarHostState()
+    }
+    LaunchedEffect(key1 = true) {
+        snackbarEvent.collectLatest {
+            event -> when(event) {
+                is SnackbarEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message,
+                        duration = event.duration
+                    )
+                }
+            }
+        }
+    }
 
     AddSubjectDialog(
         isOpen = isAddSubjectDialogOpen,
@@ -214,8 +238,8 @@ private fun DashboardScreen(
             onEvent(DashboardEvent.DeleteSubject)
         }
     )
-
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             DashboardScreenTopBar()
         }

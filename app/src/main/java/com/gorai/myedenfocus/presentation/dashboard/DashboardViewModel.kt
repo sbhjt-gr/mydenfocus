@@ -1,6 +1,6 @@
 package com.gorai.myedenfocus.presentation.dashboard
 
-import androidx.compose.ui.graphics.Path.Companion.combine
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,11 +10,13 @@ import com.gorai.myedenfocus.domain.model.Task
 import com.gorai.myedenfocus.domain.repository.SessionRepository
 import com.gorai.myedenfocus.domain.repository.SubjectRepository
 import com.gorai.myedenfocus.domain.repository.TaskRepository
+import com.gorai.myedenfocus.util.SnackbarEvent
 import com.gorai.myedenfocus.util.toHours
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -55,6 +57,8 @@ class DashboardViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+    private val _snackbarEventFlow = MutableStateFlow<SnackbarEvent>()
+    val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
     fun onEvent(event: DashboardEvent) {
         when(event) {
             DashboardEvent.DeleteSubject -> TODO()
@@ -85,13 +89,34 @@ class DashboardViewModel @Inject constructor(
 
     private fun saveSubject() {
         viewModelScope.launch {
-            subjectRepository.upsertSubject(
-                subject =  Subject(
+            try {
+                subjectRepository.upsertSubject(
+                    subject =  Subject(
                         name = state.value.subjectName,
                         goalHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f,
                         colors = state.value.subjectCardColors.map { it.toArgb() }
                     )
                 )
+                _state.update {
+                    it.copy(
+                        subjectName = "",
+                        goalStudyHours = "",
+                        subjectCardColors = Subject.subjectCardColors.random()
+                    )
+                    }
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(
+                        "Subject saved successfully"
+                    )
+                )
+                } catch (e: Exception) {
+                    _snackbarEventFlow.emit(
+                        SnackbarEvent.ShowSnackbar(
+                            "Couldn't save subject. ${e.message}",
+                            SnackbarDuration.Long
+                        )
+                    )
             }
         }
+    }
 }

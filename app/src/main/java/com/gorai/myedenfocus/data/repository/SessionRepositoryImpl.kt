@@ -4,6 +4,7 @@ import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.repository.SessionRepository
 import kotlinx.coroutines.flow.Flow
 import  com.gorai.myedenfocus.data.local.SessionDao
+import kotlinx.coroutines.flow.take
 import javax.inject.Inject
 
 class SessionRepositoryImpl @Inject constructor(
@@ -22,7 +23,7 @@ class SessionRepositoryImpl @Inject constructor(
     }
 
     override fun getRecentFiveSessions(subjectId: Int): Flow<List<Session>> {
-        TODO("Not yet implemented")
+        return sessionDao.getAllSessions().take(count = 5)
     }
 
     override fun getRecentTenSessionsForSubject(sessionId: Int): Flow<List<Session>> {
