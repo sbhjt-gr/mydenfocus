@@ -39,5 +39,5 @@ sealed class SnackbarEvent {
     data class ShowSnackbar(
         val message: String,
         val duration: SnackbarDuration = SnackbarDuration.Short
-    ): SnackbarEvent()
+    ) : SnackbarEvent()
 }

@@ -41,6 +41,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.presentation.components.AddSubjectDialog
 import com.gorai.myedenfocus.presentation.components.CountCard
@@ -64,7 +65,11 @@ fun SubjectScreenRoute(
     navigator: DestinationsNavigator
 ) {
     val viewModel: SubjectViewModel = hiltViewModel()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
     SubjectScreen(
+        state = state,
+        onEvent = viewModel::onEvent,
         onBackButtonClick = { navigator.navigateUp() },
         onAddTaskButtonClick = {
             val navArg = TaskScreenNavArgs(taskId = null, subjectId = -1)
@@ -79,6 +84,8 @@ fun SubjectScreenRoute(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SubjectScreen(
+    state: SubjectState = SubjectState(),
+    onEvent: (SubjectEvent) -> Unit,
     onBackButtonClick: () -> Unit,
     onAddTaskButtonClick: () -> Unit,
     onTaskCardClick: (Int?) -> Unit,
@@ -93,41 +100,43 @@ private fun SubjectScreen(
     var isDeleteSessionDialogOpen by rememberSaveable { mutableStateOf(false) }
     var isEditSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
 
-    var subjectName by remember { mutableStateOf("") }
-    var goalHours by remember { mutableStateOf("") }
-    var selectedColor by remember { mutableStateOf(Subject.subjectCardColors.random()) }
-
     AddSubjectDialog(
         isOpen = isEditSubjectDialogOpen,
         onDismissRequest = { isEditSubjectDialogOpen = false },
-        onConfirmButtonClick = { isEditSubjectDialogOpen = false },
-        subjectName = subjectName,
-        goalHours = goalHours,
-        onSubjectNameChange = { subjectName = it },
-        onGoalHoursChange = { goalHours = it },
-        selectedColors = selectedColor,
-        onColorChange = { /*TODO*/ }
+        onConfirmButtonClick = {
+            onEvent(SubjectEvent.UpdateSubject)
+            isEditSubjectDialogOpen = false },
+        subjectName = state.subjectName,
+        goalHours = state.goalStudyHours,
+        onSubjectNameChange = { onEvent(SubjectEvent.OnSubjectNameChange(it)) },
+        onGoalHoursChange = { onEvent(SubjectEvent.OnGoalStudyHoursChange(it)) },
+        selectedColors = state.subjectCardColors,
+        onColorChange = { onEvent(SubjectEvent.OnSubjectCardColorChange(it)) }
     )
     DeleteDialog(
         isOpen = isDeleteSessionDialogOpen,
         title = "Delete Subject?",
         bodyText = "Are you sure you want to delete this subject?",
         onDismissRequest = { isDeleteSessionDialogOpen = false },
-        onConfirmButtonClick = { isDeleteSessionDialogOpen = false }
+        onConfirmButtonClick = { isDeleteSessionDialogOpen = false
+            onEvent(SubjectEvent.DeleteSubject)
+        }
     )
     DeleteDialog(
         isOpen = isDeleteSubjectDialogOpen,
         title = "Delete Session?",
         bodyText = "Are you sure you want to delete this session?",
         onDismissRequest = { isDeleteSubjectDialogOpen = false },
-        onConfirmButtonClick = { isDeleteSubjectDialogOpen = false }
+        onConfirmButtonClick = {
+            onEvent(SubjectEvent.DeleteSession)
+            isDeleteSubjectDialogOpen = false }
     )
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             SubjectScreenTopBar(
-                title = "English",
+                title = state.subjectName,
                 onBackButtonClick = onBackButtonClick,
                 onDeleteButtonClick = { isDeleteSubjectDialogOpen = true },
                 onEditButtonClick = { isEditSubjectDialogOpen = true },
@@ -154,32 +163,35 @@ private fun SubjectScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(12.dp),
-                    studiedHours = "10",
-                    goalHours = "15",
-                    progress = 0.75f
+                    studiedHours = state.studiedHours.toString(),
+                    goalHours = state.studiedHours.toString().toString(),
+                    progress = state.progress
                 )
             }
             tasksList(
                 sectionTitle = "Upcoming Tasks",
                 emptyListText = "No upcoming tasks\nPress + button to add new tasks",
-                tasks = tasks,
+                tasks = state.upcomingTasks,
                 onTaskCardClick = onTaskCardClick,
-                onCheckBoxClick = { /*TODO*/ }
+                onCheckBoxClick = { onEvent(SubjectEvent.OnTaskIsCompletedChange(it))}
             )
             item { Spacer(modifier = Modifier.height(20.dp)) }
             tasksList(
                 sectionTitle = "Completed Tasks",
                 emptyListText = "No completed tasks\nClick the checkboxes to complete tasks",
-                tasks = tasks,
+                tasks = state.completedTasks,
                 onTaskCardClick = onTaskCardClick,
-                onCheckBoxClick = { /*TODO*/ }
+                onCheckBoxClick = { onEvent(SubjectEvent.OnTaskIsCompletedChange(it)) }
             )
             item { Spacer(modifier = Modifier.height(20.dp)) }
             studySessionsList(
                 sectionTitle = "Recent Study Sessions",
                 emptyListText = "No study sessions\nStart a study session to begin recording your progress",
-                sessions = sessions,
-                onDeleteIconClick = { isDeleteSessionDialogOpen = true }
+                sessions = state.recentSessions,
+                onDeleteIconClick = {
+                    isDeleteSessionDialogOpen = true
+                    onEvent(SubjectEvent.OnDeleteSessionButtonClick(it))
+                }
             )
         }
     }
@@ -216,7 +228,7 @@ private fun SubjectScreenTopBar(
                 Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Subject")
             }
         },
-        scrollBehavior = scrollBehavior // Added scrollBehavior to LargeTopAppBar
+        scrollBehavior = scrollBehavior
     )
 }
 

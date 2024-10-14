@@ -13,6 +13,7 @@ import com.gorai.myedenfocus.domain.repository.TaskRepository
 import com.gorai.myedenfocus.util.SnackbarEvent
 import com.gorai.myedenfocus.util.toHours
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -44,7 +45,7 @@ class DashboardViewModel @Inject constructor(
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
         initialValue = DashboardState()
     )
     val tasks: StateFlow<List<Task>> = taskRepository.getAllUpcomingTasks().stateIn(
@@ -57,7 +58,7 @@ class DashboardViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
-    private val _snackbarEventFlow = MutableStateFlow<SnackbarEvent>()
+    private val _snackbarEventFlow = MutableSharedFlow<SnackbarEvent>()
     val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
     fun onEvent(event: DashboardEvent) {
         when(event) {
@@ -84,6 +85,7 @@ class DashboardViewModel @Inject constructor(
             }
             is DashboardEvent.OnTaskIsCompleteChange -> TODO()
             DashboardEvent.SaveSubject -> saveSubject()
+            DashboardEvent.DeleteSubject -> TODO()
         }
     }
 

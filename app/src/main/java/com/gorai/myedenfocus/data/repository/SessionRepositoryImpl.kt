@@ -1,9 +1,9 @@
 package com.gorai.myedenfocus.data.repository
 
+import com.gorai.myedenfocus.data.local.SessionDao
 import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.repository.SessionRepository
 import kotlinx.coroutines.flow.Flow
-import  com.gorai.myedenfocus.data.local.SessionDao
 import kotlinx.coroutines.flow.take
 import javax.inject.Inject
 
