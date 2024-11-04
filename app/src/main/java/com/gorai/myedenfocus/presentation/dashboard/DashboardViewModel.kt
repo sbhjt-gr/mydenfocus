@@ -53,7 +53,7 @@ class DashboardViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
-    val recentSessions: StateFlow<List<Session>> = sessionRepository.getRecentFiveSessions().stateIn(
+    val recentSessions: StateFlow<List<Session>> = sessionRepository.getRecentFiveSessions(subjectId = 1).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()

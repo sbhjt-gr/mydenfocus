@@ -1,5 +1,6 @@
 package com.gorai.myedenfocus.presentation.subject
 
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +14,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -38,10 +41,17 @@ class SubjectViewModel @Inject constructor(
             recentSessions = recentSessions,
             studiedHours = totalSessionsDuration.toHours()
         )
-    }.stateIn(scope = viewModelScope, started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000), initialValue = SubjectState())
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
+        initialValue = SubjectState()
+    )
+    init {
+        fetchSubject()
+    }
     fun onEvent(event: SubjectEvent) {
         when(event) {
-            SubjectEvent.DeleteSubject -> TODO()
+            SubjectEvent.DeleteSession -> TODO()
             SubjectEvent.DeleteSubject -> TODO()
             is SubjectEvent.OnDeleteSessionButtonClick -> TODO()
             is SubjectEvent.OnGoalStudyHoursChange -> TODO()
@@ -49,7 +59,22 @@ class SubjectViewModel @Inject constructor(
             is SubjectEvent.OnSubjectNameChange -> TODO()
             is SubjectEvent.OnTaskIsCompletedChange -> TODO()
             SubjectEvent.UpdateSubject -> TODO()
-            SubjectEvent.DeleteSession -> TODO()
+        }
+    }
+
+    private fun fetchSubject() {
+        viewModelScope.launch {
+            subjectRepository.getSubjectById(navArgs.subjectId)?.let { subject ->
+                _state.update {
+                    it.copy(
+                        subjectName = subject.name,
+                        goalStudyHours = subject.goalHours.toString(),
+                        subjectCardColors = subject.colors.map { Color(it) },
+                        currentSubjectId = subject.subjectId
+                    )
+
+                }
+            }
         }
     }
 }

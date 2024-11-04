@@ -4,8 +4,6 @@ import com.gorai.myedenfocus.domain.model.Task
 import kotlinx.coroutines.flow.Flow
 
 interface TaskRepository {
-    abstract val it: Any
-
     suspend fun upsertTask(task: Task)
     suspend fun deleteTask(taskId: Int)
     suspend fun getTaskById(taskId: Int): Task?

@@ -1,6 +1,5 @@
 package com.gorai.myedenfocus.data.local
 
-import android.adservices.adid.AdId
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
@@ -11,11 +10,12 @@ import kotlinx.coroutines.flow.Flow
 interface TaskDao {
     @Upsert
     suspend fun upsertTask(task: Task)
+
     @Query("DELETE FROM Task WHERE taskId = :taskId")
     suspend fun deleteTask(taskId: Int)
 
     @Query("DELETE FROM Task WHERE taskSubjectId = :subjectId")
-    suspend fun deleteTaskBySubjectId(subjectId: Int)
+    suspend fun deleteTasksBySubjectId(subjectId: Int)  // Corrected for single method
 
     @Query("SELECT * FROM Task WHERE taskId = :taskId")
     fun getTaskById(taskId: Int): Task?
@@ -25,4 +25,7 @@ interface TaskDao {
 
     @Query("SELECT * FROM Task")
     fun getAllTasks(): Flow<List<Task>>
+
+    @Query("SELECT * FROM Task WHERE taskSubjectId = :subjectId")
+    fun getTasksForSubject(subjectId: Int): Flow<List<Task>>
 }

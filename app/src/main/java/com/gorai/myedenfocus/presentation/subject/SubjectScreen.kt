@@ -84,7 +84,7 @@ fun SubjectScreenRoute(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SubjectScreen(
-    state: SubjectState = SubjectState(),
+    state: SubjectState,
     onEvent: (SubjectEvent) -> Unit,
     onBackButtonClick: () -> Unit,
     onAddTaskButtonClick: () -> Unit,
@@ -118,7 +118,8 @@ private fun SubjectScreen(
         title = "Delete Subject?",
         bodyText = "Are you sure you want to delete this subject?",
         onDismissRequest = { isDeleteSessionDialogOpen = false },
-        onConfirmButtonClick = { isDeleteSessionDialogOpen = false
+        onConfirmButtonClick = {
+            isDeleteSessionDialogOpen = false
             onEvent(SubjectEvent.DeleteSubject)
         }
     )
@@ -129,7 +130,8 @@ private fun SubjectScreen(
         onDismissRequest = { isDeleteSubjectDialogOpen = false },
         onConfirmButtonClick = {
             onEvent(SubjectEvent.DeleteSession)
-            isDeleteSubjectDialogOpen = false }
+            isDeleteSubjectDialogOpen = false
+        }
     )
 
     Scaffold(
@@ -163,7 +165,7 @@ private fun SubjectScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(12.dp),
-                    studiedHours = state.studiedHours.toString(),
+                    studiedHours = state.goalStudyHours,
                     goalHours = state.studiedHours.toString().toString(),
                     progress = state.progress
                 )

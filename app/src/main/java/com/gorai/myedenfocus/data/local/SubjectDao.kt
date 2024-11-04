@@ -10,14 +10,19 @@ import kotlinx.coroutines.flow.Flow
 interface SubjectDao {
     @Upsert
     suspend fun upsertSubject(subject: Subject)
+
     @Query("SELECT COUNT(*) FROM Subject")
     fun getTotalSubjectCount(): Flow<Int>
+
     @Query("SELECT * FROM Subject WHERE subjectId = :subjectId")
-    fun getSubjectById(subjectId: Int): Subject?
-    @Query("DELETE FROM Subject WHERE subjectId = :subject")
-    suspend fun deleteSubject(subject: Int)
+    suspend fun getSubjectById(subjectId: Int): Subject?
+
+    @Query("DELETE FROM Subject WHERE subjectId = :subjectId")
+    suspend fun deleteSubject(subjectId: Int)
+
     @Query("SELECT SUM(goalHours) FROM Subject")
     fun getTotalGoalHours(): Flow<Float>
+
     @Query("SELECT * FROM Subject")
     fun getAllSubjects(): Flow<List<Subject>>
 }

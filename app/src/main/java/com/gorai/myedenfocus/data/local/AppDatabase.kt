@@ -4,7 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.gorai.myedenfocus.domain.model.Session
-import com.gorai.myedenfocus.domain. model.Subject
+import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.model.Task
 
 @Database(

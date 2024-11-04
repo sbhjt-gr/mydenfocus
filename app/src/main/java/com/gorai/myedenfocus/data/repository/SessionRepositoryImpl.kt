@@ -1,5 +1,6 @@
 package com.gorai.myedenfocus.data.repository
 
+import androidx.compose.ui.graphics.Color
 import com.gorai.myedenfocus.data.local.SessionDao
 import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.repository.SessionRepository
@@ -23,18 +24,18 @@ class SessionRepositoryImpl @Inject constructor(
     }
 
     override fun getRecentFiveSessions(subjectId: Int): Flow<List<Session>> {
-        return sessionDao.getAllSessions().take(count = 5)
+        return sessionDao.getRecentSessionsForSubject(subjectId).take(5)
     }
 
-    override fun getRecentTenSessionsForSubject(sessionId: Int): Flow<List<Session>> {
-        TODO("Not yet implemented")
+    override fun getRecentTenSessionsForSubject(subjectId: Int): Flow<List<Session>> {
+        return sessionDao.getRecentSessionsForSubject(subjectId).take(count = 10)
     }
 
     override fun getTotalSessionsDuration(): Flow<Long> {
         return sessionDao.getTotalSessionsDuration()
     }
 
-    override fun getTotalSessionsDurationBySubjectId(subjectId: Int): Flow<Long> {
-        TODO("Not yet implemented")
+    override fun getTotalSessionsDurationBySubject(subjectId: Int): Flow<Long> {
+        return sessionDao.getTotalSessionsDurationBySubject(subjectId)
     }
 }
