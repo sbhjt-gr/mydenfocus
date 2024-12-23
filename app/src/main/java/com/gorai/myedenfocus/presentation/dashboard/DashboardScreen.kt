@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -191,6 +192,39 @@ private fun DashboardScreen(
         )
     )
 
+    val subjects = listOf(
+        Subject(
+            name = "Biology",
+            goalHours = 10f,
+            colors = listOf(Color.Red.toArgb(), Color.Green.toArgb()),
+            subjectId = 1
+        ),
+        Subject(
+            name = "Chemistry",
+            goalHours = 10f,
+            colors = listOf(Color.Blue.toArgb(), Color.Yellow.toArgb()),
+            subjectId = 2
+        ),
+        Subject(
+            name = "Physics",
+            goalHours = 10f,
+            colors = listOf(Color.Cyan.toArgb(), Color.Magenta.toArgb()),
+            subjectId = 3
+        ),
+        Subject(
+            name = "Maths",
+            goalHours = 10f,
+            colors = listOf(Color.Gray.toArgb(), Color.Black.toArgb()),
+            subjectId = 4
+        ),
+        Subject(
+            name = "English",
+            goalHours = 10f,
+            colors = listOf(Color.White.toArgb(), Color.LightGray.toArgb()),
+            subjectId = 5
+        )
+    )
+
     var isAddSubjectDialogOpen by rememberSaveable {
         mutableStateOf(false)
     }
@@ -262,7 +296,7 @@ private fun DashboardScreen(
             item {
                 SubjectCardSection(
                     modifier = Modifier.fillMaxWidth(),
-                    subjectList = state.subjects,
+                    subjectList = subjects,
                     onAddIconClicked = {
                         isAddSubjectDialogOpen = true
                     },

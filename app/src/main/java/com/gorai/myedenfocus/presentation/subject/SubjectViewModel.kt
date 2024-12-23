@@ -1,9 +1,11 @@
 package com.gorai.myedenfocus.presentation.subject
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.repository.SessionRepository
 import com.gorai.myedenfocus.domain.repository.SubjectRepository
 import com.gorai.myedenfocus.domain.repository.TaskRepository
@@ -54,11 +56,36 @@ class SubjectViewModel @Inject constructor(
             SubjectEvent.DeleteSession -> TODO()
             SubjectEvent.DeleteSubject -> TODO()
             is SubjectEvent.OnDeleteSessionButtonClick -> TODO()
-            is SubjectEvent.OnGoalStudyHoursChange -> TODO()
-            is SubjectEvent.OnSubjectCardColorChange -> TODO()
-            is SubjectEvent.OnSubjectNameChange -> TODO()
+            is SubjectEvent.OnGoalStudyHoursChange -> {
+                _state.update {
+                    it.copy(goalStudyHours = event.hours)
+                }
+            }
+            is SubjectEvent.OnSubjectCardColorChange -> {
+                _state.update {
+                    it.copy(subjectCardColors = event.color)
+                }
+            }
+            is SubjectEvent.OnSubjectNameChange -> {
+                _state.update {
+                    it.copy(subjectName = event.name)
+                }
+            }
             is SubjectEvent.OnTaskIsCompletedChange -> TODO()
-            SubjectEvent.UpdateSubject -> TODO()
+            SubjectEvent.UpdateSubject -> updateSubject()
+        }
+    }
+
+    private fun updateSubject() {
+        viewModelScope.launch {
+            subjectRepository.upsertSubject(
+                subject = Subject(
+                    subjectId = state.value.currentSubjectId,
+                    name = state.value.subjectName,
+                    goalHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f,
+                    colors = state.value.subjectCardColors.map { it.toArgb() }
+                )
+            )
         }
     }
 
@@ -72,7 +99,6 @@ class SubjectViewModel @Inject constructor(
                         subjectCardColors = subject.colors.map { Color(it) },
                         currentSubjectId = subject.subjectId
                     )
-
                 }
             }
         }
