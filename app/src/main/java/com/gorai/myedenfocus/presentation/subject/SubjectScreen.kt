@@ -24,10 +24,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,18 +45,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.presentation.components.AddSubjectDialog
 import com.gorai.myedenfocus.presentation.components.CountCard
 import com.gorai.myedenfocus.presentation.components.DeleteDialog
 import com.gorai.myedenfocus.presentation.components.studySessionsList
 import com.gorai.myedenfocus.presentation.components.tasksList
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
-import com.gorai.myedenfocus.sessions
 import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
-import com.gorai.myedenfocus.tasks
+import com.gorai.myedenfocus.util.SnackbarEvent
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.collectLatest
 
 data class SubjectScreenNavArgs(
     val subjectId: Int
@@ -70,6 +73,7 @@ fun SubjectScreenRoute(
     SubjectScreen(
         state = state,
         onEvent = viewModel::onEvent,
+        snackbarEvent = viewModel.snackbarEventFlow,
         onBackButtonClick = { navigator.navigateUp() },
         onAddTaskButtonClick = {
             val navArg = TaskScreenNavArgs(taskId = null, subjectId = -1)
@@ -86,6 +90,7 @@ fun SubjectScreenRoute(
 private fun SubjectScreen(
     state: SubjectState,
     onEvent: (SubjectEvent) -> Unit,
+    snackbarEvent: SharedFlow<SnackbarEvent>,
     onBackButtonClick: () -> Unit,
     onAddTaskButtonClick: () -> Unit,
     onTaskCardClick: (Int?) -> Unit,
@@ -99,6 +104,22 @@ private fun SubjectScreen(
     var isDeleteSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
     var isDeleteSessionDialogOpen by rememberSaveable { mutableStateOf(false) }
     var isEditSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
+
+    val snackbarHostState = remember {
+        SnackbarHostState()
+    }
+    LaunchedEffect(key1 = true) {
+        snackbarEvent.collectLatest {
+                event -> when(event) {
+            is SnackbarEvent.ShowSnackbar -> {
+                snackbarHostState.showSnackbar(
+                    message = event.message,
+                    duration = event.duration
+                )
+            }
+        }
+        }
+    }
 
     AddSubjectDialog(
         isOpen = isEditSubjectDialogOpen,
@@ -135,6 +156,7 @@ private fun SubjectScreen(
     )
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState)},
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             SubjectScreenTopBar(

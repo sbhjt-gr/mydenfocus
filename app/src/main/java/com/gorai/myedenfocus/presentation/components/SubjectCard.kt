@@ -51,7 +51,6 @@ fun SubjectCard(
                 color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
-
             )
         }
     }

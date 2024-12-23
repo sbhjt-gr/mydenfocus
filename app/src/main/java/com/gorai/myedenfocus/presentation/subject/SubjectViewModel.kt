@@ -1,5 +1,6 @@
 package com.gorai.myedenfocus.presentation.subject
 
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.SavedStateHandle
@@ -10,10 +11,13 @@ import com.gorai.myedenfocus.domain.repository.SessionRepository
 import com.gorai.myedenfocus.domain.repository.SubjectRepository
 import com.gorai.myedenfocus.domain.repository.TaskRepository
 import com.gorai.myedenfocus.presentation.navArgs
+import com.gorai.myedenfocus.util.SnackbarEvent
 import com.gorai.myedenfocus.util.toHours
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -48,6 +52,10 @@ class SubjectViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
         initialValue = SubjectState()
     )
+
+    private val _snackbarEventFlow = MutableSharedFlow<SnackbarEvent>()
+    val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
+
     init {
         fetchSubject()
     }
@@ -78,14 +86,28 @@ class SubjectViewModel @Inject constructor(
 
     private fun updateSubject() {
         viewModelScope.launch {
-            subjectRepository.upsertSubject(
-                subject = Subject(
-                    subjectId = state.value.currentSubjectId,
-                    name = state.value.subjectName,
-                    goalHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f,
-                    colors = state.value.subjectCardColors.map { it.toArgb() }
+            try {
+                subjectRepository.upsertSubject(
+                    subject = Subject(
+                        subjectId = state.value.currentSubjectId,
+                        name = state.value.subjectName,
+                        goalHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f,
+                        colors = state.value.subjectCardColors.map { it.toArgb() }
+                    )
                 )
-            )
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(
+                        "Subject updated successfully"
+                    )
+                )
+            } catch (e: Exception) {
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(
+                        "Couldn't update subject. ${e.message}",
+                        SnackbarDuration.Long
+                    )
+                )
+            }
         }
     }
 
