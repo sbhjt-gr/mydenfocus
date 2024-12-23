@@ -7,7 +7,7 @@ import com.gorai.myedenfocus.domain.model.Task
 sealed class SubjectEvent {
     data object UpdateSubject : SubjectEvent()
     data object DeleteSubject : SubjectEvent()
-
+    data object DeleteSession : SubjectEvent()
     data object UpdateProgress : SubjectEvent()
 
     data class OnTaskIsCompletedChange(val task: Task) : SubjectEvent()

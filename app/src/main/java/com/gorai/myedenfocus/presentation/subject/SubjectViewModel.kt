@@ -14,6 +14,7 @@ import com.gorai.myedenfocus.presentation.navArgs
 import com.gorai.myedenfocus.util.SnackbarEvent
 import com.gorai.myedenfocus.util.toHours
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -62,7 +64,7 @@ class SubjectViewModel @Inject constructor(
     fun onEvent(event: SubjectEvent) {
         when(event) {
             SubjectEvent.DeleteSession -> TODO()
-            SubjectEvent.DeleteSubject -> TODO()
+            SubjectEvent.DeleteSubject -> deleteSubject()
             is SubjectEvent.OnDeleteSessionButtonClick -> TODO()
             is SubjectEvent.OnGoalStudyHoursChange -> {
                 _state.update {
@@ -81,6 +83,14 @@ class SubjectViewModel @Inject constructor(
             }
             is SubjectEvent.OnTaskIsCompletedChange -> TODO()
             SubjectEvent.UpdateSubject -> updateSubject()
+            SubjectEvent.UpdateProgress -> {
+            val goalStudyHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f
+            _state.update { it: SubjectState ->
+                it.copy(
+                    progress = (state.value.studiedHours / goalStudyHours).coerceIn(0f, 1f)
+                )
+            }
+        }
         }
     }
 
@@ -125,4 +135,32 @@ class SubjectViewModel @Inject constructor(
             }
         }
     }
-}
+        private fun deleteSubject() {
+            viewModelScope.launch {
+                try {
+                    val currentSubjectId = state.value.currentSubjectId
+                    if (currentSubjectId != null) {
+                        withContext(Dispatchers.IO) {
+                            subjectRepository.deleteSubject(subjectId = currentSubjectId)
+                        }
+                        subjectRepository.deleteSubject(subjectId = currentSubjectId)
+                        _snackbarEventFlow.emit(
+                            SnackbarEvent.ShowSnackbar(message = "Subject deleted successfully")
+                        )
+                        _snackbarEventFlow.emit(SnackbarEvent.NavigateUp)
+                    } else {
+                        _snackbarEventFlow.emit(
+                            SnackbarEvent.ShowSnackbar(message = "No Subject to delete")
+                        )
+                    }
+                } catch (e: Exception) {
+                    _snackbarEventFlow.emit(
+                        SnackbarEvent.ShowSnackbar(
+                            message = "Couldn't delete subject. ${e.message}",
+                            duration = SnackbarDuration.Long
+                        )
+                    )
+                }
+            }
+        }
+    }
