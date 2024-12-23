@@ -92,7 +92,7 @@ private fun SessionScreen(
     )
     Scaffold(
         topBar = {
-            SessionScreenTopBar(onBackButtonClick = {})
+            SessionScreenTopBar(onBackButtonClick = onBackButtonClick)
         }
     ) { paddingValues ->
         LazyColumn(

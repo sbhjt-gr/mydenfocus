@@ -141,7 +141,7 @@ private fun TaskScreen(
                 checkBoxBorderColor = Red,
                 onCheckBoxClick = { /*TODO*/ },
                 onDeleteButtonClick = { isDeleteDialogOpen = true },
-                onBackButtonClick = { /*TODO*/ }
+                onBackButtonClick = onBackButtonClick 
             )
         }
     ) { paddingValues ->
