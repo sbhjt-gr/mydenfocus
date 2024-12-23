@@ -142,23 +142,23 @@ private fun SubjectScreen(
         onColorChange = { onEvent(SubjectEvent.OnSubjectCardColorChange(it)) }
     )
     DeleteDialog(
-        isOpen = isDeleteSessionDialogOpen,
+        isOpen = isDeleteSubjectDialogOpen,
         title = "Delete Subject?",
         bodyText = "Are you sure you want to delete this subject?",
-        onDismissRequest = { isDeleteSessionDialogOpen = false },
+        onDismissRequest = { isDeleteSubjectDialogOpen = false },
         onConfirmButtonClick = {
-            isDeleteSessionDialogOpen = false
+            isDeleteSubjectDialogOpen = false
             onEvent(SubjectEvent.DeleteSubject)
         }
     )
     DeleteDialog(
-        isOpen = isDeleteSubjectDialogOpen,
+        isOpen = isDeleteSessionDialogOpen,
         title = "Delete Session?",
         bodyText = "Are you sure you want to delete this session?",
-        onDismissRequest = { isDeleteSubjectDialogOpen = false },
+        onDismissRequest = { isDeleteSessionDialogOpen = false },
         onConfirmButtonClick = {
             onEvent(SubjectEvent.DeleteSession)
-            isDeleteSubjectDialogOpen = false
+            isDeleteSessionDialogOpen = false
         }
     )
 
