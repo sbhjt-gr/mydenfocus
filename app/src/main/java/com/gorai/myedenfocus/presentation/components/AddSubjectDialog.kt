@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.gorai.myedenfocus.domain.model.Subject
@@ -88,41 +89,39 @@ fun AddSubjectDialog(
                                     .clickable {
                                         onColorChange(colors)
                                     }
-                                )
-                            }
+                            )
                         }
+                    }
+                    
+                    // Subject Name TextField
                     OutlinedTextField(
                         value = subjectName,
-                        onValueChange = onSubjectNameChange,
-                        label = {
-                            Text(text = "Subject Name")
-                        },
+                        onValueChange = { onSubjectNameChange(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(text = "Subject Name") },
                         singleLine = true,
-
                         isError = subjectNameError != null && subjectName.isNotBlank(),
-                        supportingText = {
-                                Text(
-                                    text = subjectNameError.orEmpty()
-                                )
-                            }
+                        supportingText = { Text(text = subjectNameError.orEmpty()) }
                     )
+                    
                     Spacer(modifier = Modifier.height(10.dp))
+                    
+                    // Goal Hours TextField
                     OutlinedTextField(
                         value = goalHours,
-                        onValueChange = onGoalHoursChange,
-                        label = {
-                            Text(text = "Goal Hours")
-                        },
-                        isError = goalHoursError != null && goalHours.isNotBlank(),supportingText = {
-                            Text(
-                                text = goalHoursError.orEmpty()
-                            )
-                        },
+                        onValueChange = { onGoalHoursChange(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(text = "Goal Hours") },
+                        isError = goalHoursError != null && goalHours.isNotBlank(),
+                        supportingText = { Text(text = goalHoursError.orEmpty()) },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        )
                     )
                 }
-                   },
+            },
             dismissButton = {
                 TextButton(onClick = onDismissRequest) {
                     Text(text = "Cancel")

@@ -70,12 +70,12 @@ class DashboardViewModel @Inject constructor(
             }
             is DashboardEvent.OnGoalStudyHoursChange -> {
                 _state.update {
-                    it.copy(subjectName = event.hours)
+                    it.copy(goalStudyHours = event.hours)
                 }
             }
             is DashboardEvent.OnSubjectCardColorChange -> {
                 _state.update {
-                    it.copy(subjectName = event.colors.toString())
+                    it.copy(subjectCardColors = event.colors)
                 }
             }
             is DashboardEvent.OnSubjectNameChange -> {

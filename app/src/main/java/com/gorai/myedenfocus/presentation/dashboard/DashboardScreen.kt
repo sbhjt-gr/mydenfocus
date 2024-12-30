@@ -155,6 +155,7 @@ private fun DashboardScreen(
             onEvent(DashboardEvent.DeleteSubject)
         }
     )
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
