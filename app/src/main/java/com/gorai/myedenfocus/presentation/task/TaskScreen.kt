@@ -99,6 +99,8 @@ private fun TaskScreen(
 
     var taskTitleError by rememberSaveable { mutableStateOf<String?>(null) }
 
+    var selectedPriority by remember { mutableStateOf(Priority.MEDIUM) }
+
     taskTitleError = when {
         title.isBlank() -> "Please enter task title."
         title.length < 4 -> "Task title is too short."
@@ -203,13 +205,13 @@ private fun TaskScreen(
                         modifier = Modifier.weight(1f),
                         label = priority.title,
                         backgroundColor = priority.color,
-                        borderColor = if (priority == Priority.MEDIUM) {
+                        borderColor = if (priority == selectedPriority) {
                             Color.White
                         } else Color.Transparent,
-                        labelColor = if (priority == Priority.MEDIUM) {
+                        labelColor = if (priority == selectedPriority) {
                             Color.White
                         } else Color.White.copy(alpha = 0.7f),
-                        onClick = { /*TODO*/ }
+                        onClick = { selectedPriority = priority }
                     )
                 }
             }

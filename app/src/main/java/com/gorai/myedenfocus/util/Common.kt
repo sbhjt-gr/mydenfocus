@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter
 enum class Priority(val title: String, val color: Color, val value: Int) {
     LOW("Low", Green, 0),
     MEDIUM("Medium", Red, 1),
-    HIGH("Low", Orange, 2);
+    HIGH("High", Orange, 2);
 
     companion object {
         fun fromInt(value: Int) = values().firstOrNull() {
