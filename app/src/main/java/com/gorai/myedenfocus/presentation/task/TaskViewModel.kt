@@ -1,11 +1,14 @@
 package com.gorai.myedenfocus.presentation.task
 
 import androidx.compose.material3.SnackbarDuration
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gorai.myedenfocus.domain.model.Task
 import com.gorai.myedenfocus.domain.repository.SubjectRepository
 import com.gorai.myedenfocus.domain.repository.TaskRepository
+import com.gorai.myedenfocus.presentation.navArgs
+import com.gorai.myedenfocus.util.Priority
 import com.gorai.myedenfocus.util.SnackbarEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -22,9 +25,10 @@ import javax.inject.Inject
 @HiltViewModel
 class TaskViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
-    private val subjectRepository: SubjectRepository
+    private val subjectRepository: SubjectRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-
+    private val navArgs: TaskScreenNavArgs = savedStateHandle.navArgs()
     private val _state = MutableStateFlow(TaskState())
     val state = combine(
         _state,
@@ -39,6 +43,11 @@ class TaskViewModel @Inject constructor(
 
     private val _snackbarEventFlow = MutableSharedFlow<SnackbarEvent>()
     val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
+
+    init {
+        fetchTask()
+        fetchSubject()
+    }
 
     fun onEvent(event: TaskEvent) {
         when (event) {
@@ -63,8 +72,43 @@ class TaskViewModel @Inject constructor(
                 }
             }
             is TaskEvent.OnIsCompleteChange -> {
-                _state.update {
-                    it.copy(isTaskComplete = !_state.value.isTaskComplete)
+                viewModelScope.launch {
+                    try {
+                        // Get current state
+                        val currentState = _state.value
+                        
+                        // Toggle completion state
+                        _state.update {
+                            it.copy(isTaskComplete = !it.isTaskComplete)
+                        }
+                        
+                        // Only update in database if we have a valid task ID
+                        currentState.currentTaskId?.let { taskId ->
+                            // Get existing task
+                            taskRepository.getTaskById(taskId)?.let { existingTask ->
+                                // Create updated task with toggled completion
+                                val updatedTask = existingTask.copy(
+                                    isComplete = !existingTask.isComplete
+                                )
+                                // Save to database
+                                taskRepository.upsertTask(updatedTask)
+                                
+                                _snackbarEventFlow.emit(
+                                    SnackbarEvent.ShowSnackbar(
+                                        message = if (updatedTask.isComplete) "Task marked as complete" else "Task marked as incomplete",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                )
+                            }
+                        }
+                    } catch (e: Exception) {
+                        _snackbarEventFlow.emit(
+                            SnackbarEvent.ShowSnackbar(
+                                message = "Couldn't update task status: ${e.message}",
+                                duration = SnackbarDuration.Long
+                            )
+                        )
+                    }
                 }
             }
             is TaskEvent.OnRelatedSubjectSelect -> {
@@ -118,6 +162,40 @@ class TaskViewModel @Inject constructor(
                         SnackbarDuration.Long
                     )
                 )
+            }
+        }
+    }
+    private fun fetchTask() {
+        viewModelScope.launch {
+            navArgs.taskId?.let { id ->
+                taskRepository.getTaskById(id)?.let { task ->
+                    _state.update { it: TaskState ->
+                        it.copy(
+                            title = task.title,
+                            description = task.description,
+                            dueDate = task.dueDate,
+                            isTaskComplete = task.isComplete,
+                            relatedToSubject = task.relatedToSubject,
+                            priority = Priority.fromInt(task.priority),
+                            subjectId = task.taskSubjectId,
+                            currentTaskId = task.taskId
+                        )
+                    }
+                }
+            }
+        }
+    }
+    private fun fetchSubject() {
+        viewModelScope.launch {
+            navArgs.subjectId?.let { id ->
+                subjectRepository.getSubjectById(id)?.let { subject ->
+                    _state.update {
+                        it.copy(
+                            subjectId = subject.subjectId,
+                            relatedToSubject = subject.name
+                        )
+                    }
+                }
             }
         }
     }

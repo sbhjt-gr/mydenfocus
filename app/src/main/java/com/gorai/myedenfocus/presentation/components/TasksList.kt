@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.gorai.myedenfocus.domain.model.Task
 import androidx.compose.foundation.lazy.items
 import com.gorai.myedenfocus.util.Priority
+import com.gorai.myedenfocus.util.changeMillsToDateString
 
 
 fun LazyListScope.tasksList(
@@ -111,7 +112,7 @@ private fun TaskCard(
                 )
                 Spacer( modifier = Modifier.height(4.dp) )
                 Text(
-                    text = "${task.dueDate}",
+                    text = task.dueDate.changeMillsToDateString(),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
