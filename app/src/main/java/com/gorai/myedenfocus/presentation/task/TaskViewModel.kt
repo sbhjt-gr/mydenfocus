@@ -11,6 +11,7 @@ import com.gorai.myedenfocus.presentation.navArgs
 import com.gorai.myedenfocus.util.Priority
 import com.gorai.myedenfocus.util.SnackbarEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import javax.inject.Inject
 
@@ -120,9 +122,38 @@ class TaskViewModel @Inject constructor(
                 }
             }
             TaskEvent.SaveTask -> saveTask()
-            TaskEvent.DeleteTask -> TODO()
+            TaskEvent.DeleteTask -> deleteTask()
         }
     }
+
+    private fun deleteTask() {
+        viewModelScope.launch {
+            try {
+                val currentTaskId = state.value.currentTaskId
+                if (currentTaskId != null) {
+                    withContext(Dispatchers.IO) {
+                        taskRepository.deleteTask(taskId = currentTaskId)
+                    }
+                    _snackbarEventFlow.emit(
+                        SnackbarEvent.ShowSnackbar(message = "Task deleted successfully")
+                    )
+                    _snackbarEventFlow.emit(SnackbarEvent.NavigateUp)
+                } else {
+                    _snackbarEventFlow.emit(
+                        SnackbarEvent.ShowSnackbar(message = "No task to delete")
+                    )
+                }
+            } catch (e: Exception) {
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(
+                        message = "Couldn't delete task. ${e.message}",
+                        duration = SnackbarDuration.Long
+                    )
+                )
+            }
+        }
+    }
+
     private fun saveTask() {
         viewModelScope.launch {
             val state = _state.value
