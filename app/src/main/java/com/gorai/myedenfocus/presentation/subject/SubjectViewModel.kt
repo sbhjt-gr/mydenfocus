@@ -7,6 +7,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gorai.myedenfocus.domain.model.Subject
+import com.gorai.myedenfocus.domain.model.Task
 import com.gorai.myedenfocus.domain.repository.SessionRepository
 import com.gorai.myedenfocus.domain.repository.SubjectRepository
 import com.gorai.myedenfocus.domain.repository.TaskRepository
@@ -63,9 +64,9 @@ class SubjectViewModel @Inject constructor(
     }
     fun onEvent(event: SubjectEvent) {
         when(event) {
-            SubjectEvent.DeleteSession -> TODO()
+            SubjectEvent.DeleteSession -> {}
             SubjectEvent.DeleteSubject -> deleteSubject()
-            is SubjectEvent.OnDeleteSessionButtonClick -> TODO()
+            is SubjectEvent.OnDeleteSessionButtonClick -> {}
             is SubjectEvent.OnGoalStudyHoursChange -> {
                 _state.update {
                     it.copy(goalStudyHours = event.hours)
@@ -81,7 +82,7 @@ class SubjectViewModel @Inject constructor(
                     it.copy(subjectName = event.name)
                 }
             }
-            is SubjectEvent.OnTaskIsCompletedChange -> TODO()
+            is SubjectEvent.OnTaskIsCompletedChange -> updateTask(event.task)
             SubjectEvent.UpdateSubject -> updateSubject()
             SubjectEvent.UpdateProgress -> {
             val goalStudyHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f
@@ -163,4 +164,29 @@ class SubjectViewModel @Inject constructor(
                 }
             }
         }
+    private fun updateTask(task: Task) {
+        viewModelScope.launch {
+            try {
+                taskRepository.upsertTask(
+                    task = task.copy(isComplete = !task.isComplete)
+                )
+                if (task.isComplete) {
+                    _snackbarEventFlow.emit(
+                        SnackbarEvent.ShowSnackbar(message = "Saved in upcoming tasks.")
+                    )
+                } else {
+                    _snackbarEventFlow.emit(
+                        SnackbarEvent.ShowSnackbar(message = "Saved in completed tasks.")
+                    )
+                }
+            } catch (e: Exception) {
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(
+                        "Couldn't update task. ${e.message}",
+                        SnackbarDuration.Long
+                    )
+                )
+            }
+        }
+    }
     }
