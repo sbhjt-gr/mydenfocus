@@ -20,7 +20,6 @@ fun TaskDatePicker(
      dismissButtonText: String = "Cancel",
      onDismissRequest: () -> Unit,
      onConfirmButtonClick: () -> Unit,
-     onDismissButtonClick: () -> Unit
 ) {
     if (isOpen) {
         DatePickerDialog(
@@ -31,7 +30,7 @@ fun TaskDatePicker(
                 }
             },
             dismissButton = {
-                TextButton(onClick = onDismissButtonClick) {
+                TextButton(onClick = onDismissRequest) {
                     Text(text = dismissButtonText)
                 }
             },
