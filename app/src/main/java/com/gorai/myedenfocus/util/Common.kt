@@ -22,12 +22,12 @@ enum class Priority(val title: String, val color: Color, val value: Int) {
     }
 }
 fun Long?.changeMillsToDateString(): String {
-        val date: LocalDate = this?.let {
-            Instant.ofEpochMilli(it)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-        } ?: LocalDate.now()
-        return date.format(DateTimeFormatter.ofPattern("dd MMM, yyyy"))
+    val date: LocalDate = this?.let {
+        Instant.ofEpochMilli(it)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+    } ?: LocalDate.now()
+    return date.format(DateTimeFormatter.ofPattern("dd MMM, yyyy"))
 }
 
 fun Long.toHours(): Float {
@@ -41,4 +41,8 @@ sealed class SnackbarEvent {
         val duration: SnackbarDuration = SnackbarDuration.Short
     ) : SnackbarEvent()
     data object NavigateUp : SnackbarEvent()
+}
+
+fun Int.pad(): String {
+    return this.toString().padStart(length = 2, padChar = '0')
 }

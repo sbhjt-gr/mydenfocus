@@ -1,5 +1,7 @@
 package com.gorai.myedenfocus.presentation.session
 
+import android.content.Intent
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,6 +37,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gorai.myedenfocus.presentation.components.DeleteDialog
@@ -41,26 +46,47 @@ import com.gorai.myedenfocus.presentation.components.SubjectListBottomSheet
 import com.gorai.myedenfocus.presentation.components.studySessionsList
 import com.gorai.myedenfocus.sessions
 import com.gorai.myedenfocus.subjects
+import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_CANCEL
+import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_START
+import com.gorai.myedenfocus.presentation.theme.Red
+import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_STOP
+import com.gorai.myedenfocus.presentation.session.ServiceHelper
+import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch
 
-@Destination
+@Destination(
+    deepLinks = [
+        DeepLink(
+            action = Intent.ACTION_VIEW,
+            uriPattern = "myedenfocus://dashboard/session"
+        )
+    ]
+)
 @Composable
 fun SessionScreenRoute(
-    navigator: DestinationsNavigator
+    navigator: DestinationsNavigator,
+    timerService: StudySessionTimerService
 ) {
     SessionScreen(
-        onBackButtonClick = { navigator.navigateUp() }
+        onBackButtonClick = { navigator.navigateUp() },
+        timerService = timerService
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SessionScreen(
-    onBackButtonClick: () -> Unit
+    onBackButtonClick: () -> Unit,
+    timerService: StudySessionTimerService
 ) {
+    val hours by timerService.hours
+    val minutes by timerService.minutes
+    val seconds by timerService.seconds
+    val currentTimerState by timerService.currentTimerState
 
+    val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState()
 
     var isBottomSheetOpen by remember {
@@ -104,7 +130,10 @@ private fun SessionScreen(
                 TimerSection(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(1f)
+                        .aspectRatio(1f),
+                    hours = hours,
+                    minutes = minutes,
+                    seconds = seconds
                 )
             }
             item {
@@ -121,9 +150,26 @@ private fun SessionScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp),
-                    startButtonClick = { /*TODO*/ },
-                    cancelButtonClick = { /*TODO*/ },
-                    finishButtonClick = { /*TODO*/ })
+                    startButtonClick = {
+                        ServiceHelper.triggerForegroundService(
+                            context = context,
+                            action = if (currentTimerState == TimerState.STARTED) {
+                                ACTION_SERVICE_STOP
+                            } else {
+                                ACTION_SERVICE_START
+                            }
+                        )
+                    },
+                    cancelButtonClick = {
+                        ServiceHelper.triggerForegroundService(
+                            context = context,
+                            action = ACTION_SERVICE_CANCEL
+                        )
+                    },
+                    finishButtonClick = { },
+                    timerState = currentTimerState,
+                    seconds = seconds
+                )
             }
             studySessionsList(
                 sectionTitle = "Recent Study History",
@@ -159,7 +205,12 @@ private fun SessionScreenTopBar(
 }
 
 @Composable
-fun TimerSection(modifier: Modifier = Modifier) {
+fun TimerSection(
+    modifier: Modifier,
+    hours: String,
+    minutes: String,
+    seconds: String
+) {
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
@@ -169,10 +220,35 @@ fun TimerSection(modifier: Modifier = Modifier) {
                 .size(250.dp)
                 .border(5.dp, MaterialTheme.colorScheme.surfaceVariant, CircleShape)
         )
-        Text(
-            text = "00:05:32",
-            style = MaterialTheme.typography.titleLarge.copy(fontSize = 45.sp)
-        )
+        Row {
+            AnimatedContent(
+                targetState = hours,
+                label = hours
+            ) { hours ->
+                Text(
+                    text = "$hours:",
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 45.sp)
+                )
+            }
+            AnimatedContent(
+                targetState = minutes,
+                label = minutes
+            ) { minutes ->
+                Text(
+                    text = "$minutes:",
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 45.sp)
+                )
+            }
+            AnimatedContent(
+                targetState = seconds,
+                label = seconds
+            ) { seconds ->
+                Text(
+                    text = seconds,
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 45.sp)
+                )
+            }
+        }
     }
 }
 
@@ -212,30 +288,47 @@ private fun ButtonsSection(
     modifier: Modifier,
     startButtonClick: () -> Unit,
     cancelButtonClick: () -> Unit,
-    finishButtonClick: () -> Unit
+    finishButtonClick: () -> Unit,
+    timerState: TimerState,
+    seconds: String
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.SpaceAround
     ) {
-        Button(onClick = cancelButtonClick) {
+        Button(
+            onClick = cancelButtonClick,
+            enabled = seconds != "00" && timerState != TimerState.STARTED
+        ) {
             Text(
                 text = "Cancel",
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                )
-        }
-        Button(onClick = startButtonClick) {
-            Text(
-                text = "Start",
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
             )
         }
-        Button(onClick = finishButtonClick) {
+        Button(
+            onClick = startButtonClick,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (timerState == TimerState.STARTED) Red
+                else MaterialTheme.colorScheme.primary,
+                contentColor = Color.White
+            )
+        ) {
+            Text(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                text = when (timerState) {
+                    TimerState.STARTED -> "Stop"
+                    TimerState.STOPPED -> "Resume"
+                    else -> "Start"
+                }
+            )
+        }
+        Button(
+            onClick = finishButtonClick,
+            enabled = seconds != "00" && timerState != TimerState.STARTED) {
             Text(
                 text = "Finish",
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
             )
         }
     }
-    Spacer(modifier = Modifier.height(15.dp))
 }
