@@ -124,15 +124,25 @@ private fun SessionScreen(
     LaunchedEffect(key1 = true) {
         snackbarEvent.collectLatest {
                 event -> when(event) {
-            is SnackbarEvent.ShowSnackbar -> {
-                snackbarHostState.showSnackbar(
-                    message = event.message,
-                    duration = event.duration
-                )
+                is SnackbarEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message,
+                        duration = event.duration
+                    )
+                }
+                SnackbarEvent.NavigateUp -> {}
             }
-            SnackbarEvent.NavigateUp -> {}
         }
-        }
+    }
+
+    LaunchedEffect(key1 = state.subjects) {
+        val subjectId = timerService.subjectId.value
+        onEvent(
+            SessionEvent.UpdateSubjectIdAndRelatedSubject(
+                subjectId = subjectId,
+                relatedToSubject = state.subjects.find { it.subjectId == subjectId }?.name.toString()
+            )
+        )
     }
 
     SubjectListBottomSheet(
@@ -186,7 +196,8 @@ private fun SessionScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp),
                     relatedToSubject = state.relatedToSubject ?: "",
-                    selectSubjectButtonClick = { isBottomSheetOpen = true }
+                    selectSubjectButtonClick = { isBottomSheetOpen = true },
+                    seconds = seconds
                 )
             }
             item {
@@ -195,14 +206,19 @@ private fun SessionScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp),
                     startButtonClick = {
-                        ServiceHelper.triggerForegroundService(
-                            context = context,
-                            action = if (currentTimerState == TimerState.STARTED) {
-                                ACTION_SERVICE_STOP
-                            } else {
-                                ACTION_SERVICE_START
-                            }
-                        )
+                        if (state.subjectId != null && state.relatedToSubject != null) {
+                            ServiceHelper.triggerForegroundService(
+                                context = context,
+                                action = if (currentTimerState == TimerState.STARTED) {
+                                    ACTION_SERVICE_STOP
+                                } else {
+                                    ACTION_SERVICE_START
+                                }
+                            )
+                            timerService.subjectId.value = state.subjectId
+                        } else {
+                            onEvent(SessionEvent.CheckSubjectId)
+                        }
                     },
                     cancelButtonClick = {
                         ServiceHelper.triggerForegroundService(
@@ -315,7 +331,8 @@ fun TimerSection(
 private fun RelatedToSubjectSection(
     modifier: Modifier,
     relatedToSubject: String,
-    selectSubjectButtonClick: () -> Unit
+    selectSubjectButtonClick: () -> Unit,
+    seconds: String
 ) {
     Column(modifier = modifier) {
         Text(
@@ -331,7 +348,10 @@ private fun RelatedToSubjectSection(
                 text = relatedToSubject,
                 style = MaterialTheme.typography.bodyLarge
             )
-            IconButton(onClick = selectSubjectButtonClick) {
+            IconButton(
+                onClick = selectSubjectButtonClick,
+                enabled = seconds == "00"
+            ) {
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
                     contentDescription = "Select Subject"

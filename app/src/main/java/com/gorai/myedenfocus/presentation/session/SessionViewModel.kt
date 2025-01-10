@@ -46,15 +46,11 @@ class SessionViewModel @Inject constructor(
 
     fun onEvent(event: SessionEvent) {
         when (event) {
-            is SessionEvent.CheckSubjectId -> {
-                // Handle CheckSubjectId event here
-            }
+            is SessionEvent.CheckSubjectId -> notifyToUpdateSubject()
             is SessionEvent.DeleteSession -> deleteSession()
             is SessionEvent.OnDeleteSessionButtonClick -> {
                 _state.update {
-                    it.copy(
-                        session = event.session
-                    )
+                    it.copy(session = event.session)
                 }
             }
             is SessionEvent.OnRelatedSubjectChange -> {
@@ -66,9 +62,25 @@ class SessionViewModel @Inject constructor(
                 }
             }
             is SessionEvent.SaveSession -> insertSession(event.duration)
-
             is SessionEvent.UpdateSubjectIdAndRelatedSubject -> {
-                // Handle UpdateSubjectIdAndRelatedSubject event here
+                _state.update {
+                    it.copy(
+                        relatedToSubject = event.relatedToSubject,
+                        subjectId = event.subjectId
+                    )
+                }
+            }
+        }
+    }
+
+    private fun notifyToUpdateSubject() {
+        viewModelScope.launch {
+            if (state.value.subjectId == null || state.value.relatedToSubject == null) {
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(
+                        message = "Please select subject related to the session."
+                    )
+                )
             }
         }
     }
