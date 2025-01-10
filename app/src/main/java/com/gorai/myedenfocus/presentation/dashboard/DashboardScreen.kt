@@ -120,15 +120,15 @@ private fun DashboardScreen(
     }
     LaunchedEffect(key1 = true) {
         snackbarEvent.collectLatest {
-            event -> when(event) {
-                is SnackbarEvent.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(
-                        message = event.message,
-                        duration = event.duration
-                    )
-                }
-                SnackbarEvent.NavigateUp -> {}
+                event -> when(event) {
+            is SnackbarEvent.ShowSnackbar -> {
+                snackbarHostState.showSnackbar(
+                    message = event.message,
+                    duration = event.duration
+                )
             }
+            SnackbarEvent.NavigateUp -> {}
+        }
         }
     }
 

@@ -60,6 +60,7 @@ class DashboardViewModel @Inject constructor(
     )
     private val _snackbarEventFlow = MutableSharedFlow<SnackbarEvent>()
     val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
+
     fun onEvent(event: DashboardEvent) {
         when(event) {
             DashboardEvent.DeleteSubject -> TODO()

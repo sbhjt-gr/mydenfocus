@@ -32,11 +32,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,24 +46,28 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gorai.myedenfocus.presentation.components.DeleteDialog
 import com.gorai.myedenfocus.presentation.components.SubjectListBottomSheet
 import com.gorai.myedenfocus.presentation.components.studySessionsList
-import com.gorai.myedenfocus.sessions
-import com.gorai.myedenfocus.subjects
+import com.gorai.myedenfocus.presentation.theme.Red
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_CANCEL
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_START
-import com.gorai.myedenfocus.presentation.theme.Red
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_STOP
-import com.gorai.myedenfocus.presentation.session.ServiceHelper
+import com.gorai.myedenfocus.util.SnackbarEvent
 import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlin.time.DurationUnit
 
 @Destination(
     deepLinks = [
@@ -71,12 +77,18 @@ import kotlinx.coroutines.launch
         )
     ]
 )
+
 @Composable
 fun SessionScreenRoute(
     navigator: DestinationsNavigator,
     timerService: StudySessionTimerService
 ) {
+    val viewModel: SessionViewModel = hiltViewModel()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     SessionScreen(
+        state = state,
+        snackbarEvent = viewModel.snackbarEventFlow,
+        onEvent =  viewModel::onEvent,
         onBackButtonClick = { navigator.navigateUp() },
         timerService = timerService
     )
@@ -85,6 +97,9 @@ fun SessionScreenRoute(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SessionScreen(
+    state: SessionState,
+    snackbarEvent: SharedFlow<SnackbarEvent>,
+    onEvent: (SessionEvent) -> Unit,
     onBackButtonClick: () -> Unit,
     timerService: StudySessionTimerService
 ) {
@@ -103,17 +118,35 @@ private fun SessionScreen(
 
     var isDeleteDialogOpen by rememberSaveable { mutableStateOf(false) }
 
+    val snackbarHostState = remember {
+        SnackbarHostState()
+    }
+    LaunchedEffect(key1 = true) {
+        snackbarEvent.collectLatest {
+                event -> when(event) {
+            is SnackbarEvent.ShowSnackbar -> {
+                snackbarHostState.showSnackbar(
+                    message = event.message,
+                    duration = event.duration
+                )
+            }
+            SnackbarEvent.NavigateUp -> {}
+        }
+        }
+    }
+
     SubjectListBottomSheet(
         sheetState = sheetState,
         isOpen = isBottomSheetOpen,
-        subjects = subjects,
-        onDismissRequest = {},
-        onSubjectClicked = {
+        subjects = state.subjects,
+        onDismissRequest = { isBottomSheetOpen = false },
+        onSubjectClicked = { subject ->
             scope.launch {
                 sheetState.hide()
             }.invokeOnCompletion {
                 if (!sheetState.isVisible) isBottomSheetOpen = false
             }
+            onEvent(SessionEvent.OnRelatedSubjectChange(subject))
         }
     )
     DeleteDialog(
@@ -121,9 +154,13 @@ private fun SessionScreen(
         title = "Delete Session?",
         bodyText = "Are you sure you want to delete this session? This action can not be undone.",
         onDismissRequest = { isDeleteDialogOpen = false },
-        onConfirmButtonClick = { isDeleteDialogOpen = false }
+        onConfirmButtonClick = {
+            onEvent(SessionEvent.DeleteSession)
+            isDeleteDialogOpen = false
+        }
     )
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             SessionScreenTopBar(onBackButtonClick = onBackButtonClick)
         }
@@ -148,7 +185,7 @@ private fun SessionScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp),
-                    relatedToSubject = "English",
+                    relatedToSubject = state.relatedToSubject ?: "",
                     selectSubjectButtonClick = { isBottomSheetOpen = true }
                 )
             }
@@ -173,7 +210,16 @@ private fun SessionScreen(
                             action = ACTION_SERVICE_CANCEL
                         )
                     },
-                    finishButtonClick = { },
+                    finishButtonClick = {
+                        val duration = timerService.duration.toLong(DurationUnit.SECONDS)
+                        if(duration >= 36) {
+                            ServiceHelper.triggerForegroundService(
+                                context = context,
+                                action = ACTION_SERVICE_CANCEL
+                            )
+                        }
+                        onEvent(SessionEvent.SaveSession(duration))
+                    },
                     timerState = currentTimerState,
                     seconds = seconds
                 )
@@ -181,8 +227,11 @@ private fun SessionScreen(
             studySessionsList(
                 sectionTitle = "Recent Study History",
                 emptyListText = "No study sessions\nStart a study session to begin recording your progress",
-                sessions = sessions,
-                onDeleteIconClick = { isDeleteDialogOpen = true }
+                sessions = state.sessions,
+                onDeleteIconClick = { session ->
+                    isDeleteDialogOpen = true
+                    onEvent(SessionEvent.OnDeleteSessionButtonClick(session))
+                }
             )
         }
     }
@@ -346,6 +395,6 @@ private fun ButtonsSection(
 private fun timerTextAnimation(duration: Int = 600): ContentTransform {
     return slideInVertically(animationSpec = tween(duration)) { fullHeight -> fullHeight } +
             fadeIn(animationSpec = tween(duration)) togetherWith
-            slideOutVertically(animationSpec = tween(duration)) { fullHeight -> -fullHeight } +
+            slideOutVertically(animationSpec = tween(duration)) { fullHeight -> fullHeight } +
             fadeOut(animationSpec = tween(duration))
 }
