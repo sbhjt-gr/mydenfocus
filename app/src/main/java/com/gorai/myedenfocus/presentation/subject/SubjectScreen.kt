@@ -194,7 +194,7 @@ private fun SubjectScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(12.dp),
-                    studiedHours = state.goalStudyHours.toString(),
+                    studiedHours = state.studiedHours.toString(),
                     goalHours = state.goalStudyHours,
                     progress = state.progress
                 )

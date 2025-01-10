@@ -175,8 +175,8 @@ private fun DashboardScreen(
                         .fillMaxWidth()
                         .padding(12.dp),
                     subjectCount = state.totalSubjectCount,
-                    studiedHours = state.totalStudiedHours.toString(),
-                    goalHours = state.totalStudiedHours.toString()
+                    studiedHours = state.totalStudiedHours,
+                    goalHours = state.totalGoalStudyHours
                 )
             }
             item {

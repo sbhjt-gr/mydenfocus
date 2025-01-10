@@ -49,11 +49,13 @@ class SessionViewModel @Inject constructor(
             is SessionEvent.CheckSubjectId -> {
                 // Handle CheckSubjectId event here
             }
-            is SessionEvent.DeleteSession -> {
-                // Handle DeleteSession event here
-            }
+            is SessionEvent.DeleteSession -> deleteSession()
             is SessionEvent.OnDeleteSessionButtonClick -> {
-                // Handle OnDeleteSessionButtonClick event here
+                _state.update {
+                    it.copy(
+                        session = event.session
+                    )
+                }
             }
             is SessionEvent.OnRelatedSubjectChange -> {
                 _state.update {
@@ -64,9 +66,27 @@ class SessionViewModel @Inject constructor(
                 }
             }
             is SessionEvent.SaveSession -> insertSession(event.duration)
-            
+
             is SessionEvent.UpdateSubjectIdAndRelatedSubject -> {
                 // Handle UpdateSubjectIdAndRelatedSubject event here
+            }
+        }
+    }
+
+    private fun deleteSession() {
+        viewModelScope.launch {
+            try {
+                state.value.session?.let {
+                    sessionRepository.deleteSession(it)
+                    _snackbarEventFlow.emit(SnackbarEvent.ShowSnackbar(message = "Session deleted successfully"))
+                }
+            } catch (e: Exception) {
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(
+                        message = "Couldn't delete session. ${e.message}",
+                        duration = SnackbarDuration.Long
+                    )
+                )
             }
         }
     }
