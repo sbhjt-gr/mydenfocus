@@ -25,6 +25,10 @@ import com.gorai.myedenfocus.presentation.theme.MyedenFocusTheme
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.navigation.dependency
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.LaunchedEffect
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.gorai.myedenfocus.presentation.navigation.NavigationViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -49,10 +53,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            val viewModel: NavigationViewModel = hiltViewModel()
+            
+            // Check if we should open meditation screen
+            LaunchedEffect(intent) {
+                if (intent?.getBooleanExtra("openMeditation", false) == true) {
+                    viewModel.navigateTo("meditate")
+                }
+            }
+            
             if (isBound) {
                 MyedenFocusTheme {
                     DestinationsNavHost(
@@ -65,6 +79,16 @@ class MainActivity : ComponentActivity() {
             }
         }
         requestPermission()
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        // Handle new intents while app is running
+        if (intent?.getBooleanExtra("openMeditation", false) == true) {
+            val viewModel = (this as ComponentActivity).defaultViewModelProviderFactory
+                .create(NavigationViewModel::class.java)
+            viewModel.navigateTo("meditate")
+        }
     }
 
     private fun requestPermission() {

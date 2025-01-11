@@ -9,17 +9,23 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.gorai.myedenfocus.presentation.navigation.NavigationViewModel
 
 @Composable
 fun BottomBar(
     currentRoute: String,
-    onNavigate: (String) -> Unit
+    onNavigate: (String) -> Unit,
+    viewModel: NavigationViewModel = hiltViewModel()
 ) {
     NavigationBar {
         bottomNavItems.forEach { item ->
             NavigationBarItem(
-                selected = currentRoute == item.route,
-                onClick = { onNavigate(item.route) },
+                selected = viewModel.currentRoute == item.route,
+                onClick = { 
+                    viewModel.navigateTo(item.route)
+                    onNavigate(item.route)
+                },
                 icon = { 
                     Icon(
                         imageVector = item.icon,

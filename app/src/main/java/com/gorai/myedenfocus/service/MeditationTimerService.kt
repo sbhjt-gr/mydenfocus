@@ -28,8 +28,11 @@ class MeditationTimerService : Service() {
         const val ACTION_STOP = "STOP"
         const val EXTRA_TIME = "time_in_seconds"
         
-        private val _timerState = MutableStateFlow<Int>(0)
+        private val _timerState = MutableStateFlow<Int>(17 * 60)
         val timerState: StateFlow<Int> = _timerState
+        
+        private var isServiceRunning = false
+        fun isRunning() = isServiceRunning
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -43,13 +46,15 @@ class MeditationTimerService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 timeLeft = intent.getIntExtra(EXTRA_TIME, 0)
+                isServiceRunning = true
                 startTimer()
             }
             ACTION_STOP -> {
+                isServiceRunning = false
                 stopTimer()
             }
         }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     private fun startTimer() {
@@ -100,6 +105,21 @@ class MeditationTimerService : Service() {
     }
 
     private fun createNotification(timeInSeconds: Int): android.app.Notification {
+        // Create intent to open meditation screen
+        val openAppIntent = packageManager
+            .getLaunchIntentForPackage(packageName)
+            ?.apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("openMeditation", true)
+            }
+        
+        val openPendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val stopIntent = Intent(this, MeditationTimerService::class.java).apply {
             action = ACTION_STOP
         }
@@ -112,6 +132,7 @@ class MeditationTimerService : Service() {
             .setContentTitle("Meditation in Progress")
             .setContentText(formatTime(timeInSeconds))
             .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentIntent(openPendingIntent)
             .addAction(R.drawable.ic_launcher_foreground, "Stop", stopPendingIntent)
             .setOngoing(true)
             .build()
@@ -149,5 +170,11 @@ class MeditationTimerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        // Don't stop service when app is removed from recent tasks
+        // Let it continue running in background
     }
 } 

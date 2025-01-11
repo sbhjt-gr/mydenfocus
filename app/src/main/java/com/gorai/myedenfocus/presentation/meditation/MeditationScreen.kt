@@ -1,8 +1,8 @@
 package com.gorai.myedenfocus.presentation.meditation
 
+import android.app.ActivityManager
+import android.content.Context
 import android.content.Intent
-import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.animateFloatAsState
@@ -34,9 +34,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,13 +52,9 @@ import com.gorai.myedenfocus.presentation.components.BottomBar
 import com.gorai.myedenfocus.service.MeditationTimerService
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import androidx.compose.runtime.collectAsState
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -210,15 +209,24 @@ private fun TimerCircle(
 fun MeditationScreen(
     navigator: DestinationsNavigator
 ) {
-    var selectedMinutes by remember { mutableStateOf(5) }
-    var isTimerRunning by remember { mutableStateOf(false) }
+    var selectedMinutes by remember { mutableStateOf(17) }
+    var isTimerRunning by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val remainingSeconds = MeditationTimerService.timerState.collectAsState().value
     
+    // Check if service is running when screen is created
+    LaunchedEffect(Unit) {
+        val serviceIntent = Intent(context, MeditationTimerService::class.java)
+        if (context.isServiceRunning(MeditationTimerService::class.java)) {
+            isTimerRunning = true
+        }
+    }
+
     // Clean up service when screen is disposed
     DisposableEffect(Unit) {
         onDispose {
-            context.stopService(Intent(context, MeditationTimerService::class.java))
+            // Don't stop service on screen dispose
+            // Let it run in background
         }
     }
 
@@ -351,4 +359,11 @@ fun MeditationScreen(
             }
         }
     }
+}
+
+// Extension function to check if service is running
+private fun Context.isServiceRunning(serviceClass: Class<*>): Boolean {
+    val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    return manager.getRunningServices(Integer.MAX_VALUE)
+        .any { it.service.className == serviceClass.name }
 } 
