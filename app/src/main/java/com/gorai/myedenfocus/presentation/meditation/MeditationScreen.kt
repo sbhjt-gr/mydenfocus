@@ -349,60 +349,69 @@ fun MeditationScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (!isTimerRunning) {
-                Text(
-                    text = "Select Meditation Duration",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(16.dp)
-                )
+                item {
+                    Text(
+                        text = "Select Meditation Duration",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
                 
-                DurationSelector(
-                    selectedMinutes = selectedMinutes,
-                    onDurationSelected = { selectedMinutes = it },
+                item {
+                    DurationSelector(
+                        selectedMinutes = selectedMinutes,
+                        onDurationSelected = { selectedMinutes = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    )
+                }
+            }
+            
+            item {
+                MeditationTimer(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(horizontal = 16.dp),
+                    totalSeconds = selectedMinutes * 60,
+                    remainingSeconds = remainingSeconds,
+                    isRunning = isTimerRunning
                 )
             }
             
-            MeditationTimer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                totalSeconds = selectedMinutes * 60,
-                remainingSeconds = remainingSeconds,
-                isRunning = isTimerRunning
-            )
-            
-            Button(
-                onClick = { toggleTimer() },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isTimerRunning) 
-                        MaterialTheme.colorScheme.error
-                    else 
-                        MaterialTheme.colorScheme.primary
-                ),
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (isTimerRunning) 
-                            Icons.Default.Close 
+            item {
+                Button(
+                    onClick = { toggleTimer() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isTimerRunning) 
+                            MaterialTheme.colorScheme.error
                         else 
-                            Icons.Default.PlayArrow,
-                        contentDescription = if (isTimerRunning) "Stop" else "Start"
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (isTimerRunning) "Stop" else "Start")
+                            MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (isTimerRunning) 
+                                Icons.Default.Close 
+                            else 
+                                Icons.Default.PlayArrow,
+                            contentDescription = if (isTimerRunning) "Stop" else "Start"
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (isTimerRunning) "Stop" else "Start")
+                    }
                 }
             }
         }
