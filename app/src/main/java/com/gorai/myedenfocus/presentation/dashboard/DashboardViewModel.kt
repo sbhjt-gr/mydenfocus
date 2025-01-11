@@ -63,10 +63,10 @@ class DashboardViewModel @Inject constructor(
 
     fun onEvent(event: DashboardEvent) {
         when(event) {
-            DashboardEvent.DeleteSubject -> TODO()
+            DashboardEvent.DeleteSession -> deleteSession()
             is DashboardEvent.OnDeleteSessionButtonClick -> {
                 _state.update {
-                    it.copy(subjectName = event.session.toString())
+                    it.copy(session = event.session)
                 }
             }
             is DashboardEvent.OnGoalStudyHoursChange -> {

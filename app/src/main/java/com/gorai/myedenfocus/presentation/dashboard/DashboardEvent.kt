@@ -12,4 +12,5 @@ sealed class DashboardEvent {
     data class OnSubjectCardColorChange(val colors: List<Color>): DashboardEvent()
     data class OnSubjectNameChange(val name: String): DashboardEvent()
     data class OnGoalStudyHoursChange(val hours: String): DashboardEvent()
+    object DeleteSession : DashboardEvent()
 }

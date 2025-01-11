@@ -150,11 +150,11 @@ private fun DashboardScreen(
     DeleteDialog(
         isOpen = isDeleteSubjectDialogOpen,
         title = "Delete Session?",
-        bodyText = "Are you sure you want to delete this session?",
+        bodyText = "Are you sure you want to delete this session? This action can not be undone.",
         onDismissRequest = { isDeleteSubjectDialogOpen = false },
         onConfirmButtonClick = {
             isDeleteSubjectDialogOpen = false
-            onEvent(DashboardEvent.DeleteSubject)
+            onEvent(DashboardEvent.DeleteSession)
         }
     )
 
@@ -213,8 +213,9 @@ private fun DashboardScreen(
                 sectionTitle = "Recent Study Sessions",
                 emptyListText = "No study sessions\n" + "Start a study session to begin recording your progress",
                 sessions = recentSessions,
-                onDeleteIconClick = { isDeleteSubjectDialogOpen = true
-                    onEvent(DashboardEvent.OnDeleteSessionButtonClick(it))
+                onDeleteIconClick = { session ->
+                    isDeleteSubjectDialogOpen = true
+                    onEvent(DashboardEvent.OnDeleteSessionButtonClick(session))
                 }
             )
         }
