@@ -263,7 +263,6 @@ private fun SubjectCardSection(
     onAddIconClicked: () -> Unit,
     onSubjectCardClick: (Int) -> Unit
 ) {
-
     Column(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -272,7 +271,7 @@ private fun SubjectCardSection(
         ) {
             Text(
                 text = "Subjects",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(start = 12.dp)
             )
             IconButton(onClick = onAddIconClicked) {
@@ -284,31 +283,37 @@ private fun SubjectCardSection(
             }
         }
         if (subjectList.isEmpty()) {
-            Image(
-                painter = painterResource(com.gorai.myedenfocus.R.drawable.img_books),
-                contentDescription = emptyListText,
+            Column(
                 modifier = Modifier
-                    .size(120.dp)
-                    .align(Alignment.CenterHorizontally)
-            )
-            Text(
-                text = "No Subjects",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp)
-        ) {
-            items(subjectList) { subject ->
-                SubjectCard(
-                    subjectName = subject.name,
-                    gradientColors = subject.colors.map { Color(it) },
-                    onClick = { subject.subjectId?.let { onSubjectCardClick(it) } }
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Image(
+                    painter = painterResource(com.gorai.myedenfocus.R.drawable.img_books),
+                    contentDescription = emptyListText,
+                    modifier = Modifier.size(120.dp)
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "No Subjects",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                subjectList.forEach { subject ->
+                    SubjectCard(
+                        subjectName = subject.name,
+                        gradientColors = subject.colors.map { Color(it) },
+                        onClick = { subject.subjectId?.let { onSubjectCardClick(it) } }
+                    )
+                }
             }
         }
     }
