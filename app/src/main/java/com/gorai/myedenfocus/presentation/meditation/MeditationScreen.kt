@@ -1,7 +1,10 @@
 package com.gorai.myedenfocus.presentation.meditation
 
+import android.content.Intent
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -30,7 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,14 +46,16 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.gorai.myedenfocus.presentation.components.BottomBar
+import com.gorai.myedenfocus.service.MeditationTimerService
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import androidx.compose.ui.graphics.Color
-import androidx.compose.material3.ColorScheme
+import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -206,20 +211,40 @@ fun MeditationScreen(
     navigator: DestinationsNavigator
 ) {
     var selectedMinutes by remember { mutableStateOf(5) }
-    var remainingSeconds by remember { mutableStateOf(5 * 60) }
     var isTimerRunning by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val remainingSeconds = MeditationTimerService.timerState.collectAsState().value
     
-    LaunchedEffect(isTimerRunning) {
-        while(isTimerRunning && remainingSeconds > 0) {
-            delay(1000)
-            remainingSeconds--
-            
-            if (remainingSeconds == 0) {
-                isTimerRunning = false
-                val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                MediaPlayer.create(context, notification).start()
+    // Clean up service when screen is disposed
+    DisposableEffect(Unit) {
+        onDispose {
+            context.stopService(Intent(context, MeditationTimerService::class.java))
+        }
+    }
+
+    // Start/Stop timer service
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun toggleTimer() {
+        val serviceIntent = Intent(context, MeditationTimerService::class.java).apply {
+            if (!isTimerRunning) {
+                action = MeditationTimerService.ACTION_START
+                putExtra(MeditationTimerService.EXTRA_TIME, selectedMinutes * 60)
+            } else {
+                action = MeditationTimerService.ACTION_STOP
             }
+        }
+        
+        try {
+            if (!isTimerRunning) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
+                }
+            } else {
+                context.stopService(serviceIntent)
+            }
+            isTimerRunning = !isTimerRunning
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -259,8 +284,9 @@ fun MeditationScreen(
                 ) {
                     IconButton(
                         onClick = { 
-                            if (selectedMinutes > 1) selectedMinutes-- 
-                            remainingSeconds = selectedMinutes * 60
+                            if (selectedMinutes > 1) {
+                                selectedMinutes--
+                            }
                         }
                     ) {
                         Icon(
@@ -276,8 +302,9 @@ fun MeditationScreen(
                     
                     IconButton(
                         onClick = { 
-                            if (selectedMinutes < 60) selectedMinutes++
-                            remainingSeconds = selectedMinutes * 60
+                            if (selectedMinutes < 60) {
+                                selectedMinutes++
+                            }
                         }
                     ) {
                         Icon(
@@ -298,12 +325,7 @@ fun MeditationScreen(
             )
             
             Button(
-                onClick = { 
-                    if (!isTimerRunning) {
-                        remainingSeconds = selectedMinutes * 60
-                    }
-                    isTimerRunning = !isTimerRunning 
-                },
+                onClick = { toggleTimer() },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isTimerRunning) 
                         MaterialTheme.colorScheme.error
