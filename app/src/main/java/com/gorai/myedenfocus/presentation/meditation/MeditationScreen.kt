@@ -65,7 +65,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.text.style.TextAlign
 
-private val meditationDurations = listOf(5, 10, 15, 17, 20, 30)
+private val meditationDurations = listOf(1, 5, 10, 15, 17, 20, 30)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -290,6 +290,7 @@ fun MeditationScreen(
     var isTimerRunning by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val remainingSeconds = MeditationTimerService.timerState.collectAsState().value
+    val isAlarmPlaying = MeditationTimerService.isAlarmPlaying.collectAsState().value
     
     // Check if service is running when screen is created
     LaunchedEffect(Unit) {
@@ -411,6 +412,31 @@ fun MeditationScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(if (isTimerRunning) "Stop" else "Start")
+                    }
+                }
+            }
+            
+            // Add stop alarm button when alarm is playing
+            if (isAlarmPlaying) {
+                item {
+                    Button(
+                        onClick = { MeditationTimerService().stopAlarm() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        ),
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Stop Alarm"
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Stop Alarm")
+                        }
                     }
                 }
             }

@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.Ringtone
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.gorai.myedenfocus.R
@@ -33,6 +34,11 @@ class MeditationTimerService : Service() {
         
         private var isServiceRunning = false
         fun isRunning() = isServiceRunning
+        
+        private val _isAlarmPlaying = MutableStateFlow(false)
+        val isAlarmPlaying: StateFlow<Boolean> = _isAlarmPlaying
+        
+        private var currentRingtone: Ringtone? = null
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -156,9 +162,23 @@ class MeditationTimerService : Service() {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(2, notification)
         
-        // Play completion sound
-        val sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        RingtoneManager.getRingtone(applicationContext, sound).play()
+        // Play alarm sound
+        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        currentRingtone = RingtoneManager.getRingtone(applicationContext, alarmUri)
+        
+        if (currentRingtone == null) {
+            val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            currentRingtone = RingtoneManager.getRingtone(applicationContext, fallbackUri)
+        }
+        
+        currentRingtone?.play()
+        _isAlarmPlaying.value = true
+    }
+
+    fun stopAlarm() {
+        currentRingtone?.stop()
+        currentRingtone = null
+        _isAlarmPlaying.value = false
     }
 
     private fun formatTime(seconds: Int): String {
@@ -169,6 +189,7 @@ class MeditationTimerService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        stopAlarm()
         serviceScope.cancel()
     }
 
