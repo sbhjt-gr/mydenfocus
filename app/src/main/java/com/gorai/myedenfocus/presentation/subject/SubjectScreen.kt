@@ -58,6 +58,7 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import com.gorai.myedenfocus.util.NavAnimation
+import com.gorai.myedenfocus.presentation.components.Speedometer
 
 data class SubjectScreenNavArgs(
     val subjectId: Int
@@ -274,34 +275,36 @@ private fun SubjectOverviewSection(
     goalHours: String,
     progress: Float
 ) {
-    val percentageProgress = remember(progress) { (progress * 100).toInt().coerceIn(0, 100) }
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.SpaceAround,
+        horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        CountCard(modifier = Modifier.weight(1f), headingText = "Goal Study Hours", count = goalHours)
-        Spacer(modifier = Modifier.width(10.dp))
-        CountCard(modifier = Modifier.weight(1f), headingText = "Studied Hours", count = studiedHours)
-        Spacer(modifier = Modifier.width(10.dp))
-        Box(
-            modifier = Modifier.size(75.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(
-                modifier = Modifier.fillMaxSize(),
-                progress = 1f,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                strokeWidth = 4.dp,
-                strokeCap = StrokeCap.Round
-            )
-            CircularProgressIndicator(
-                modifier = Modifier.fillMaxSize(),
-                progress = progress,
-                strokeWidth = 4.dp,
-                strokeCap = StrokeCap.Round
-            )
-            Text(text = "$percentageProgress%")
-        }
+        // Goal Hours Speedometer
+        Speedometer(
+            modifier = Modifier.weight(1f),
+            headingText = "Goal Hours",
+            value = goalHours.toFloatOrNull() ?: 0f,
+            maxValue = 100f,
+            displayText = "${goalHours}h"
+        )
+
+        // Studied Hours Speedometer
+        Speedometer(
+            modifier = Modifier.weight(1f),
+            headingText = "Studied",
+            value = studiedHours.toFloatOrNull() ?: 0f,
+            maxValue = goalHours.toFloatOrNull() ?: 100f,
+            displayText = "${studiedHours}h"
+        )
+
+        // Progress Speedometer
+        Speedometer(
+            modifier = Modifier.weight(1f),
+            headingText = "Progress",
+            value = progress * 100,
+            maxValue = 100f,
+            displayText = "${(progress * 100).toInt()}%"
+        )
     }
 }
