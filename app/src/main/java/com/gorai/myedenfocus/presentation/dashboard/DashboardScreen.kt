@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -65,6 +66,8 @@ import com.ramcosta.composedestinations.annotation.RootNavGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FabPosition
 
 @RootNavGraph(start = true)
 @Destination(
@@ -167,9 +170,33 @@ private fun DashboardScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             DashboardScreenTopBar()
-        }
-        ) {
-        paddingValues -> LazyColumn(
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onStartSessionButtonClick,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Start Session"
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Start Study Session",
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+        },
+        floatingActionButtonPosition = FabPosition.Center
+    ) { paddingValues ->
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
@@ -193,16 +220,6 @@ private fun DashboardScreen(
                     },
                     onSubjectCardClick = onSubjectCardClick
                 )
-            }
-            item {
-                Button(
-                    onClick = onStartSessionButtonClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 48.dp, vertical = 20.dp)
-                ) {
-                    Text(text = "Start Study Session")
-                }
             }
             tasksList(
                 sectionTitle = "Upcoming Tasks",
