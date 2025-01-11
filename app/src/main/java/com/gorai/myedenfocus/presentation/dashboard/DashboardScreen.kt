@@ -3,7 +3,6 @@ package com.gorai.myedenfocus.presentation.dashboard
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,14 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -48,26 +45,25 @@ import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.model.Task
 import com.gorai.myedenfocus.presentation.components.AddSubjectDialog
-import com.gorai.myedenfocus.presentation.components.CountCard
+import com.gorai.myedenfocus.presentation.components.BottomBar
 import com.gorai.myedenfocus.presentation.components.DeleteDialog
+import com.gorai.myedenfocus.presentation.components.Speedometer
 import com.gorai.myedenfocus.presentation.components.SubjectCard
 import com.gorai.myedenfocus.presentation.components.studySessionsList
 import com.gorai.myedenfocus.presentation.components.tasksList
-import com.gorai.myedenfocus.presentation.components.Speedometer
 import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.SubjectScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
 import com.gorai.myedenfocus.presentation.subject.SubjectScreenNavArgs
 import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
-import com.gorai.myedenfocus.util.SnackbarEvent
 import com.gorai.myedenfocus.util.NavAnimation
+import com.gorai.myedenfocus.util.SnackbarEvent
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootNavGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FabPosition
+import com.gorai.myedenfocus.presentation.destinations.MeditationScreenDestination
 
 @RootNavGraph(start = true)
 @Destination(
@@ -89,19 +85,25 @@ fun DashBoardScreenRoute(
         recentSessions = recentSessions,
         onEvent = viewModel::onEvent,
         snackbarEvent = viewModel.snackbarEventFlow,
-        onSubjectCardClick = {
-            subjectId -> subjectId?.let {
-                val navArg = SubjectScreenNavArgs(subjectId = subjectId)
-            navigator.navigate(SubjectScreenRouteDestination(navArgs = navArg))
+        onSubjectCardClick = { subjectId ->
+            subjectId?.let {
+                navigator.navigate(SubjectScreenRouteDestination(subjectId = it))
             }
         },
-        onTaskCardClick = {
-            taskId ->
-            val navArg = TaskScreenNavArgs(taskId = taskId, subjectId = null)
-            navigator.navigate(TaskScreenRouteDestination(navArgs = navArg))
+        onTaskCardClick = { taskId ->
+            taskId?.let {
+                navigator.navigate(TaskScreenRouteDestination(taskId = it, subjectId = null))
+            }
         },
         onStartSessionButtonClick = {
             navigator.navigate(SessionScreenRouteDestination())
+        },
+        currentRoute = "schedule",
+        onNavigate = { route ->
+            when (route) {
+                "meditate" -> navigator.navigate(MeditationScreenDestination)
+                else -> Unit
+            }
         }
     )
 }
@@ -115,7 +117,9 @@ private fun DashboardScreen(
     snackbarEvent: SharedFlow<SnackbarEvent>,
     onSubjectCardClick: (Int?) -> Unit,
     onTaskCardClick: (Int?) -> Unit,
-    onStartSessionButtonClick: () -> Unit
+    onStartSessionButtonClick: () -> Unit,
+    currentRoute: String = "schedule",
+    onNavigate: (String) -> Unit = {}
 ) {
     var isAddSubjectDialogOpen by rememberSaveable {
         mutableStateOf(false)
@@ -194,7 +198,13 @@ private fun DashboardScreen(
                 }
             }
         },
-        floatingActionButtonPosition = FabPosition.Center
+        floatingActionButtonPosition = FabPosition.Center,
+        bottomBar = {
+            BottomBar(
+                currentRoute = currentRoute,
+                onNavigate = onNavigate
+            )
+        }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
