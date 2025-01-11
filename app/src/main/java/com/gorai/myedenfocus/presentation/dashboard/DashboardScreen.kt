@@ -58,6 +58,7 @@ import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestinatio
 import com.gorai.myedenfocus.presentation.subject.SubjectScreenNavArgs
 import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
 import com.gorai.myedenfocus.util.SnackbarEvent
+import com.gorai.myedenfocus.util.NavAnimation
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootNavGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -65,7 +66,10 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 
 @RootNavGraph(start = true)
-@Destination(start = true)
+@Destination(
+    start = true,
+    style = NavAnimation::class
+)
 @Composable
 fun DashBoardScreenRoute(
     navigator: DestinationsNavigator

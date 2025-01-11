@@ -54,6 +54,7 @@ import com.gorai.myedenfocus.presentation.components.TaskDatePicker
 import com.gorai.myedenfocus.util.Priority
 import com.gorai.myedenfocus.util.SnackbarEvent
 import com.gorai.myedenfocus.util.changeMillsToDateString
+import com.gorai.myedenfocus.util.NavAnimation
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.flow.SharedFlow
@@ -66,7 +67,10 @@ data class TaskScreenNavArgs(
     val subjectId: Int?
 )
 
-@Destination(navArgsDelegate = TaskScreenNavArgs::class)
+@Destination(
+    navArgsDelegate = TaskScreenNavArgs::class,
+    style = NavAnimation::class
+)
 @Composable
 fun TaskScreenRoute(
     navigator: DestinationsNavigator

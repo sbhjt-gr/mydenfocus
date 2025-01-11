@@ -94,4 +94,11 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
+
+    // Navigation Animation
+    implementation("androidx.compose.animation:animation:1.5.4")
+    implementation("androidx.navigation:navigation-compose:2.7.6")
+
+    // Compose Destinations
+    implementation("io.github.raamcosta.compose-destinations:animations-core:1.9.52")
 }

@@ -57,12 +57,16 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
+import com.gorai.myedenfocus.util.NavAnimation
 
 data class SubjectScreenNavArgs(
     val subjectId: Int
 )
 
-@Destination(navArgsDelegate = SubjectScreenNavArgs::class)
+@Destination(
+    navArgsDelegate = SubjectScreenNavArgs::class,
+    style = NavAnimation::class
+)
 @Composable
 fun SubjectScreenRoute(
     navigator: DestinationsNavigator

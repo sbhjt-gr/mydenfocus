@@ -64,10 +64,12 @@ import com.gorai.myedenfocus.util.SnackbarEvent
 import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import com.ramcosta.composedestinations.spec.DestinationStyle
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.time.DurationUnit
+import com.gorai.myedenfocus.util.NavAnimation
 
 @Destination(
     deepLinks = [
@@ -75,7 +77,8 @@ import kotlin.time.DurationUnit
             action = Intent.ACTION_VIEW,
             uriPattern = "myedenfocus://dashboard/session"
         )
-    ]
+    ],
+    style = NavAnimation::class
 )
 
 @Composable
