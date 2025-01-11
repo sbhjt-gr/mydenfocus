@@ -52,6 +52,7 @@ import com.gorai.myedenfocus.presentation.components.DeleteDialog
 import com.gorai.myedenfocus.presentation.components.SubjectCard
 import com.gorai.myedenfocus.presentation.components.studySessionsList
 import com.gorai.myedenfocus.presentation.components.tasksList
+import com.gorai.myedenfocus.presentation.components.Speedometer
 import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.SubjectScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
@@ -246,12 +247,36 @@ private fun CountCardsSection(
     studiedHours: String,
     goalHours: String
 ) {
-    Row(modifier = modifier) {
-        CountCard(modifier = modifier.weight(1f), headingText =  "Subject Count", count = "$subjectCount")
-        Spacer(modifier = Modifier.width(2.dp))
-        CountCard(modifier = modifier.weight(1f), headingText =  "Studied Hours", count = studiedHours)
-        Spacer(modifier = Modifier.width(2.dp))
-        CountCard(modifier = modifier.weight(1f), headingText =  "Goal Hours", count = goalHours)
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        // Subject Count Speedometer
+        Speedometer(
+            modifier = Modifier.weight(1f),
+            headingText = "Subjects",
+            value = subjectCount.toFloat(),
+            maxValue = 10f, // Assuming max 10 subjects
+            displayText = subjectCount.toString()
+        )
+
+        // Studied Hours Speedometer
+        Speedometer(
+            modifier = Modifier.weight(1f),
+            headingText = "Studied",
+            value = studiedHours.toFloatOrNull() ?: 0f,
+            maxValue = goalHours.toFloatOrNull() ?: 100f,
+            displayText = "${studiedHours}h"
+        )
+
+        // Goal Hours Speedometer
+        Speedometer(
+            modifier = Modifier.weight(1f),
+            headingText = "Goal",
+            value = goalHours.toFloatOrNull() ?: 0f,
+            maxValue = 100f,
+            displayText = "${goalHours}h"
+        )
     }
 }
 
