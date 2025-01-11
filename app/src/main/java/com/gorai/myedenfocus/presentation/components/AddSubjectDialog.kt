@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,6 +32,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.gorai.myedenfocus.domain.model.Subject
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.ui.graphics.Shape
 
 @Composable
 fun AddSubjectDialog(
@@ -47,6 +54,8 @@ fun AddSubjectDialog(
 ) {
     var subjectNameError by rememberSaveable { mutableStateOf<String?>(null) }
     var goalHoursError by rememberSaveable { mutableStateOf<String?>(null) }
+    var showStartColorPicker by rememberSaveable { mutableStateOf(false) }
+    var showEndColorPicker by rememberSaveable { mutableStateOf(false) }
 
     subjectNameError = when {
         subjectName.isBlank() -> "Subject name cannot be empty."
@@ -69,28 +78,75 @@ fun AddSubjectDialog(
             title = { Text(text = title) },
             text = {
                 Column {
-                    Row(
+                    // Color Picker Section
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceAround
+                            .padding(bottom = 16.dp)
                     ) {
-                        Subject.subjectCardColors.forEach { colors ->
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(CircleShape)
-                                    .background(brush = Brush.verticalGradient(colors))
-                                    .border(
-                                        width = 2.dp,
-                                        color = if (colors == selectedColors) Color.Black else Color.Transparent,
-                                        shape = CircleShape
-                                    )
-                                    .clickable {
-                                        onColorChange(colors)
-                                    }
-                            )
+                        Text(
+                            text = "Select Gradient Colors",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            // Start Color Picker
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Start Color",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(selectedColors.firstOrNull() ?: Color.Gray)
+                                        .border(
+                                            1.dp,
+                                            MaterialTheme.colorScheme.outline,
+                                            CircleShape
+                                        )
+                                        .clickable { showStartColorPicker = true }
+                                )
+                            }
+                            
+                            // End Color Picker
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "End Color",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(selectedColors.lastOrNull() ?: Color.Gray)
+                                        .border(
+                                            1.dp,
+                                            MaterialTheme.colorScheme.outline,
+                                            CircleShape
+                                        )
+                                        .clickable { showEndColorPicker = true }
+                                )
+                            }
                         }
+                        
+                        // Preview of selected gradient
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp)
+                                .padding(top = 8.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = selectedColors.ifEmpty { listOf(Color.Gray, Color.Gray) }
+                                    )
+                                )
+                        )
                     }
                     
                     // Subject Name TextField
@@ -137,4 +193,74 @@ fun AddSubjectDialog(
             }
         )
     }
+
+    // Color Picker Dialog for Start Color
+    if (showStartColorPicker) {
+        ColorPickerDialog(
+            onDismissRequest = { showStartColorPicker = false },
+            onColorSelected = { color ->
+                onColorChange(listOf(color, selectedColors.lastOrNull() ?: Color.Gray))
+                showStartColorPicker = false
+            }
+        )
+    }
+
+    // Color Picker Dialog for End Color
+    if (showEndColorPicker) {
+        ColorPickerDialog(
+            onDismissRequest = { showEndColorPicker = false },
+            onColorSelected = { color ->
+                onColorChange(listOf(selectedColors.firstOrNull() ?: Color.Gray, color))
+                showEndColorPicker = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun ColorPickerDialog(
+    onDismissRequest: () -> Unit,
+    onColorSelected: (Color) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text("Pick a color") },
+        text = {
+            Column(
+                modifier = Modifier.padding(8.dp)
+            ) {
+                val colors = listOf(
+                    Color.Red, Color.Green, Color.Blue,
+                    Color.Yellow, Color.Cyan, Color.Magenta,
+                    Color.DarkGray, Color.LightGray, Color.Gray,
+                    Color(0xFF6B4DE6), Color(0xFFFF5F6D), Color(0xFF11998E),
+                    Color(0xFF4158D0), Color(0xFF0093E9), Color(0xFFFF3CAC),
+                    Color(0xFFFBB034), Color(0xFF8E2DE2), Color(0xFF56CCF2)
+                )
+                
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(6),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.height(200.dp)
+                ) {
+                    items(colors) { color ->
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(color = color)
+                                .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                                .clickable { onColorSelected(color) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text("Cancel")
+            }
+        }
+    )
 }
