@@ -61,9 +61,18 @@ import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FabPosition
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.scale
 
 private val meditationDurations = listOf(1, 5, 10, 15, 17, 20, 30)
 
@@ -280,6 +289,46 @@ private fun DurationSelector(
     }
 }
 
+@Composable
+private fun PulsingStopButton(onClick: () -> Unit) {
+    val pulseAnim = rememberInfiniteTransition()
+    val scale by pulseAnim.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
+    FloatingActionButton(
+        onClick = onClick,
+        containerColor = MaterialTheme.colorScheme.error,
+        contentColor = MaterialTheme.colorScheme.onError,
+        modifier = Modifier
+            .size(80.dp)
+            .scale(scale)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Stop Sound",
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Stop\nAlarm",
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination
 @Composable
@@ -291,7 +340,15 @@ fun MeditationScreen(
     val context = LocalContext.current
     val remainingSeconds = MeditationTimerService.timerState.collectAsState().value
     val isAlarmPlaying = MeditationTimerService.isAlarmPlaying.collectAsState().value
+    val isTimerCompleted = MeditationTimerService.isTimerCompleted.collectAsState().value
     
+    // Play alarm when timer completes
+    LaunchedEffect(isTimerCompleted) {
+        if (isTimerCompleted) {
+            isTimerRunning = false
+        }
+    }
+
     // Check if service is running when screen is created
     LaunchedEffect(Unit) {
         val serviceIntent = Intent(context, MeditationTimerService::class.java)
@@ -348,7 +405,13 @@ fun MeditationScreen(
                     }
                 }
             )
-        }
+        },
+        floatingActionButton = {
+            if (isAlarmPlaying) {
+                PulsingStopButton(onClick = { MeditationTimerService.stopAlarmStatic() })
+            }
+        },
+        floatingActionButtonPosition = FabPosition.Center
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
@@ -412,31 +475,6 @@ fun MeditationScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(if (isTimerRunning) "Stop" else "Start")
-                    }
-                }
-            }
-            
-            // Add stop alarm button when alarm is playing
-            if (isAlarmPlaying) {
-                item {
-                    Button(
-                        onClick = { MeditationTimerService().stopAlarm() },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        ),
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Stop Alarm"
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Stop Alarm")
-                        }
                     }
                 }
             }

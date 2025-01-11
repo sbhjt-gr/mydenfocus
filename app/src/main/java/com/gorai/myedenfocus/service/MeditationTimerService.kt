@@ -39,6 +39,15 @@ class MeditationTimerService : Service() {
         val isAlarmPlaying: StateFlow<Boolean> = _isAlarmPlaying
         
         private var currentRingtone: Ringtone? = null
+        
+        fun stopAlarmStatic() {
+            currentRingtone?.stop()
+            currentRingtone = null
+            _isAlarmPlaying.value = false
+        }
+        
+        private val _isTimerCompleted = MutableStateFlow(false)
+        val isTimerCompleted: StateFlow<Boolean> = _isTimerCompleted
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -66,6 +75,7 @@ class MeditationTimerService : Service() {
     private fun startTimer() {
         try {
             isTimerRunning = true
+            _isTimerCompleted.value = false
             startForeground(NOTIFICATION_ID, createNotification(timeLeft))
             
             serviceScope.launch {
@@ -77,6 +87,7 @@ class MeditationTimerService : Service() {
                     
                     if (timeLeft == 0) {
                         isTimerRunning = false
+                        _isTimerCompleted.value = true
                         showCompletionNotification()
                         stopSelf()
                     }
@@ -151,28 +162,39 @@ class MeditationTimerService : Service() {
     }
 
     private fun showCompletionNotification() {
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Meditation Complete")
-            .setContentText("Great job! You've completed your meditation session.")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
+        try {
+            // Create and show notification first
+            val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Meditation Complete")
+                .setContentText("Great job! You've completed your meditation session.")
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .build()
 
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(2, notification)
-        
-        // Play alarm sound
-        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-        currentRingtone = RingtoneManager.getRingtone(applicationContext, alarmUri)
-        
-        if (currentRingtone == null) {
-            val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            currentRingtone = RingtoneManager.getRingtone(applicationContext, fallbackUri)
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.notify(2, notification)
+
+            // Then handle the alarm sound
+            serviceScope.launch(Dispatchers.Main) {
+                val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                currentRingtone = RingtoneManager.getRingtone(applicationContext, alarmUri)?.apply {
+                    isLooping = true
+                }
+                
+                if (currentRingtone == null) {
+                    val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                    currentRingtone = RingtoneManager.getRingtone(applicationContext, fallbackUri)?.apply {
+                        isLooping = true
+                    }
+                }
+                
+                currentRingtone?.play()
+                _isAlarmPlaying.value = true
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        
-        currentRingtone?.play()
-        _isAlarmPlaying.value = true
     }
 
     fun stopAlarm() {
@@ -189,7 +211,10 @@ class MeditationTimerService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        stopAlarm()
+        if (!_isTimerCompleted.value) {
+            // Only stop alarm if service is destroyed before timer completion
+            stopAlarm()
+        }
         serviceScope.cancel()
     }
 
