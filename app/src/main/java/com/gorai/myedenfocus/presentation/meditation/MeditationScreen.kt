@@ -8,9 +8,12 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -18,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -55,6 +59,13 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.text.style.TextAlign
+
+private val meditationDurations = listOf(5, 10, 15, 17, 20, 30)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -203,6 +214,72 @@ private fun TimerCircle(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun DurationSelector(
+    selectedMinutes: Int,
+    onDurationSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = meditationDurations.indexOf(selectedMinutes)
+    )
+    
+    Box(
+        modifier = modifier
+            .height(180.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Selection indicator
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        )
+        
+        LazyColumn(
+            state = listState,
+            flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Add padding items at top and bottom for infinite scroll feel
+            items(2) { Spacer(modifier = Modifier.height(60.dp)) }
+            
+            items(meditationDurations) { duration ->
+                Box(
+                    modifier = Modifier
+                        .height(60.dp)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "$duration min",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = if (duration == selectedMinutes)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            
+            // Add padding items at top and bottom for infinite scroll feel
+            items(2) { Spacer(modifier = Modifier.height(60.dp)) }
+        }
+    }
+    
+    // Update selected duration when scrolling stops
+    LaunchedEffect(listState.firstVisibleItemIndex) {
+        val selectedIndex = listState.firstVisibleItemIndex - 2 // Adjust for padding items
+        if (selectedIndex in meditationDurations.indices) {
+            onDurationSelected(meditationDurations[selectedIndex])
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination
 @Composable
@@ -280,47 +357,18 @@ fun MeditationScreen(
         ) {
             if (!isTimerRunning) {
                 Text(
-                    text = "Set Meditation Duration",
+                    text = "Select Meditation Duration",
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(16.dp)
                 )
                 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    IconButton(
-                        onClick = { 
-                            if (selectedMinutes > 1) {
-                                selectedMinutes--
-                            }
-                        }
-                    ) {
-                        Icon(
-                            Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Decrease time"
-                        )
-                    }
-                    
-                    Text(
-                        text = "$selectedMinutes min",
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-                    
-                    IconButton(
-                        onClick = { 
-                            if (selectedMinutes < 60) {
-                                selectedMinutes++
-                            }
-                        }
-                    ) {
-                        Icon(
-                            Icons.Default.KeyboardArrowUp,
-                            contentDescription = "Increase time"
-                        )
-                    }
-                }
+                DurationSelector(
+                    selectedMinutes = selectedMinutes,
+                    onDurationSelected = { selectedMinutes = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
             }
             
             MeditationTimer(
