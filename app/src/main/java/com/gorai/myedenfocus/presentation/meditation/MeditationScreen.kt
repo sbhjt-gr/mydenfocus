@@ -111,8 +111,15 @@ fun MeditationTimer(
     remainingSeconds: Int,
     isRunning: Boolean
 ) {
+    val safeProgress = remember { mutableStateOf(0f) }
+    safeProgress.value = if (totalSeconds == 0) {
+        0f
+    } else {
+        (remainingSeconds.toFloat() / totalSeconds.toFloat()).coerceIn(0f, 1f)
+    }
+
     val progress by animateFloatAsState(
-        targetValue = remainingSeconds.toFloat() / totalSeconds.toFloat(),
+        targetValue = safeProgress.value,
         animationSpec = tween(500),
         label = "timer_progress"
     )
@@ -223,7 +230,8 @@ private fun TimerCircle(
         
         // Draw moving dot
         if (isRunning) {
-            val dotAngle = -90f + (360f * progress)
+            val safeProgress = progress.coerceIn(0f, 1f)
+            val dotAngle = -90f + (360f * safeProgress)
             val dotRadius = radius * 0.9f
             val dotCenter = Offset(
                 center.x + (dotRadius * cos(Math.toRadians(dotAngle.toDouble()))).toFloat(),

@@ -30,7 +30,10 @@ fun Speedometer(
     displayText: String
 ) {
     val sweepAngle by animateFloatAsState(
-        targetValue = (value / maxValue) * 180f,
+        targetValue = if (value.isNaN() || maxValue == 0f) 
+            0f 
+        else 
+            ((value / maxValue) * 180f).coerceIn(0f, 180f),
         animationSpec = tween(1000),
         label = "speedometer"
     )
