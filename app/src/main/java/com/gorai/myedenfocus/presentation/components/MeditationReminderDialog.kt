@@ -16,7 +16,7 @@ fun MeditationReminderDialog(
         onDismissRequest = onDismissRequest,
         title = {
             Text(
-                text = "Time to Meditate",
+                text = "You haven't meditated today",
                 style = MaterialTheme.typography.headlineSmall
             )
         },

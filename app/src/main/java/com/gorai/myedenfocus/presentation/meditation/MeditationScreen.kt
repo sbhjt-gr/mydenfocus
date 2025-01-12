@@ -88,7 +88,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private val meditationDurations = listOf(1, 5, 10, 15, 17, 20, 30)
+private val meditationDurations = listOf(5, 10, 15, 17, 20, 30)
 private val meditationMusic = listOf("Breathe Again", "Breathe Again 2")
 
 @OptIn(ExperimentalMaterial3Api::class)
