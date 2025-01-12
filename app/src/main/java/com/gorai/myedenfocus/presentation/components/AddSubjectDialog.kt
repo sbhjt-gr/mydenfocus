@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 @Composable
 fun AddSubjectDialog(
@@ -58,17 +59,17 @@ fun AddSubjectDialog(
     var showEndColorPicker by rememberSaveable { mutableStateOf(false) }
 
     subjectNameError = when {
-        subjectName.isBlank() -> "Subject name cannot be empty."
-        subjectName.length < 2 -> "Subject name cannot be less than 2 characters."
-        subjectName.length > 50 -> "Subject name cannot be more than 50 characters."
+        subjectName.isBlank() -> "Subject Name Cannot Be Empty."
+        subjectName.length < 2 -> "Subject Name Cannot Be Less Than 2 Characters."
+        subjectName.length > 50 -> "Subject Name Cannot Be More Than 50 Characters."
         else -> null
     }
 
     goalHoursError = when {
-        goalHours.isBlank() -> "Please enter goal study hours."
-        goalHours.toFloatOrNull() == null -> "Please enter a valid number."
-        goalHours.toFloat() < 1f -> "Goal study hours cannot be empty."
-        goalHours.toFloat() > 1000f -> "Please set a maximum of 1000 hours"
+        goalHours.isBlank() -> "Please Enter Goal Study Hours."
+        goalHours.toFloatOrNull() == null -> "Please Enter A Valid Number."
+        goalHours.toFloat() < 1f -> "Goal Study Hours Cannot Be Empty."
+        goalHours.toFloat() > 1000f -> "Please Set A Maximum Of 1000 Hours"
         else -> null
     }
 
@@ -154,8 +155,12 @@ fun AddSubjectDialog(
                         value = subjectName,
                         onValueChange = { onSubjectNameChange(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text(text = "Subject Name") },
+                        label = { Text("Subject Name") },
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Words,
+                            imeAction = ImeAction.Next
+                        ),
                         isError = subjectNameError != null && subjectName.isNotBlank(),
                         supportingText = { Text(text = subjectNameError.orEmpty()) }
                     )
@@ -167,7 +172,7 @@ fun AddSubjectDialog(
                         value = goalHours,
                         onValueChange = { onGoalHoursChange(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text(text = "Goal Hours") },
+                        label = { Text("Goal Hours") },
                         isError = goalHoursError != null && goalHours.isNotBlank(),
                         supportingText = { Text(text = goalHoursError.orEmpty()) },
                         singleLine = true,

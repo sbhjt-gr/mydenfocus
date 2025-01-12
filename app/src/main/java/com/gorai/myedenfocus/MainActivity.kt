@@ -60,22 +60,20 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: NavigationViewModel = hiltViewModel()
             
-            // Check if we should open meditation screen
+            // Check if we should navigate to a specific route
             LaunchedEffect(intent) {
-                if (intent?.getBooleanExtra("openMeditation", false) == true) {
-                    viewModel.navigateTo("meditate")
+                intent?.getStringExtra("navigation_route")?.let { route ->
+                    viewModel.navigateTo(route)
                 }
             }
             
-            if (isBound) {
-                MyedenFocusTheme {
-                    DestinationsNavHost(
-                        navGraph = NavGraphs.root,
-                        dependenciesContainerBuilder = {
-                            dependency(SessionScreenRouteDestination) { timerService }
-                        }
-                    )
-                }
+            MyedenFocusTheme {
+                DestinationsNavHost(
+                    navGraph = NavGraphs.root,
+                    dependenciesContainerBuilder = {
+                        dependency(SessionScreenRouteDestination) { timerService }
+                    }
+                )
             }
         }
         requestPermission()
@@ -84,10 +82,10 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         // Handle new intents while app is running
-        if (intent?.getBooleanExtra("openMeditation", false) == true) {
+        intent?.getStringExtra("navigation_route")?.let { route ->
             val viewModel = (this as ComponentActivity).defaultViewModelProviderFactory
                 .create(NavigationViewModel::class.java)
-            viewModel.navigateTo("meditate")
+            viewModel.navigateTo(route)
         }
     }
 

@@ -175,30 +175,6 @@ private fun DashboardScreen(
         topBar = {
             DashboardScreenTopBar()
         },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onStartSessionButtonClick,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "Start Session"
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Start Study Session",
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-            }
-        },
-        floatingActionButtonPosition = FabPosition.Center,
         bottomBar = {
             BottomBar(
                 currentRoute = currentRoute,
@@ -209,7 +185,8 @@ private fun DashboardScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(paddingValues)
+                .padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
@@ -217,12 +194,38 @@ private fun DashboardScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(12.dp)
-                        .padding(bottom = 0.dp),
+                        .padding(bottom = 8.dp),
                     subjectCount = state.totalSubjectCount,
                     studiedHours = state.totalStudiedHours,
                     goalHours = state.totalGoalStudyHours
                 )
+                
+                FloatingActionButton(
+                    onClick = onStartSessionButtonClick,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Start Session"
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Start Study Session",
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
             }
+
             item {
                 SubjectCardSection(
                     modifier = Modifier

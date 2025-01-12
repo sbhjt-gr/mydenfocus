@@ -87,7 +87,7 @@ fun LazyListScope.studySessionsList(
     } else {
         items(sessions) { session ->
             StudySessionCard(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                modifier = Modifier.padding(horizontal = 12.dp),
                 session = session,
                 onDeleteIconClick = { onDeleteIconClick(session) }
             )

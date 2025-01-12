@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -29,8 +30,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -51,6 +55,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -491,7 +496,6 @@ private fun TimerCircle(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun RelatedToSubjectSection(
     modifier: Modifier,
@@ -501,12 +505,9 @@ private fun RelatedToSubjectSection(
     subjects: List<Subject>,
     onSubjectSelected: (Subject) -> Unit
 ) {
-    val listState = rememberLazyListState()
-    val view = LocalView.current
-    
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
             text = "Related to Subject",
@@ -514,58 +515,33 @@ private fun RelatedToSubjectSection(
             color = MaterialTheme.colorScheme.onSurface
         )
         
-        Box(
+        Surface(
             modifier = Modifier
-                .height(180.dp)
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .clickable(onClick = selectSubjectButtonClick),
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            color = MaterialTheme.colorScheme.surface
         ) {
-            // Selection indicator
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-            )
-            
-            LazyColumn(
-                state = listState,
-                flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                items(2) { Spacer(modifier = Modifier.height(60.dp)) }
-                
-                items(subjects) { subject ->
-                    Box(
-                        modifier = Modifier
-                            .height(60.dp)
-                            .fillMaxWidth()
-                            .clickable { 
-                                onSubjectSelected(subject)
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = subject.name,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = if (subject.name == relatedToSubject)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-                
-                items(2) { Spacer(modifier = Modifier.height(60.dp)) }
-            }
-
-            // Add initial subject selection
-            LaunchedEffect(subjects) {
-                if (subjects.isNotEmpty() && relatedToSubject.isEmpty()) {
-                    onSubjectSelected(subjects.first())
-                }
+                Text(
+                    text = relatedToSubject.ifEmpty { "Select Subject" },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (relatedToSubject.isEmpty()) 
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    else 
+                        MaterialTheme.colorScheme.onSurface
+                )
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = "Select Subject"
+                )
             }
         }
     }

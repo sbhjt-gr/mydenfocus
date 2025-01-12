@@ -59,6 +59,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -73,10 +74,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.gorai.myedenfocus.domain.model.MeditationSession
 import com.gorai.myedenfocus.presentation.components.BottomBar
 import com.gorai.myedenfocus.service.MeditationTimerService
+import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootNavGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -238,10 +243,9 @@ private fun DurationSelector(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = meditationDurations.indexOf(selectedMinutes)
+        initialFirstVisibleItemIndex = meditationDurations.indexOf(selectedMinutes) + 2
     )
     val view = LocalView.current
-    var lastSelectedIndex = remember { listState.firstVisibleItemIndex }
     
     Box(
         modifier = modifier
@@ -288,14 +292,24 @@ private fun DurationSelector(
             items(2) { Spacer(modifier = Modifier.height(60.dp)) }
         }
 
-        // Add haptic feedback when selection changes
-        LaunchedEffect(listState.firstVisibleItemIndex) {
-            val currentIndex = listState.firstVisibleItemIndex - 2 // Adjust for padding items
-            if (currentIndex in meditationDurations.indices && currentIndex != lastSelectedIndex) {
-                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                lastSelectedIndex = currentIndex
-                if (currentIndex in meditationDurations.indices) {
-                    onDurationSelected(meditationDurations[currentIndex])
+        LaunchedEffect(listState) {
+            snapshotFlow { 
+                val layoutInfo = listState.layoutInfo
+                val visibleItems = layoutInfo.visibleItemsInfo
+                val centerOffset = layoutInfo.viewportEndOffset / 2
+
+                visibleItems.firstOrNull { item ->
+                    val center = (item.offset + item.size / 2)
+                    val distance = kotlin.math.abs(center - centerOffset)
+                    distance < item.size / 2
+                }?.index?.minus(2)
+            }.collect { centerIndex ->
+                if (centerIndex != null && centerIndex in meditationDurations.indices) {
+                    val selectedDuration = meditationDurations[centerIndex]
+                    if (selectedDuration != selectedMinutes) {
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        onDurationSelected(selectedDuration)
+                    }
                 }
             }
         }
@@ -342,8 +356,15 @@ private fun PulsingStopButton(onClick: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Destination
+@RootNavGraph
+@Destination(
+    route = "meditation",
+    deepLinks = [
+        DeepLink(
+            uriPattern = "myedenfocus://meditation"
+        )
+    ]
+)
 @Composable
 fun MeditationScreen(
     navigator: DestinationsNavigator,
@@ -431,6 +452,16 @@ fun MeditationScreen(
     }
 
     val meditationSessions by viewModel.sessions.collectAsState()
+    val now = LocalDateTime.now()
+
+    // Group sessions by time range
+    val thisWeekSessions = meditationSessions.filter { session ->
+        ChronoUnit.DAYS.between(session.timestamp, now) <= 7
+    }
+
+    val olderSessions = meditationSessions.filter { session ->
+        ChronoUnit.DAYS.between(session.timestamp, now) > 7
+    }
 
     // Add the delete confirmation dialog
     sessionToDelete?.let { session ->
@@ -466,6 +497,15 @@ fun MeditationScreen(
         )
     }
 
+    val listState = rememberLazyListState()
+
+    // Move LaunchedEffect here, outside of LazyColumn
+    LaunchedEffect(isTimerRunning) {
+        if (isTimerRunning) {
+            listState.animateScrollToItem(0)
+        }
+    }
+
     Scaffold(
         topBar = {
             DashboardScreenTopBar()
@@ -489,6 +529,7 @@ fun MeditationScreen(
         floatingActionButtonPosition = FabPosition.Center
     ) { paddingValues ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
@@ -618,9 +659,9 @@ fun MeditationScreen(
             }
             
             item {
-                if (meditationSessions.isNotEmpty()) {
+                if (thisWeekSessions.isNotEmpty()) {
                     Text(
-                        text = "Past Sessions",
+                        text = "This Week",
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(16.dp)
                     )
@@ -633,14 +674,46 @@ fun MeditationScreen(
                         Column(
                             modifier = Modifier.padding(16.dp)
                         ) {
-                            meditationSessions.forEachIndexed { index, session ->
+                            thisWeekSessions.forEachIndexed { index, session ->
                                 MeditationSessionItem(
                                     session = session,
                                     onDelete = {
-                                        sessionToDelete = session // Show confirmation dialog instead of deleting directly
+                                        sessionToDelete = session
                                     }
                                 )
-                                if (index < meditationSessions.size - 1) {
+                                if (index < thisWeekSessions.size - 1) {
+                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                if (olderSessions.isNotEmpty()) {
+                    Text(
+                        text = "Older Sessions",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            olderSessions.forEachIndexed { index, session ->
+                                MeditationSessionItem(
+                                    session = session,
+                                    onDelete = {
+                                        sessionToDelete = session
+                                    }
+                                )
+                                if (index < olderSessions.size - 1) {
                                     Divider(modifier = Modifier.padding(vertical = 8.dp))
                                 }
                             }
