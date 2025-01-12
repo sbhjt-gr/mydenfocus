@@ -54,6 +54,7 @@ android {
 
 dependencies {
 
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -103,4 +104,5 @@ dependencies {
     implementation("io.github.raamcosta.compose-destinations:animations-core:1.9.52")
 
     implementation("androidx.compose.material:material-icons-extended:1.5.4")
+
 }
