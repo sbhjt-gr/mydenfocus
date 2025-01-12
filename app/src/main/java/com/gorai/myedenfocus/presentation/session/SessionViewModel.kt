@@ -56,8 +56,8 @@ class SessionViewModel @Inject constructor(
             is SessionEvent.OnRelatedSubjectChange -> {
                 _state.update {
                     it.copy(
-                        relatedToSubject = event.subject.name,
-                        subjectId = event.subject.subjectId
+                        subjectId = event.subject.subjectId,
+                        relatedToSubject = event.subject.name
                     )
                 }
             }
@@ -75,12 +75,16 @@ class SessionViewModel @Inject constructor(
 
     private fun notifyToUpdateSubject() {
         viewModelScope.launch {
-            if (state.value.subjectId == null || state.value.relatedToSubject == null) {
+            if (_state.value.subjects.isEmpty()) {
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
-                        message = "Please select subject related to the session."
+                        message = "Please create a subject first."
                     )
                 )
+            } else if (_state.value.subjectId == null) {
+                // Auto-select first subject if none selected
+                val firstSubject = _state.value.subjects.first()
+                onEvent(SessionEvent.OnRelatedSubjectChange(firstSubject))
             }
         }
     }
