@@ -22,11 +22,13 @@ import android.app.TaskStackBuilder
 import com.gorai.myedenfocus.MainActivity
 import android.net.Uri
 import androidx.core.net.toUri
+import android.media.MediaPlayer
 
 class MeditationTimerService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
     private var timeLeft = 0
     private var isTimerRunning = false
+    private var mediaPlayer: MediaPlayer? = null
     
     companion object {
         const val CHANNEL_ID = "meditation_timer_channel"
@@ -55,6 +57,12 @@ class MeditationTimerService : Service() {
         
         private val _isTimerCompleted = MutableStateFlow(false)
         val isTimerCompleted = _isTimerCompleted.asStateFlow()
+        
+        private var isBackgroundMusicPlaying = false
+        
+        fun stopBackgroundMusic() {
+            isBackgroundMusicPlaying = false
+        }
         
         fun resetTimerCompleted() {
             _isTimerCompleted.value = false
@@ -97,9 +105,10 @@ class MeditationTimerService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 timeLeft = intent.getIntExtra(EXTRA_TIME, 0)
+                val selectedMusic = intent.getStringExtra("selected_music") ?: "breathe_again.mp3"
                 isServiceRunning = true
                 _isPaused.value = false
-                startTimer()
+                startTimer(selectedMusic)
             }
             ACTION_PAUSE -> {
                 isTimerRunning = false
@@ -109,7 +118,8 @@ class MeditationTimerService : Service() {
             ACTION_RESUME -> {
                 isTimerRunning = true
                 _isPaused.value = false
-                startTimer()
+                val selectedMusic = intent.getStringExtra("selected_music") ?: "breathe_again.mp3"
+                startTimer(selectedMusic)
             }
             ACTION_RESET -> {
                 isTimerRunning = false
@@ -130,11 +140,22 @@ class MeditationTimerService : Service() {
         return START_STICKY
     }
 
-    private fun startTimer() {
+    private fun startTimer(selectedMusic: String) {
         try {
             isTimerRunning = true
             _isTimerCompleted.value = false
             startForeground(NOTIFICATION_ID, createNotification(timeLeft))
+            
+            if (mediaPlayer == null) {
+                val musicResId = when (selectedMusic) {
+                    "breathe_again_2.mp3" -> R.raw.breathe_again_2
+                    else -> R.raw.breathe_again
+                }
+                mediaPlayer = MediaPlayer.create(this, musicResId)
+                mediaPlayer?.isLooping = true
+                mediaPlayer?.start()
+                isBackgroundMusicPlaying = true
+            }
             
             serviceScope.launch {
                 while (isTimerRunning && timeLeft > 0) {
@@ -147,6 +168,13 @@ class MeditationTimerService : Service() {
                         isTimerRunning = false
                         _isTimerCompleted.value = true
                         isServiceRunning = false
+                        
+                        // Stop background music when timer completes
+                        mediaPlayer?.stop()
+                        mediaPlayer?.release()
+                        mediaPlayer = null
+                        isBackgroundMusicPlaying = false
+                        
                         stopForeground(STOP_FOREGROUND_REMOVE)
                         showCompletionNotification()
                     }
@@ -162,6 +190,12 @@ class MeditationTimerService : Service() {
         isTimerRunning = false
         _timerState.value = 0
         timeLeft = 0
+        
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
+        isBackgroundMusicPlaying = false
+        
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -333,6 +367,12 @@ class MeditationTimerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
+        
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
+        isBackgroundMusicPlaying = false
+        
         if (!_isTimerCompleted.value) {
             stopAlarm()
         }

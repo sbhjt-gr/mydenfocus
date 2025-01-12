@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.annotation.RequiresApi
@@ -35,6 +36,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -87,6 +89,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private val meditationDurations = listOf(1, 5, 10, 15, 17, 20, 30)
+private val meditationMusic = listOf("Breathe Again", "Breathe Again 2")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -243,16 +246,14 @@ private fun DurationSelector(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = meditationDurations.indexOf(selectedMinutes) + 2
+        initialFirstVisibleItemIndex = meditationDurations.indexOf(selectedMinutes)
     )
     val view = LocalView.current
     
     Box(
-        modifier = modifier
-            .height(180.dp),
+        modifier = modifier.height(180.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Selection indicator
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -266,8 +267,7 @@ private fun DurationSelector(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Add padding items at top and bottom for infinite scroll feel
-            items(2) { Spacer(modifier = Modifier.height(60.dp)) }
+            items(1) { Spacer(modifier = Modifier.height(60.dp)) }
             
             items(meditationDurations) { duration ->
                 Box(
@@ -288,8 +288,7 @@ private fun DurationSelector(
                 }
             }
             
-            // Add padding items at top and bottom for infinite scroll feel
-            items(2) { Spacer(modifier = Modifier.height(60.dp)) }
+            items(1) { Spacer(modifier = Modifier.height(60.dp)) }
         }
 
         LaunchedEffect(listState) {
@@ -302,13 +301,90 @@ private fun DurationSelector(
                     val center = (item.offset + item.size / 2)
                     val distance = kotlin.math.abs(center - centerOffset)
                     distance < item.size / 2
-                }?.index?.minus(2)
+                }?.index?.minus(1)
             }.collect { centerIndex ->
                 if (centerIndex != null && centerIndex in meditationDurations.indices) {
                     val selectedDuration = meditationDurations[centerIndex]
                     if (selectedDuration != selectedMinutes) {
                         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                         onDurationSelected(selectedDuration)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MusicSelector(
+    selectedMusic: String,
+    onMusicSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = meditationMusic.indexOf(selectedMusic)
+    )
+    val view = LocalView.current
+    
+    Box(
+        modifier = modifier.height(180.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        )
+        
+        LazyColumn(
+            state = listState,
+            flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(1) { Spacer(modifier = Modifier.height(60.dp)) }
+            
+            items(meditationMusic) { music ->
+                Box(
+                    modifier = Modifier
+                        .height(60.dp)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = music,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = if (music == selectedMusic)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            
+            items(1) { Spacer(modifier = Modifier.height(60.dp)) }
+        }
+
+        LaunchedEffect(listState) {
+            snapshotFlow { 
+                val layoutInfo = listState.layoutInfo
+                val visibleItems = layoutInfo.visibleItemsInfo
+                val centerOffset = layoutInfo.viewportEndOffset / 2
+
+                visibleItems.firstOrNull { item ->
+                    val center = (item.offset + item.size / 2)
+                    val distance = kotlin.math.abs(center - centerOffset)
+                    distance < item.size / 2
+                }?.index?.minus(1)
+            }.collect { centerIndex ->
+                if (centerIndex != null && centerIndex in meditationMusic.indices) {
+                    val selectedMusicName = meditationMusic[centerIndex]
+                    if (selectedMusicName != selectedMusic) {
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        onMusicSelected(selectedMusicName)
                     }
                 }
             }
@@ -370,8 +446,10 @@ fun MeditationScreen(
     navigator: DestinationsNavigator,
     viewModel: MeditationViewModel = hiltViewModel()
 ) {
-    var selectedMinutes by remember { mutableStateOf(17) }
+    var selectedMinutes by remember { mutableStateOf(meditationDurations[0]) }
+    var selectedMusic by remember { mutableStateOf(meditationMusic[0]) }
     var isTimerRunning by rememberSaveable { mutableStateOf(false) }
+    var showHeadphoneDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val remainingSeconds = MeditationTimerService.timerState.collectAsState().value
     val isAlarmPlaying = MeditationTimerService.isAlarmPlaying.collectAsState().value
@@ -381,6 +459,12 @@ fun MeditationScreen(
     // Add state for delete confirmation dialog
     var sessionToDelete by remember { mutableStateOf<MeditationSession?>(null) }
 
+    // Function to check if headphones are connected
+    fun isHeadphonesConnected(): Boolean {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        return audioManager.isWiredHeadsetOn || audioManager.isBluetoothA2dpOn
+    }
+    
     // Handle deep linking in a composable context
     LaunchedEffect(Unit) {
         val activity = context as? Activity
@@ -425,13 +509,24 @@ fun MeditationScreen(
         }
     }
 
-    // Start/Stop timer service
+    // Modify toggleTimer to check for headphones
     @RequiresApi(Build.VERSION_CODES.O)
     fun toggleTimer() {
+        if (!isTimerRunning && !isHeadphonesConnected()) {
+            showHeadphoneDialog = true
+            return
+        }
+        
         val serviceIntent = Intent(context, MeditationTimerService::class.java).apply {
             if (!isTimerRunning) {
                 action = MeditationTimerService.ACTION_START
                 putExtra(MeditationTimerService.EXTRA_TIME, selectedMinutes * 60)
+                // Convert display name to file name
+                val musicFileName = when (selectedMusic) {
+                    "Breathe Again 2" -> "breathe_again_2.mp3"
+                    else -> "breathe_again.mp3"
+                }
+                putExtra("selected_music", musicFileName)
             } else {
                 action = MeditationTimerService.ACTION_STOP
             }
@@ -506,6 +601,65 @@ fun MeditationScreen(
         }
     }
 
+    // Add headphone dialog
+    if (showHeadphoneDialog) {
+        AlertDialog(
+            onDismissRequest = { showHeadphoneDialog = false },
+            title = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Headphones,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Headphones Recommended",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = "For the best meditation experience, please connect headphones before starting the session.",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showHeadphoneDialog = false }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showHeadphoneDialog = false
+                        // Start timer anyway
+                        val serviceIntent = Intent(context, MeditationTimerService::class.java).apply {
+                            action = MeditationTimerService.ACTION_START
+                            putExtra(MeditationTimerService.EXTRA_TIME, selectedMinutes * 60)
+                            val musicFileName = when (selectedMusic) {
+                                "Breathe Again 2" -> "breathe_again_2.mp3"
+                                else -> "breathe_again.mp3"
+                            }
+                            putExtra("selected_music", musicFileName)
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            context.startForegroundService(serviceIntent)
+                        }
+                        isTimerRunning = true
+                    }
+                ) {
+                    Text("Start Anyway")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             DashboardScreenTopBar()
@@ -549,6 +703,24 @@ fun MeditationScreen(
                     DurationSelector(
                         selectedMinutes = selectedMinutes,
                         onDurationSelected = { selectedMinutes = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    )
+                }
+
+                item {
+                    Text(
+                        text = "Select Music",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                
+                item {
+                    MusicSelector(
+                        selectedMusic = selectedMusic,
+                        onMusicSelected = { selectedMusic = it },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
