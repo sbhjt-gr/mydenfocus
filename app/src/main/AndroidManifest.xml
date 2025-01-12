@@ -39,6 +39,10 @@
             android:name=".service.MeditationTimerService"
             android:foregroundServiceType="mediaPlayback"
             android:exported="false" />
+        <service
+            android:name=".service.TaskNotificationService"
+            android:enabled="true"
+            android:exported="false" />
     </application>
 
 </manifest>

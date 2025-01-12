@@ -1,5 +1,6 @@
 package com.gorai.myedenfocus.presentation.subject
 
+import android.util.Log
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -61,6 +62,12 @@ class SubjectViewModel @Inject constructor(
 
     init {
         fetchSubject()
+        viewModelScope.launch {
+            sessionRepository.getRecentTenSessionsForSubject(navArgs.subjectId)
+                .collect { sessions ->
+                    Log.d("SubjectViewModel", "Recent sessions: ${sessions.size}")
+                }
+        }
     }
     fun onEvent(event: SubjectEvent) {
         when(event) {

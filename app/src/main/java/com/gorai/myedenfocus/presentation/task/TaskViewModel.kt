@@ -10,6 +10,7 @@ import com.gorai.myedenfocus.domain.repository.TaskRepository
 import com.gorai.myedenfocus.presentation.navArgs
 import com.gorai.myedenfocus.util.Priority
 import com.gorai.myedenfocus.util.SnackbarEvent
+import com.gorai.myedenfocus.service.TaskNotificationService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -156,46 +157,53 @@ class TaskViewModel @Inject constructor(
 
     private fun saveTask() {
         viewModelScope.launch {
-            val state = _state.value
-            if (state.subjectId == null || state.relatedToSubject == null) {
-                _snackbarEventFlow.emit(
-                    SnackbarEvent.ShowSnackbar(
-                        "Please select a subject related to the task",
-                        SnackbarDuration.Long
-                    )
-                )
-                return@launch
-            }
             try {
-                taskRepository.upsertTask(
-                    task = Task(
-                        title = state.title,
-                        description = state.description,
-                        dueDate = state.dueDate ?: Instant.now().toEpochMilli(),
-                        relatedToSubject = state.relatedToSubject,
-                        priority = state.priority.value,
-                        isComplete = state.isTaskComplete,
-                        taskSubjectId = state.subjectId,
-                        taskId = state.currentTaskId
-                    )
-                )
+                val task = createTaskFromState()
+                taskRepository.upsertTask(task)
+
+                
                 _snackbarEventFlow.emit(
-                    SnackbarEvent.ShowSnackbar(
-                        "Task Saved Successfully",
-                        SnackbarDuration.Long
-                    )
+                    SnackbarEvent.ShowSnackbar(message = "Task saved successfully")
                 )
                 _snackbarEventFlow.emit(SnackbarEvent.NavigateUp)
-            } catch (e: Exception) {
+            } catch(e: Exception) {
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
-                        "Couldn't save task. ${e.message}",
-                        SnackbarDuration.Long
+                        message = e.message ?: "Couldn't save task",
+                        duration = SnackbarDuration.Long
                     )
                 )
             }
         }
     }
+
+    private fun createTaskFromState(): Task {
+        val currentState = state.value
+        
+        if (currentState.title.isBlank()) {
+            throw IllegalStateException("Task title cannot be empty")
+        }
+        
+        if (currentState.subjectId == null) {
+            throw IllegalStateException("Please select a subject")
+        }
+        
+        if (currentState.dueDate == null) {
+            throw IllegalStateException("Please select a due date")
+        }
+        
+        return Task(
+            taskId = currentState.currentTaskId,
+            title = currentState.title,
+            description = currentState.description,
+            dueDate = currentState.dueDate,
+            priority = currentState.priority.value,
+            relatedToSubject = currentState.relatedToSubject ?: "",
+            isComplete = currentState.isTaskComplete,
+            taskSubjectId = currentState.subjectId
+        )
+    }
+
     private fun fetchTask() {
         viewModelScope.launch {
             navArgs.taskId?.let { id ->

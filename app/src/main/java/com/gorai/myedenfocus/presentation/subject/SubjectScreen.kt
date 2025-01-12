@@ -1,5 +1,6 @@
 package com.gorai.myedenfocus.presentation.subject
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -167,6 +168,8 @@ private fun SubjectScreen(
         }
     )
 
+    Log.d("SubjectScreen", "Recent sessions size: ${state.recentSessions.size}")
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState)},
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -221,7 +224,7 @@ private fun SubjectScreen(
             )
             item { Spacer(modifier = Modifier.height(20.dp)) }
             studySessionsList(
-                sectionTitle = "Recent Study Sessions",
+                sectionTitle = "Recent Study Sessions (${state.recentSessions.size})",
                 emptyListText = "No study sessions\nStart a study session to begin recording your progress",
                 sessions = state.recentSessions,
                 onDeleteIconClick = {
