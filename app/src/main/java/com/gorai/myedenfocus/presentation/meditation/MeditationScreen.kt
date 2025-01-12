@@ -75,6 +75,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.scale
 import com.gorai.myedenfocus.service.MeditationTimerService.Companion.isTimerCompleted
+import android.view.HapticFeedbackConstants
+import androidx.compose.ui.platform.LocalView
 
 private val meditationDurations = listOf(1, 5, 10, 15, 17, 20, 30)
 
@@ -235,6 +237,8 @@ private fun DurationSelector(
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = meditationDurations.indexOf(selectedMinutes)
     )
+    val view = LocalView.current
+    var lastSelectedIndex = remember { listState.firstVisibleItemIndex }
     
     Box(
         modifier = modifier
@@ -280,13 +284,17 @@ private fun DurationSelector(
             // Add padding items at top and bottom for infinite scroll feel
             items(2) { Spacer(modifier = Modifier.height(60.dp)) }
         }
-    }
-    
-    // Update selected duration when scrolling stops
-    LaunchedEffect(listState.firstVisibleItemIndex) {
-        val selectedIndex = listState.firstVisibleItemIndex - 2 // Adjust for padding items
-        if (selectedIndex in meditationDurations.indices) {
-            onDurationSelected(meditationDurations[selectedIndex])
+
+        // Add haptic feedback when selection changes
+        LaunchedEffect(listState.firstVisibleItemIndex) {
+            val currentIndex = listState.firstVisibleItemIndex - 2 // Adjust for padding items
+            if (currentIndex in meditationDurations.indices && currentIndex != lastSelectedIndex) {
+                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                lastSelectedIndex = currentIndex
+                if (currentIndex in meditationDurations.indices) {
+                    onDurationSelected(meditationDurations[currentIndex])
+                }
+            }
         }
     }
 }
