@@ -195,7 +195,8 @@ private fun SessionScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
                 TimerSection(
@@ -212,7 +213,7 @@ private fun SessionScreen(
                 RelatedToSubjectSection(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp),
+                        .padding(horizontal = 16.dp),
                     relatedToSubject = state.relatedToSubject ?: "",
                     selectSubjectButtonClick = { isBottomSheetOpen = true },
                     seconds = seconds,
@@ -228,7 +229,7 @@ private fun SessionScreen(
                 ButtonsSection(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp),
+                        .padding(horizontal = 16.dp),
                     startButtonClick = {
                         if (state.subjectId != null) {
                             ServiceHelper.triggerForegroundService(
@@ -265,12 +266,12 @@ private fun SessionScreen(
                 )
             }
             studySessionsList(
-                sectionTitle = "Recent Study History",
-                emptyListText = "No study sessions\nStart a study session to begin recording your progress",
+                sectionTitle = "Study Sessions",
+                emptyListText = "No study sessions recorded yet",
                 sessions = state.sessions,
                 onDeleteIconClick = { session ->
-                    isDeleteDialogOpen = true
                     onEvent(SessionEvent.OnDeleteSessionButtonClick(session))
+                    isDeleteDialogOpen = true
                 }
             )
         }
@@ -322,34 +323,34 @@ fun TimerSection(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row {
-                AnimatedContent(
-                    targetState = hours,
-                    label = hours,
-                    transitionSpec = { timerTextAnimation() }
-                ) { hours ->
-                    Text(
-                        text = "$hours:",
+        Row {
+            AnimatedContent(
+                targetState = hours,
+                label = hours,
+                transitionSpec = { timerTextAnimation() }
+            ) { hours ->
+                Text(
+                    text = "$hours:",
                         style = MaterialTheme.typography.displayLarge
-                    )
-                }
-                AnimatedContent(
-                    targetState = minutes,
-                    label = minutes,
-                    transitionSpec = { timerTextAnimation() }
-                ) { minutes ->
-                    Text(
-                        text = "$minutes:",
+                )
+            }
+            AnimatedContent(
+                targetState = minutes,
+                label = minutes,
+                transitionSpec = { timerTextAnimation() }
+            ) { minutes ->
+                Text(
+                    text = "$minutes:",
                         style = MaterialTheme.typography.displayLarge
-                    )
-                }
-                AnimatedContent(
-                    targetState = seconds,
-                    label = seconds,
-                    transitionSpec = { timerTextAnimation() }
-                ) { seconds ->
-                    Text(
-                        text = seconds,
+                )
+            }
+            AnimatedContent(
+                targetState = seconds,
+                label = seconds,
+                transitionSpec = { timerTextAnimation() }
+            ) { seconds ->
+                Text(
+                    text = seconds,
                         style = MaterialTheme.typography.displayLarge
                     )
                 }
@@ -462,10 +463,14 @@ private fun RelatedToSubjectSection(
     val listState = rememberLazyListState()
     val view = LocalView.current
     
-    Column(modifier = modifier) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
         Text(
             text = "Related to Subject",
-            style = MaterialTheme.typography.bodySmall
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
         
         Box(

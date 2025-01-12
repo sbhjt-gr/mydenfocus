@@ -209,13 +209,15 @@ private fun DashboardScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item { 
+            item {
                 CountCardsSection(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
+                        .padding(12.dp)
+                        .padding(bottom = 0.dp),
                     subjectCount = state.totalSubjectCount,
                     studiedHours = state.totalStudiedHours,
                     goalHours = state.totalGoalStudyHours
@@ -223,7 +225,9 @@ private fun DashboardScreen(
             }
             item {
                 SubjectCardSection(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 0.dp),
                     subjectList = state.subjects,
                     onAddIconClicked = {
                         isAddSubjectDialogOpen = true
@@ -232,18 +236,15 @@ private fun DashboardScreen(
                 )
             }
             tasksList(
-                sectionTitle = "Upcoming Tasks",
-                emptyListText = "No upcoming tasks\n" + "Press + button to add new tasks",
+                sectionTitle = "Today's Tasks",
+                emptyListText = "No tasks for today\nPress + button to add new tasks",
                 tasks = tasks,
                 onTaskCardClick = onTaskCardClick,
                 onCheckBoxClick = { onEvent(DashboardEvent.OnTaskIsCompleteChange(it)) }
             )
-        item {
-            Spacer(modifier = Modifier.height(20.dp))
-        }
             studySessionsList(
                 sectionTitle = "Recent Study Sessions",
-                emptyListText = "No study sessions\n" + "Start a study session to begin recording your progress",
+                emptyListText = "No study sessions\nStart a study session to begin recording your progress",
                 sessions = recentSessions,
                 onDeleteIconClick = { session ->
                     isDeleteSubjectDialogOpen = true
@@ -356,7 +357,7 @@ private fun SubjectCardSection(
             }
         } else {
             Column(
-                modifier = Modifier.padding(horizontal = 12.dp),
+                modifier = Modifier.padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 subjectList.forEach { subject ->

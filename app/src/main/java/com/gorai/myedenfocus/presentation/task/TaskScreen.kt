@@ -121,7 +121,7 @@ private fun TaskScreen(
 
     taskTitleError = when {
         state.title.isBlank() -> "Please enter task title"
-        state.title.length < 4 -> "Task title is too short"
+        state.title.length < 3 -> "Task title is too short"
         state.title.length > 100 -> "Task title is too long"
         else -> null
     }

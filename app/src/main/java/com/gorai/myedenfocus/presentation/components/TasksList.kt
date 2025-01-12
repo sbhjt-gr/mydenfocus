@@ -74,7 +74,8 @@ fun LazyListScope.tasksList(
     } else {
         items(tasks) { task ->
             TaskCard(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                modifier = Modifier
+                    .padding(horizontal = 16.dp),
                 task = task,
                 onCheckBoxClick = { onCheckBoxClick(task) },
                 onClick = { task.taskId?.let { onTaskCardClick(it) } }

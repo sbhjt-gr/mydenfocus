@@ -60,7 +60,7 @@ fun AddSubjectDialog(
     subjectNameError = when {
         subjectName.isBlank() -> "Subject name cannot be empty."
         subjectName.length < 2 -> "Subject name cannot be less than 2 characters."
-        subjectName.length > 20 -> "Subject name cannot be more than 20 characters."
+        subjectName.length > 50 -> "Subject name cannot be more than 50 characters."
         else -> null
     }
 
