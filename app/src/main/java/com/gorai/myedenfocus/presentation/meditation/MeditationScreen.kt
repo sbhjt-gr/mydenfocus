@@ -5,38 +5,51 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.view.HapticFeedbackConstants
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -48,36 +61,25 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.gorai.myedenfocus.domain.model.MeditationSession
 import com.gorai.myedenfocus.presentation.components.BottomBar
 import com.gorai.myedenfocus.service.MeditationTimerService
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FabPosition
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.ui.draw.scale
-import com.gorai.myedenfocus.service.MeditationTimerService.Companion.isTimerCompleted
-import android.view.HapticFeedbackConstants
-import androidx.compose.ui.platform.LocalView
-import java.time.LocalDate
 
 private val meditationDurations = listOf(1, 5, 10, 15, 17, 20, 30)
 
@@ -344,7 +346,8 @@ private fun PulsingStopButton(onClick: () -> Unit) {
 @Destination
 @Composable
 fun MeditationScreen(
-    navigator: DestinationsNavigator
+    navigator: DestinationsNavigator,
+    viewModel: MeditationViewModel = hiltViewModel()
 ) {
     var selectedMinutes by remember { mutableStateOf(17) }
     var isTimerRunning by rememberSaveable { mutableStateOf(false) }
@@ -354,6 +357,9 @@ fun MeditationScreen(
     val isPaused = MeditationTimerService.isPaused.collectAsState().value
     val isTimerCompleted = MeditationTimerService.isTimerCompleted.collectAsState().value
     
+    // Add state for delete confirmation dialog
+    var sessionToDelete by remember { mutableStateOf<MeditationSession?>(null) }
+
     // Handle deep linking in a composable context
     LaunchedEffect(Unit) {
         val activity = context as? Activity
@@ -371,14 +377,22 @@ fun MeditationScreen(
         }
     }
 
-    // Play alarm when timer completes
+    // Update the timer completion handler
     LaunchedEffect(isTimerCompleted) {
         if (isTimerCompleted) {
             isTimerRunning = false
             
-            // Save meditation completion for today
-            val prefs = context.getSharedPreferences("meditation_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putString("last_meditation_date", LocalDate.now().toString()).apply()
+            // Only add session if timer actually completed (not reset/cancelled)
+            if (remainingSeconds == 0) {
+                viewModel.addSession(selectedMinutes)
+                
+                // Save meditation completion for today
+                val prefs = context.getSharedPreferences("meditation_prefs", Context.MODE_PRIVATE)
+                prefs.edit().putString("last_meditation_date", LocalDate.now().toString()).apply()
+            }
+            
+            // Reset timer completed flag using the service method
+            MeditationTimerService.resetTimerCompleted()
         }
     }
 
@@ -414,6 +428,42 @@ fun MeditationScreen(
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    val meditationSessions by viewModel.sessions.collectAsState()
+
+    // Add the delete confirmation dialog
+    sessionToDelete?.let { session ->
+        AlertDialog(
+            onDismissRequest = { sessionToDelete = null },
+            title = {
+                Text(
+                    text = "Delete Session",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to delete this meditation session? This action cannot be undone.",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteSession(session)
+                        sessionToDelete = null
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { sessionToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -566,6 +616,83 @@ fun MeditationScreen(
                     }
                 }
             }
+            
+            item {
+                if (meditationSessions.isNotEmpty()) {
+                    Text(
+                        text = "Past Sessions",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            meditationSessions.forEachIndexed { index, session ->
+                                MeditationSessionItem(
+                                    session = session,
+                                    onDelete = {
+                                        sessionToDelete = session // Show confirmation dialog instead of deleting directly
+                                    }
+                                )
+                                if (index < meditationSessions.size - 1) {
+                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MeditationSessionItem(
+    session: MeditationSession,
+    onDelete: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = session.timestamp.format(
+                    DateTimeFormatter.ofPattern("MMM dd, yyyy")
+                ),
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = session.timestamp.format(
+                    DateTimeFormatter.ofPattern("hh:mm a")
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        Text(
+            text = "${session.duration} min",
+            style = MaterialTheme.typography.bodyLarge
+        )
+        
+        IconButton(onClick = onDelete) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Delete session",
+                tint = MaterialTheme.colorScheme.error
+            )
         }
     }
 }

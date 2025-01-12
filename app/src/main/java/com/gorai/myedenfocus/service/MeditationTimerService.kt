@@ -17,6 +17,7 @@ import android.os.Build
 import androidx.compose.runtime.collectAsState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class MeditationTimerService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
@@ -48,14 +49,18 @@ class MeditationTimerService : Service() {
         private val _isPaused = MutableStateFlow(false)
         val isPaused: StateFlow<Boolean> = _isPaused
         
+        private val _isTimerCompleted = MutableStateFlow(false)
+        val isTimerCompleted = _isTimerCompleted.asStateFlow()
+        
+        fun resetTimerCompleted() {
+            _isTimerCompleted.value = false
+        }
+        
         fun stopAlarmStatic() {
             currentRingtone?.stop()
             currentRingtone = null
             _isAlarmPlaying.value = false
         }
-        
-        private val _isTimerCompleted = MutableStateFlow(false)
-        val isTimerCompleted: StateFlow<Boolean> = _isTimerCompleted
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -118,8 +123,8 @@ class MeditationTimerService : Service() {
                     if (timeLeft == 0) {
                         isTimerRunning = false
                         _isTimerCompleted.value = true
+                        isServiceRunning = false
                         showCompletionNotification()
-                        stopSelf()
                     }
                 }
             }
@@ -206,7 +211,6 @@ class MeditationTimerService : Service() {
                 .getLaunchIntentForPackage(packageName)
                 ?.apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    putExtra("openMeditation", true)
                 }
 
             val stopAlarmIntent = Intent(this, MeditationTimerService::class.java).apply {
@@ -219,8 +223,6 @@ class MeditationTimerService : Service() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            startActivity(openAppIntent)
-
             val notification = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Meditation Complete")
                 .setContentText("Great job! You've completed your meditation session.")
@@ -232,35 +234,33 @@ class MeditationTimerService : Service() {
                     "Stop Alarm",
                     stopAlarmPendingIntent
                 )
-                .setFullScreenIntent(
-                    PendingIntent.getActivity(
-                        this,
-                        0,
-                        openAppIntent,
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                    ),
-                    true
-                )
                 .build()
 
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.notify(2, notification)
 
             serviceScope.launch(Dispatchers.Main) {
-                val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                currentRingtone = RingtoneManager.getRingtone(applicationContext, alarmUri)?.apply {
-                    isLooping = true
-                }
-                
-                if (currentRingtone == null) {
-                    val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                    currentRingtone = RingtoneManager.getRingtone(applicationContext, fallbackUri)?.apply {
-                        isLooping = true
+                try {
+                    val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                    currentRingtone = RingtoneManager.getRingtone(applicationContext, alarmUri)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        currentRingtone?.isLooping = true
+                    }
+                    currentRingtone?.play()
+                    _isAlarmPlaying.value = true
+                } catch (e: Exception) {
+                    try {
+                        val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                        currentRingtone = RingtoneManager.getRingtone(applicationContext, fallbackUri)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            currentRingtone?.isLooping = true
+                        }
+                        currentRingtone?.play()
+                        _isAlarmPlaying.value = true
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
                 }
-                
-                currentRingtone?.play()
-                _isAlarmPlaying.value = true
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -284,11 +284,10 @@ class MeditationTimerService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        serviceScope.cancel()
         if (!_isTimerCompleted.value) {
-            // Only stop alarm if service is destroyed before timer completion
             stopAlarm()
         }
-        serviceScope.cancel()
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
