@@ -1,5 +1,6 @@
 package com.gorai.myedenfocus.presentation.task
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,6 +30,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
@@ -44,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -107,85 +110,69 @@ private fun TaskScreen(
     onBackButtonClick: () -> Unit
 ) {
     var isDeleteDialogOpen by rememberSaveable { mutableStateOf(false) }
-
     var isDatePickerDialogOpen by rememberSaveable { mutableStateOf(false) }
-
+    var isBottomSheetOpen by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
-
-    var isBottomSheetOpen by remember {
-        mutableStateOf(false)
-    }
-
-    var datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = Instant.now().toEpochMilli()
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = state.dueDate ?: Instant.now().toEpochMilli()
     )
-
-    val scope = rememberCoroutineScope()
-
+    val snackbarHostState = remember { SnackbarHostState() }
     var taskTitleError by rememberSaveable { mutableStateOf<String?>(null) }
 
-    var selectedPriority by remember { mutableStateOf(Priority.MEDIUM) }
-
     taskTitleError = when {
-        state.title.isBlank() -> "Please enter task title."
-        state.title.length < 4 -> "Task title is too short."
-        state.title.length > 100 -> "Task is too long."
+        state.title.isBlank() -> "Please enter task title"
+        state.title.length < 4 -> "Task title is too short"
+        state.title.length > 100 -> "Task title is too long"
         else -> null
     }
 
-    val snackbarHostState = remember {
-        SnackbarHostState()
-    }
-
     LaunchedEffect(key1 = true) {
-        snackbarEvent.collectLatest {
-                event -> when(event) {
-            is SnackbarEvent.ShowSnackbar -> {
-                snackbarHostState.showSnackbar(
-                    message = event.message,
-                    duration = event.duration
-                )
+        snackbarEvent.collectLatest { event ->
+            when(event) {
+                is SnackbarEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message,
+                        duration = event.duration
+                    )
+                }
+                SnackbarEvent.NavigateUp -> {}
             }
-            SnackbarEvent.NavigateUp -> {}
-        }
         }
     }
 
     DeleteDialog(
         isOpen = isDeleteDialogOpen,
         title = "Delete Task?",
-        bodyText = "Are you sure you want to delete this task? This action can not be undone.",
+        bodyText = "Are you sure you want to delete this task? This action cannot be undone.",
         onDismissRequest = { isDeleteDialogOpen = false },
         onConfirmButtonClick = {
             onEvent(TaskEvent.DeleteTask)
             isDeleteDialogOpen = false
         }
     )
+
     TaskDatePicker(
         state = datePickerState,
         isOpen = isDatePickerDialogOpen,
         onDismissRequest = { isDatePickerDialogOpen = false },
         onConfirmButtonClick = {
-            onEvent(TaskEvent.OnDateChange(millis = datePickerState.selectedDateMillis))
+            onEvent(TaskEvent.OnDateChange(datePickerState.selectedDateMillis))
             isDatePickerDialogOpen = false
         }
     )
+
     SubjectListBottomSheet(
         sheetState = sheetState,
         isOpen = isBottomSheetOpen,
         subjects = state.subjects,
-        onDismissRequest = {},
+        onDismissRequest = { isBottomSheetOpen = false },
         onSubjectClicked = { subject ->
-            scope.launch {
-                sheetState.hide()
-            }.invokeOnCompletion {
-                if (!sheetState.isVisible) isBottomSheetOpen = false
-            }
             onEvent(TaskEvent.OnRelatedSubjectSelect(subject))
+            isBottomSheetOpen = false
         }
     )
+
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TaskScreenTopBar(
                 isTaskExist = state.currentTaskId != null,
@@ -195,110 +182,160 @@ private fun TaskScreen(
                 onDeleteButtonClick = { isDeleteDialogOpen = true },
                 onBackButtonClick = onBackButtonClick
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
-                .verticalScroll(state = rememberScrollState())
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Title Input
             OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.title,
                 onValueChange = { onEvent(TaskEvent.OnTitleChange(it)) },
-                label = { Text(text = "Title") },
-                singleLine = true,
-                isError = taskTitleError != null && state.title.isNotBlank(),
-                supportingText = { Text(text = taskTitleError.orEmpty()) }
+                label = { Text("Task Title") },
+                isError = taskTitleError != null,
+                supportingText = taskTitleError?.let { { Text(it) } }
             )
-            Spacer(modifier = Modifier.height(10.dp))
+
+            // Description Input
             OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.description,
                 onValueChange = { onEvent(TaskEvent.OnDescriptionChange(it)) },
-                label = { Text(text = "Description") }
+                label = { Text("Description") },
+                minLines = 3
             )
-            Spacer(modifier = Modifier.height(20.dp))
-            Text(
-                text = "Due Date",
-                style = MaterialTheme.typography.bodySmall
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+
+            // Due Date Section
+            Column {
                 Text(
-                    text = state.dueDate.changeMillsToDateString(),
-                    style = MaterialTheme.typography.bodyLarge
+                    text = "Due Date",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                IconButton(onClick = { isDatePickerDialogOpen = true }) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isDatePickerDialogOpen = true }
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = state.dueDate.changeMillsToDateString(),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                     Icon(
                         imageVector = Icons.Default.DateRange,
-                        contentDescription = "Select Due Date"
+                        contentDescription = "Select Date"
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = "Priority",
-                style = MaterialTheme.typography.bodySmall
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Priority.entries.forEach { priority ->
-                    PriorityButton(
-                        modifier = Modifier.weight(1f),
-                        label = priority.title,
-                        backgroundColor = priority.color,
-                        borderColor = if (priority == state.priority) {
-                            Color.White
-                        } else Color.Transparent,
-                        labelColor = if (priority == state.priority) {
-                            Color.White
-                        } else Color.White.copy(alpha = 0.7f),
-                        onClick = { onEvent(TaskEvent.OnPriorityChange(priority)) }
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(30.dp))
-            Text(
-                text = "Related to Subject",
-                style = MaterialTheme.typography.bodySmall
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val firstSubject = state.subjects.firstOrNull()?.name ?: ""
+
+            // Priority Section
+            Column {
                 Text(
-                    text = state.relatedToSubject ?: firstSubject,
-                    style = MaterialTheme.typography.bodyLarge
+                    text = "Priority",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                IconButton(onClick = { isBottomSheetOpen = true }) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = "Select Subject"
-                    )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Priority.entries.forEach { priority ->
+                        PriorityChip(
+                            modifier = Modifier.weight(1f),
+                            priority = priority,
+                            isSelected = state.priority == priority,
+                            onClick = { onEvent(TaskEvent.OnPriorityChange(priority)) }
+                        )
+                    }
                 }
             }
-            Button(
-                onClick = { onEvent(TaskEvent.SaveTask) },
-                enabled = taskTitleError == null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 20.dp)
-            ) {
-                Text(text = "Save")
+
+            // Subject Selection
+            Column {
+                Text(
+                    text = "Related Subject",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isBottomSheetOpen = true }
+                        .padding(vertical = 8.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = state.relatedToSubject ?: "Select Subject",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = "Select Subject"
+                        )
+                    }
+                }
             }
+
+            // Save Button
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { onEvent(TaskEvent.SaveTask) },
+                enabled = taskTitleError == null && state.title.isNotBlank()
+            ) {
+                Text(
+                    text = "Save Task",
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
+
+@Composable
+private fun PriorityChip(
+    modifier: Modifier = Modifier,
+    priority: Priority,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(8.dp),
+        color = if (isSelected) priority.color.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, if (isSelected) priority.color else MaterialTheme.colorScheme.outline)
+    ) {
+        Text(
+            text = priority.name,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (isSelected) priority.color else MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
     private fun TaskScreenTopBar(
@@ -340,24 +377,3 @@ private fun TaskScreen(
             }
         )
     }
-@Composable
-private fun PriorityButton(
-        modifier: Modifier = Modifier,
-        label: String,
-        backgroundColor: Color,
-        borderColor: Color,
-        onClick: () -> Unit,
-        labelColor: Color,
-        ) {
-    Box(
-        modifier = modifier
-            .background(backgroundColor)
-            .clickable { onClick() }
-            .padding(5.dp)
-            .border(1.dp, borderColor, RoundedCornerShape(10.dp))
-            .padding(5.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = label, color = labelColor)
-    }
-}
