@@ -1,5 +1,6 @@
 package com.gorai.myedenfocus.presentation.meditation
 
+import android.app.Activity
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
@@ -342,18 +343,27 @@ fun MeditationScreen(
     val isAlarmPlaying = MeditationTimerService.isAlarmPlaying.collectAsState().value
     val isTimerCompleted = MeditationTimerService.isTimerCompleted.collectAsState().value
     
-    // Play alarm when timer completes
-    LaunchedEffect(isTimerCompleted) {
-        if (isTimerCompleted) {
-            isTimerRunning = false
+    // Handle deep linking in a composable context
+    LaunchedEffect(Unit) {
+        val activity = context as? Activity
+        val intent = activity?.intent
+        if (intent?.getBooleanExtra("openMeditation", false) == true) {
+            // Clear the extra to prevent repeated handling
+            intent.removeExtra("openMeditation")
         }
     }
 
     // Check if service is running when screen is created
     LaunchedEffect(Unit) {
-        val serviceIntent = Intent(context, MeditationTimerService::class.java)
         if (context.isServiceRunning(MeditationTimerService::class.java)) {
             isTimerRunning = true
+        }
+    }
+
+    // Play alarm when timer completes
+    LaunchedEffect(isTimerCompleted) {
+        if (isTimerCompleted) {
+            isTimerRunning = false
         }
     }
 

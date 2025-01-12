@@ -68,6 +68,9 @@ class MeditationTimerService : Service() {
                 isServiceRunning = false
                 stopTimer()
             }
+            "STOP_ALARM" -> {
+                stopAlarmStatic()
+            }
         }
         return START_STICKY
     }
@@ -163,13 +166,49 @@ class MeditationTimerService : Service() {
 
     private fun showCompletionNotification() {
         try {
-            // Create and show notification first
+            // Create intent to open app when timer completes
+            val openAppIntent = packageManager
+                .getLaunchIntentForPackage(packageName)
+                ?.apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    putExtra("openMeditation", true)
+                }
+
+            // Create stop alarm intent
+            val stopAlarmIntent = Intent(this, MeditationTimerService::class.java).apply {
+                action = "STOP_ALARM"
+            }
+            val stopAlarmPendingIntent = PendingIntent.getService(
+                this,
+                1,
+                stopAlarmIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // Open the app automatically
+            startActivity(openAppIntent)
+
+            // Create and show notification with stop alarm action
             val notification = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Meditation Complete")
                 .setContentText("Great job! You've completed your meditation session.")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
+                .addAction(
+                    R.drawable.ic_launcher_foreground,
+                    "Stop Alarm",
+                    stopAlarmPendingIntent
+                )
+                .setFullScreenIntent(
+                    PendingIntent.getActivity(
+                        this,
+                        0,
+                        openAppIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    ),
+                    true
+                )
                 .build()
 
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
