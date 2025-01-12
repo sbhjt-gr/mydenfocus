@@ -34,6 +34,18 @@ import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.util.changeMillsToDateString
 import com.gorai.myedenfocus.util.toHours
 
+private fun Long.formatDuration(): String {
+    val hours = this / 3600
+    val minutes = (this % 3600) / 60
+    val seconds = this % 60
+    
+    return buildString {
+        if (hours > 0) append("${hours}h ")
+        if (minutes > 0) append("${minutes}m ")
+        if (seconds > 0 || (hours == 0L && minutes == 0L)) append("${seconds}s")
+    }.trim()
+}
+
 fun LazyListScope.studySessionsList(
     sectionTitle: String,
     emptyListText: String,
@@ -154,7 +166,7 @@ private fun StudySessionCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "${session.duration.toHours()} hr",
+                            text = session.duration.formatDuration(),
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
