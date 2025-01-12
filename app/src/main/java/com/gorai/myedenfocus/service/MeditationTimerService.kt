@@ -1,5 +1,6 @@
 package com.gorai.myedenfocus.service
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -28,6 +29,10 @@ class MeditationTimerService : Service() {
         const val ACTION_START = "START"
         const val ACTION_STOP = "STOP"
         const val EXTRA_TIME = "time_in_seconds"
+        const val ACTION_STOP_TIMER = "STOP_TIMER"
+        const val ACTION_PAUSE = "PAUSE"
+        const val ACTION_RESUME = "RESUME"
+        const val ACTION_RESET = "RESET"
         
         private val _timerState = MutableStateFlow<Int>(17 * 60)
         val timerState: StateFlow<Int> = _timerState
@@ -39,6 +44,9 @@ class MeditationTimerService : Service() {
         val isAlarmPlaying: StateFlow<Boolean> = _isAlarmPlaying
         
         private var currentRingtone: Ringtone? = null
+        
+        private val _isPaused = MutableStateFlow(false)
+        val isPaused: StateFlow<Boolean> = _isPaused
         
         fun stopAlarmStatic() {
             currentRingtone?.stop()
@@ -62,11 +70,30 @@ class MeditationTimerService : Service() {
             ACTION_START -> {
                 timeLeft = intent.getIntExtra(EXTRA_TIME, 0)
                 isServiceRunning = true
+                _isPaused.value = false
                 startTimer()
             }
-            ACTION_STOP -> {
+            ACTION_PAUSE -> {
+                isTimerRunning = false
+                _isPaused.value = true
+                updateNotification(timeLeft)
+            }
+            ACTION_RESUME -> {
+                isTimerRunning = true
+                _isPaused.value = false
+                startTimer()
+            }
+            ACTION_RESET -> {
+                isTimerRunning = false
+                _isPaused.value = false
+                timeLeft = 0
+                _timerState.value = 0
+                stopSelf()
+            }
+            ACTION_STOP, ACTION_STOP_TIMER -> {
                 isServiceRunning = false
                 stopTimer()
+                stopSelf()
             }
             "STOP_ALARM" -> {
                 stopAlarmStatic()
@@ -104,10 +131,13 @@ class MeditationTimerService : Service() {
 
     private fun stopTimer() {
         isTimerRunning = false
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        }
-        stopSelf()
+        _timerState.value = 0
+        timeLeft = 0
+        
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(NOTIFICATION_ID)
+        
+        _isTimerCompleted.value = false
     }
 
     private fun createNotificationChannel() {
@@ -124,38 +154,44 @@ class MeditationTimerService : Service() {
         notificationManager.createNotificationChannel(channel)
     }
 
-    private fun createNotification(timeInSeconds: Int): android.app.Notification {
-        // Create intent to open meditation screen
-        val openAppIntent = packageManager
-            .getLaunchIntentForPackage(packageName)
-            ?.apply {
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-                putExtra("openMeditation", true)
-            }
-        
-        val openPendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            openAppIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val stopIntent = Intent(this, MeditationTimerService::class.java).apply {
-            action = ACTION_STOP
+    private fun createNotification(timeInSeconds: Int): Notification {
+        val openAppIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
-        val stopPendingIntent = PendingIntent.getService(
-            this, 0, stopIntent,
-            PendingIntent.FLAG_IMMUTABLE
-        )
+        
+        val pauseIntent = Intent(this, MeditationTimerService::class.java).apply {
+            action = ACTION_PAUSE
+        }
+        val resumeIntent = Intent(this, MeditationTimerService::class.java).apply {
+            action = ACTION_RESUME
+        }
+        val resetIntent = Intent(this, MeditationTimerService::class.java).apply {
+            action = ACTION_RESET
+        }
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val pausePendingIntent = PendingIntent.getService(this, 4, pauseIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val resumePendingIntent = PendingIntent.getService(this, 5, resumeIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val resetPendingIntent = PendingIntent.getService(this, 6, resetIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Meditation in Progress")
             .setContentText(formatTime(timeInSeconds))
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentIntent(openPendingIntent)
-            .addAction(R.drawable.ic_launcher_foreground, "Stop", stopPendingIntent)
             .setOngoing(true)
-            .build()
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+
+        if (_isPaused.value) {
+            builder.addAction(R.drawable.ic_launcher_foreground, "Resume", resumePendingIntent)
+            builder.addAction(R.drawable.ic_launcher_foreground, "Reset", resetPendingIntent)
+        } else {
+            builder.addAction(R.drawable.ic_launcher_foreground, "Pause", pausePendingIntent)
+        }
+
+        return builder.build()
     }
 
     private fun updateNotification(timeInSeconds: Int) {
@@ -166,7 +202,6 @@ class MeditationTimerService : Service() {
 
     private fun showCompletionNotification() {
         try {
-            // Create intent to open app when timer completes
             val openAppIntent = packageManager
                 .getLaunchIntentForPackage(packageName)
                 ?.apply {
@@ -174,7 +209,6 @@ class MeditationTimerService : Service() {
                     putExtra("openMeditation", true)
                 }
 
-            // Create stop alarm intent
             val stopAlarmIntent = Intent(this, MeditationTimerService::class.java).apply {
                 action = "STOP_ALARM"
             }
@@ -185,16 +219,14 @@ class MeditationTimerService : Service() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            // Open the app automatically
             startActivity(openAppIntent)
 
-            // Create and show notification with stop alarm action
             val notification = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Meditation Complete")
                 .setContentText("Great job! You've completed your meditation session.")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setAutoCancel(true)
+                .setOngoing(true)
                 .addAction(
                     R.drawable.ic_launcher_foreground,
                     "Stop Alarm",
@@ -214,7 +246,6 @@ class MeditationTimerService : Service() {
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.notify(2, notification)
 
-            // Then handle the alarm sound
             serviceScope.launch(Dispatchers.Main) {
                 val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 currentRingtone = RingtoneManager.getRingtone(applicationContext, alarmUri)?.apply {
@@ -240,6 +271,9 @@ class MeditationTimerService : Service() {
         currentRingtone?.stop()
         currentRingtone = null
         _isAlarmPlaying.value = false
+        
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(2)
     }
 
     private fun formatTime(seconds: Int): String {

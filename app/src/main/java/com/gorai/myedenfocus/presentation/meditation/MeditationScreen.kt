@@ -74,6 +74,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.scale
+import com.gorai.myedenfocus.service.MeditationTimerService.Companion.isTimerCompleted
 
 private val meditationDurations = listOf(1, 5, 10, 15, 17, 20, 30)
 
@@ -341,6 +342,7 @@ fun MeditationScreen(
     val context = LocalContext.current
     val remainingSeconds = MeditationTimerService.timerState.collectAsState().value
     val isAlarmPlaying = MeditationTimerService.isAlarmPlaying.collectAsState().value
+    val isPaused = MeditationTimerService.isPaused.collectAsState().value
     val isTimerCompleted = MeditationTimerService.isTimerCompleted.collectAsState().value
     
     // Handle deep linking in a composable context
@@ -462,29 +464,92 @@ fun MeditationScreen(
             }
             
             item {
-                Button(
-                    onClick = { toggleTimer() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isTimerRunning) 
-                            MaterialTheme.colorScheme.error
-                        else 
-                            MaterialTheme.colorScheme.primary
-                    ),
-                    modifier = Modifier.padding(bottom = 16.dp)
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = if (isTimerRunning) 
-                                Icons.Default.Close 
-                            else 
-                                Icons.Default.PlayArrow,
-                            contentDescription = if (isTimerRunning) "Stop" else "Start"
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (isTimerRunning) "Stop" else "Start")
+                    if (isTimerRunning && !isPaused) {
+                        Button(
+                            onClick = {
+                                val intent = Intent(context, MeditationTimerService::class.java)
+                                    .setAction(MeditationTimerService.ACTION_PAUSE)
+                                context.startService(intent)
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .height(56.dp)
+                                .width(120.dp)
+                        ) {
+                            Text("Pause", style = MaterialTheme.typography.titleMedium)
+                        }
+                        
+                        Button(
+                            onClick = {
+                                val intent = Intent(context, MeditationTimerService::class.java)
+                                    .setAction(MeditationTimerService.ACTION_RESET)
+                                context.startService(intent)
+                                isTimerRunning = false
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            ),
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .height(56.dp)
+                                .width(120.dp)
+                        ) {
+                            Text("Reset", style = MaterialTheme.typography.titleMedium)
+                        }
+                    } else if (isPaused) {
+                        Button(
+                            onClick = {
+                                val intent = Intent(context, MeditationTimerService::class.java)
+                                    .setAction(MeditationTimerService.ACTION_RESUME)
+                                context.startService(intent)
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .height(56.dp)
+                                .width(120.dp)
+                        ) {
+                            Text("Resume", style = MaterialTheme.typography.titleMedium)
+                        }
+                        Button(
+                            onClick = {
+                                val intent = Intent(context, MeditationTimerService::class.java)
+                                    .setAction(MeditationTimerService.ACTION_RESET)
+                                context.startService(intent)
+                                isTimerRunning = false
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            ),
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .height(56.dp)
+                                .width(120.dp)
+                        ) {
+                            Text("Reset", style = MaterialTheme.typography.titleMedium)
+                        }
+                    } else {
+                        Button(
+                            onClick = { toggleTimer() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .height(56.dp)
+                                .width(120.dp)
+                        ) {
+                            Text("Start", style = MaterialTheme.typography.titleMedium)
+                        }
                     }
                 }
             }
