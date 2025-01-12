@@ -101,4 +101,6 @@ dependencies {
 
     // Compose Destinations
     implementation("io.github.raamcosta.compose-destinations:animations-core:1.9.52")
+
+    implementation("androidx.compose.material:material-icons-extended:1.5.4")
 }
