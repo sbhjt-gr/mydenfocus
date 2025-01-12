@@ -77,6 +77,7 @@ import androidx.compose.ui.draw.scale
 import com.gorai.myedenfocus.service.MeditationTimerService.Companion.isTimerCompleted
 import android.view.HapticFeedbackConstants
 import androidx.compose.ui.platform.LocalView
+import java.time.LocalDate
 
 private val meditationDurations = listOf(1, 5, 10, 15, 17, 20, 30)
 
@@ -374,6 +375,10 @@ fun MeditationScreen(
     LaunchedEffect(isTimerCompleted) {
         if (isTimerCompleted) {
             isTimerRunning = false
+            
+            // Save meditation completion for today
+            val prefs = context.getSharedPreferences("meditation_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("last_meditation_date", LocalDate.now().toString()).apply()
         }
     }
 

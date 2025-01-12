@@ -1,5 +1,6 @@
 package com.gorai.myedenfocus.presentation.session
 
+import android.content.Context
 import android.content.Intent
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedContent
@@ -64,8 +65,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.presentation.components.DeleteDialog
+import com.gorai.myedenfocus.presentation.components.MeditationReminderDialog
 import com.gorai.myedenfocus.presentation.components.SubjectListBottomSheet
 import com.gorai.myedenfocus.presentation.components.studySessionsList
+import com.gorai.myedenfocus.presentation.destinations.MeditationScreenDestination
 import com.gorai.myedenfocus.presentation.theme.Red
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_CANCEL
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_START
@@ -82,6 +85,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.time.DurationUnit
+import java.time.LocalDate
 
 @Destination(
     deepLinks = [
@@ -103,9 +107,10 @@ fun SessionScreenRoute(
     SessionScreen(
         state = state,
         snackbarEvent = viewModel.snackbarEventFlow,
-        onEvent =  viewModel::onEvent,
+        onEvent = viewModel::onEvent,
         onBackButtonClick = { navigator.navigateUp() },
-        timerService = timerService
+        timerService = timerService,
+        navigator = navigator
     )
 }
 
@@ -116,7 +121,8 @@ private fun SessionScreen(
     snackbarEvent: SharedFlow<SnackbarEvent>,
     onEvent: (SessionEvent) -> Unit,
     onBackButtonClick: () -> Unit,
-    timerService: StudySessionTimerService
+    timerService: StudySessionTimerService,
+    navigator: DestinationsNavigator
 ) {
     val hours by timerService.hours
     val minutes by timerService.minutes
@@ -136,6 +142,39 @@ private fun SessionScreen(
     val snackbarHostState = remember {
         SnackbarHostState()
     }
+
+    var showMeditationDialog by rememberSaveable { mutableStateOf(false) }
+    val prefs = context.getSharedPreferences("meditation_prefs", Context.MODE_PRIVATE)
+    
+    val lastMeditationDate = prefs.getString("last_meditation_date", null)
+    val today = LocalDate.now().toString()
+    val hasMeditatedToday = lastMeditationDate == today
+
+    if (showMeditationDialog) {
+        MeditationReminderDialog(
+            onDismissRequest = { 
+                showMeditationDialog = false 
+            },
+            onMeditateClick = {
+                showMeditationDialog = false
+                navigator.navigate(MeditationScreenDestination)
+            },
+            onSkipClick = {
+                showMeditationDialog = false
+                // Start the timer after skipping meditation
+                if (state.subjectId != null) {
+                    ServiceHelper.triggerForegroundService(
+                        context = context,
+                        action = ACTION_SERVICE_START
+                    )
+                    timerService.subjectId.value = state.subjectId
+                } else {
+                    onEvent(SessionEvent.CheckSubjectId)
+                }
+            }
+        )
+    }
+
     LaunchedEffect(key1 = true) {
         snackbarEvent.collectLatest {
                 event -> when(event) {
@@ -262,7 +301,9 @@ private fun SessionScreen(
                         onEvent(SessionEvent.SaveSession(duration))
                     },
                     timerState = currentTimerState,
-                    seconds = seconds
+                    seconds = seconds,
+                    context = context,
+                    onShowMeditationDialog = { showMeditationDialog = true }
                 )
             }
             studySessionsList(
@@ -537,8 +578,15 @@ private fun ButtonsSection(
     cancelButtonClick: () -> Unit,
     finishButtonClick: () -> Unit,
     timerState: TimerState,
-    seconds: String
+    seconds: String,
+    context: Context,
+    onShowMeditationDialog: () -> Unit
 ) {
+    val prefs = context.getSharedPreferences("meditation_prefs", Context.MODE_PRIVATE)
+    val lastMeditationDate = prefs.getString("last_meditation_date", null)
+    val today = LocalDate.now().toString()
+    val hasMeditatedToday = lastMeditationDate == today
+
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.SpaceAround
@@ -553,7 +601,17 @@ private fun ButtonsSection(
             )
         }
         Button(
-            onClick = startButtonClick,
+            onClick = { 
+                if (timerState == TimerState.STARTED) {
+                    startButtonClick()
+                } else {
+                    if (!hasMeditatedToday) {
+                        onShowMeditationDialog()
+                    } else {
+                        startButtonClick()
+                    }
+                }
+            },
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (timerState == TimerState.STARTED) Red
                 else MaterialTheme.colorScheme.primary,
@@ -571,7 +629,8 @@ private fun ButtonsSection(
         }
         Button(
             onClick = finishButtonClick,
-            enabled = seconds != "00" && timerState != TimerState.STARTED) {
+            enabled = seconds != "00" && timerState != TimerState.STARTED
+        ) {
             Text(
                 text = "Finish",
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
