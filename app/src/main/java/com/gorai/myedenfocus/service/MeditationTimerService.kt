@@ -113,19 +113,28 @@ class MeditationTimerService : Service() {
             ACTION_PAUSE -> {
                 isTimerRunning = false
                 _isPaused.value = true
+                mediaPlayer?.pause()
                 updateNotification(timeLeft)
             }
             ACTION_RESUME -> {
                 isTimerRunning = true
                 _isPaused.value = false
-                val selectedMusic = intent.getStringExtra("selected_music") ?: "breathe_again.mp3"
-                startTimer(selectedMusic)
+                mediaPlayer?.start()
+                startTimer(intent.getStringExtra("selected_music") ?: "breathe_again.mp3")
             }
             ACTION_RESET -> {
                 isTimerRunning = false
                 _isPaused.value = false
                 timeLeft = 0
                 _timerState.value = 0
+                _isTimerCompleted.value = false
+                
+                mediaPlayer?.stop()
+                mediaPlayer?.release()
+                mediaPlayer = null
+                isBackgroundMusicPlaying = false
+                
+                stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
             ACTION_STOP, ACTION_STOP_TIMER -> {
@@ -169,7 +178,6 @@ class MeditationTimerService : Service() {
                         _isTimerCompleted.value = true
                         isServiceRunning = false
                         
-                        // Stop background music when timer completes
                         mediaPlayer?.stop()
                         mediaPlayer?.release()
                         mediaPlayer = null

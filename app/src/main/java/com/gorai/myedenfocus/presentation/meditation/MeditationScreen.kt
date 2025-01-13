@@ -89,7 +89,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private val meditationDurations = listOf(5, 10, 15, 17, 20, 30)
-private val meditationMusic = listOf("Breathe Again", "Breathe Again 2")
+private val meditationMusic = listOf("No Music", "Breathe Again", "Breathe Again 2")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -454,7 +454,7 @@ fun MeditationScreen(
     navigator: DestinationsNavigator,
     viewModel: MeditationViewModel = hiltViewModel()
 ) {
-    var selectedMinutes by remember { mutableStateOf(meditationDurations[0]) }
+    var selectedMinutes by remember { mutableStateOf(17) }
     var selectedMusic by remember { mutableStateOf(meditationMusic[0]) }
     var isTimerRunning by rememberSaveable { mutableStateOf(false) }
     var showHeadphoneDialog by remember { mutableStateOf(false) }
@@ -463,6 +463,7 @@ fun MeditationScreen(
     val isAlarmPlaying = MeditationTimerService.isAlarmPlaying.collectAsState().value
     val isPaused = MeditationTimerService.isPaused.collectAsState().value
     val isTimerCompleted = MeditationTimerService.isTimerCompleted.collectAsState().value
+    val timerState by MeditationTimerService.timerState.collectAsState()
     
     // Add state for delete confirmation dialog
     var sessionToDelete by remember { mutableStateOf<MeditationSession?>(null) }
@@ -517,10 +518,10 @@ fun MeditationScreen(
         }
     }
 
-    // Modify toggleTimer to check for headphones
+    // Modify toggleTimer to check for headphones only when music is selected
     @RequiresApi(Build.VERSION_CODES.O)
     fun toggleTimer() {
-        if (!isTimerRunning && !isHeadphonesConnected()) {
+        if (!isTimerRunning && selectedMusic != "No Music" && !isHeadphonesConnected()) {
             showHeadphoneDialog = true
             return
         }
@@ -532,7 +533,8 @@ fun MeditationScreen(
                 // Convert display name to file name
                 val musicFileName = when (selectedMusic) {
                     "Breathe Again 2" -> "breathe_again_2.mp3"
-                    else -> "breathe_again.mp3"
+                    "Breathe Again" -> "breathe_again.mp3"
+                    else -> "no_music"  // Handle No Music option
                 }
                 putExtra("selected_music", musicFileName)
             } else {
@@ -668,6 +670,16 @@ fun MeditationScreen(
         )
     }
 
+    // Add this LaunchedEffect to monitor timer state
+    LaunchedEffect(timerState) {
+        if (timerState == 0) {
+            // Reset everything when timer is reset to 0
+            isTimerRunning = false
+            selectedMinutes = 17  // Reset to 17 minutes
+            selectedMusic = meditationMusic[0]  // Reset to default music
+        }
+    }
+
     Scaffold(
         topBar = {
             DashboardScreenTopBar()
@@ -775,7 +787,6 @@ fun MeditationScreen(
                                 val intent = Intent(context, MeditationTimerService::class.java)
                                     .setAction(MeditationTimerService.ACTION_RESET)
                                 context.startService(intent)
-                                isTimerRunning = false
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error
