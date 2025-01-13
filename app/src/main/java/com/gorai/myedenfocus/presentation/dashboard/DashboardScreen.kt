@@ -1,7 +1,9 @@
 package com.gorai.myedenfocus.presentation.dashboard
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
@@ -263,11 +266,30 @@ private fun DashboardScreen(
 private fun DashboardScreenTopBar() {
     CenterAlignedTopAppBar(
         title = {
-            Text(
-                text = "MyedenFocus",
-                style = MaterialTheme.typography.headlineMedium
-            )
-        }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(start = 16.dp)
+                        .size(32.dp)
+                ) {
+                    Image(
+                        painter = painterResource(id = com.gorai.myedenfocus.R.drawable.app_icon),
+                        contentDescription = "App Icon",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "MyedenFocus",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+            }
+        },
+        modifier = Modifier.fillMaxWidth()
     )
 }
 
