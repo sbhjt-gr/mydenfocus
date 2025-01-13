@@ -313,10 +313,8 @@ private fun DurationSelector(
             }.collect { centerIndex ->
                 if (centerIndex != null && centerIndex in meditationDurations.indices) {
                     val selectedDuration = meditationDurations[centerIndex]
-                    if (selectedDuration != selectedMinutes) {
-                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                        onDurationSelected(selectedDuration)
-                    }
+                    onDurationSelected(selectedDuration)
+                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                 }
             }
         }
@@ -389,11 +387,9 @@ private fun MusicSelector(
                 }?.index?.minus(1)
             }.collect { centerIndex ->
                 if (centerIndex != null && centerIndex in meditationMusic.indices) {
-                    val selectedMusicName = meditationMusic[centerIndex]
-                    if (selectedMusicName != selectedMusic) {
-                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                        onMusicSelected(selectedMusicName)
-                    }
+                    val selectedMusicOption = meditationMusic[centerIndex]
+                    onMusicSelected(selectedMusicOption)
+                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                 }
             }
         }
