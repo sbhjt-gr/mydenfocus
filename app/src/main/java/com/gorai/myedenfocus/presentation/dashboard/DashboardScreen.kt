@@ -242,8 +242,8 @@ private fun DashboardScreen(
                 )
             }
             tasksList(
-                sectionTitle = "Today's Tasks",
-                emptyListText = "No tasks for today\nPress + button to add new tasks",
+                sectionTitle = "Task List",
+                emptyListText = "No tasks for are listed\nPress + button to add new tasks",
                 tasks = tasks,
                 onTaskCardClick = onTaskCardClick,
                 onCheckBoxClick = { onEvent(DashboardEvent.OnTaskIsCompleteChange(it)) }
