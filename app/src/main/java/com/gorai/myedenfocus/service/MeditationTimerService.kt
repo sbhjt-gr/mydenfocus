@@ -105,10 +105,10 @@ class MeditationTimerService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 timeLeft = intent.getIntExtra(EXTRA_TIME, 0)
-                val selectedMusic = intent.getStringExtra("selected_music") ?: "breathe_again.mp3"
+                val selectedMusic = intent.getStringExtra("selected_music") ?: "no_music"
                 isServiceRunning = true
                 _isPaused.value = false
-                startTimer(selectedMusic)
+                startTimer(timeLeft, selectedMusic)
             }
             ACTION_PAUSE -> {
                 isTimerRunning = false
@@ -120,7 +120,7 @@ class MeditationTimerService : Service() {
                 isTimerRunning = true
                 _isPaused.value = false
                 mediaPlayer?.start()
-                startTimer(intent.getStringExtra("selected_music") ?: "breathe_again.mp3")
+                startTimer(timeLeft, intent.getStringExtra("selected_music") ?: "no_music")
             }
             ACTION_RESET -> {
                 isTimerRunning = false
@@ -149,58 +149,57 @@ class MeditationTimerService : Service() {
         return START_STICKY
     }
 
-    private fun startTimer(selectedMusic: String) {
-        try {
-            isTimerRunning = true
-            _isTimerCompleted.value = false
-            startForeground(NOTIFICATION_ID, createNotification(timeLeft))
-            
-            if (mediaPlayer == null) {
-                val musicResId = when (selectedMusic) {
-                    "wind_chimes_nature_symphony.mp3" -> R.raw.wind_chimes_nature_symphony
-                    "soothing_chime.mp3" -> R.raw.soothing_chime
-                    "full_brain_drop_down.mp3" -> R.raw.full_brain_drop_down
-                    "focus_on_yourself.mp3" -> R.raw.focus_on_yourself
-                    else -> 0
-                }
+    private fun startTimer(initialTime: Int, selectedMusic: String) {
+        isTimerRunning = true
+        timeLeft = initialTime
+        _timerState.value = initialTime
+        _isTimerCompleted.value = false
+        startForeground(NOTIFICATION_ID, createNotification(timeLeft))
+        
+        if (mediaPlayer == null && selectedMusic != "no_music") {
+            val musicResId = when (selectedMusic) {
+                "wind_chimes_nature_symphony.mp3" -> R.raw.wind_chimes_nature_symphony
+                "soothing_chime.mp3" -> R.raw.soothing_chime
+                "full_brain_drop_down.mp3" -> R.raw.full_brain_drop_down
+                "focus_on_yourself.mp3" -> R.raw.focus_on_yourself
+                else -> 0
+            }
+            if (musicResId != 0) {
                 mediaPlayer = MediaPlayer.create(this, musicResId)
                 mediaPlayer?.isLooping = true
                 mediaPlayer?.start()
                 isBackgroundMusicPlaying = true
             }
-            
-            serviceScope.launch {
-                while (isTimerRunning && timeLeft > 0) {
-                    delay(1000)
-                    timeLeft--
-                    _timerState.value = timeLeft
-                    updateNotification(timeLeft)
+        }
+        
+        serviceScope.launch {
+            while (isTimerRunning && timeLeft > 0) {
+                delay(1000)
+                timeLeft--
+                _timerState.value = timeLeft
+                updateNotification(timeLeft)
+                
+                if (timeLeft == 0) {
+                    isTimerRunning = false
+                    _isTimerCompleted.value = true
+                    isServiceRunning = false
                     
-                    if (timeLeft == 0) {
-                        isTimerRunning = false
-                        _isTimerCompleted.value = true
-                        isServiceRunning = false
-                        
-                        mediaPlayer?.stop()
-                        mediaPlayer?.release()
-                        mediaPlayer = null
-                        isBackgroundMusicPlaying = false
-                        
-                        stopForeground(STOP_FOREGROUND_REMOVE)
-                        showCompletionNotification()
-                    }
+                    mediaPlayer?.stop()
+                    mediaPlayer?.release()
+                    mediaPlayer = null
+                    isBackgroundMusicPlaying = false
+                    
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    showCompletionNotification()
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            stopSelf()
         }
     }
 
     private fun stopTimer() {
         isTimerRunning = false
-        _timerState.value = 0
         timeLeft = 0
+        _timerState.value = 0
         
         mediaPlayer?.stop()
         mediaPlayer?.release()

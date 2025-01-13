@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
 import android.view.HapticFeedbackConstants
@@ -139,6 +140,11 @@ fun MeditationTimer(
     remainingSeconds: Int,
     isRunning: Boolean
 ) {
+    // Add debug logging
+    LaunchedEffect(remainingSeconds) {
+        println("Timer Update - Total: $totalSeconds, Remaining: $remainingSeconds, Running: $isRunning")
+    }
+
     val safeProgress = remember { mutableStateOf(0f) }
     safeProgress.value = if (totalSeconds == 0) {
         0f
@@ -495,6 +501,20 @@ fun MeditationScreen(
     // Function to check if headphones are connected
     fun isHeadphonesConnected(): Boolean {
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        
+        // For API 23 and above
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val audioDevices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            return audioDevices.any { device ->
+                device.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                device.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+            }
+        }
+        
+        // Fallback for older versions
+        @Suppress("DEPRECATION")
         return audioManager.isWiredHeadsetOn || audioManager.isBluetoothA2dpOn
     }
     
@@ -545,7 +565,8 @@ fun MeditationScreen(
     // Modify toggleTimer to check for headphones only when music is selected
     @RequiresApi(Build.VERSION_CODES.O)
     fun toggleTimer() {
-        if (!isTimerRunning && selectedMusic != "No Music" && !isHeadphonesConnected()) {
+        // Only check for headphones if music is selected and it's not "No Music"
+        if (!isTimerRunning && selectedMusic != "No Music" && selectedMusic != meditationMusic[0] && !isHeadphonesConnected()) {
             showHeadphoneDialog = true
             return
         }
@@ -991,8 +1012,35 @@ private fun MeditationSessionItem(
 }
 
 // Extension function to check if service is running
-private fun Context.isServiceRunning(serviceClass: Class<*>): Boolean {
-    val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-    return manager.getRunningServices(Integer.MAX_VALUE)
+fun Context.isServiceRunning(serviceClass: Class<*>): Boolean {
+    val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    
+    // For API 26 and above
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        try {
+            // Check if service is foreground
+            return ServiceUtils.isServiceForeground(this, serviceClass)
+        } catch (e: SecurityException) {
+            e.printStackTrace()
+        }
+    }
+    
+    // Fallback for older versions
+    @Suppress("DEPRECATION")
+    return activityManager.getRunningServices(Integer.MAX_VALUE)
         .any { it.service.className == serviceClass.name }
+}
+
+// Update ServiceUtils object
+object ServiceUtils {
+    fun isServiceForeground(context: Context, serviceClass: Class<*>): Boolean {
+        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        @Suppress("DEPRECATION")
+        for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.name == service.service.className) {
+                return service.foreground
+            }
+        }
+        return false
+    }
 } 
