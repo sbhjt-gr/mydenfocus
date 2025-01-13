@@ -89,7 +89,13 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private val meditationDurations = listOf(5, 10, 15, 17, 20, 30)
-private val meditationMusic = listOf("No Music", "Breathe Again", "Breathe Again 2")
+private val meditationMusic = listOf(
+    "No Music",
+    "Wind Chimes Nature Symphony",
+    "Soothing Chime",
+    "Full Brain Drop Down",
+    "Focus on Yourself"
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -528,8 +534,10 @@ fun MeditationScreen(
                 putExtra(MeditationTimerService.EXTRA_TIME, selectedMinutes * 60)
                 // Convert display name to file name
                 val musicFileName = when (selectedMusic) {
-                    "Breathe Again 2" -> "breathe_again_2.mp3"
-                    "Breathe Again" -> "breathe_again.mp3"
+                    "Wind Chimes Nature Symphony" -> "wind_chimes_nature_symphony.mp3"
+                    "Soothing Chime" -> "soothing_chime.mp3"
+                    "Full Brain Drop Down" -> "full_brain_drop_down.mp3"
+                    "Focus on Yourself" -> "focus_on_yourself.mp3"
                     else -> "no_music"  // Handle No Music option
                 }
                 putExtra("selected_music", musicFileName)
@@ -649,8 +657,11 @@ fun MeditationScreen(
                             action = MeditationTimerService.ACTION_START
                             putExtra(MeditationTimerService.EXTRA_TIME, selectedMinutes * 60)
                             val musicFileName = when (selectedMusic) {
-                                "Breathe Again 2" -> "breathe_again_2.mp3"
-                                else -> "breathe_again.mp3"
+                                "Wind Chimes Nature Symphony" -> "wind_chimes_nature_symphony.mp3"
+                                "Soothing Chime" -> "soothing_chime.mp3"
+                                "Full Brain Drop Down" -> "full_brain_drop_down.mp3"
+                                "Focus on Yourself" -> "focus_on_yourself.mp3"
+                                else -> "no_music"
                             }
                             putExtra("selected_music", musicFileName)
                         }

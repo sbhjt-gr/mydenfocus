@@ -157,8 +157,11 @@ class MeditationTimerService : Service() {
             
             if (mediaPlayer == null) {
                 val musicResId = when (selectedMusic) {
-                    "breathe_again_2.mp3" -> R.raw.breathe_again_2
-                    else -> R.raw.breathe_again
+                    "wind_chimes_nature_symphony.mp3" -> R.raw.wind_chimes_nature_symphony
+                    "soothing_chime.mp3" -> R.raw.soothing_chime
+                    "full_brain_drop_down.mp3" -> R.raw.full_brain_drop_down
+                    "focus_on_yourself.mp3" -> R.raw.focus_on_yourself
+                    else -> 0
                 }
                 mediaPlayer = MediaPlayer.create(this, musicResId)
                 mediaPlayer?.isLooping = true
