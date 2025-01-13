@@ -10,6 +10,7 @@ import android.os.IBinder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -29,6 +30,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gorai.myedenfocus.presentation.navigation.NavigationViewModel
+import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -60,19 +66,26 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: NavigationViewModel = hiltViewModel()
             
-            // Check if we should navigate to a specific route
-            LaunchedEffect(intent) {
-                intent?.getStringExtra("navigation_route")?.let { route ->
-                    viewModel.navigateTo(route)
-                }
-            }
-            
             MyedenFocusTheme {
+                val navController = rememberNavController()
+                
+                // Handle notification click navigation
+                LaunchedEffect(intent) {
+                    if (intent?.getBooleanExtra("navigate_to_session", false) == true) {
+                        // Clear the extra to prevent repeated navigation
+                        intent.removeExtra("navigate_to_session")
+                        // Navigate using navController
+                        navController.navigate(SessionScreenRouteDestination.route)
+                    }
+                }
+
                 DestinationsNavHost(
                     navGraph = NavGraphs.root,
+                    navController = navController,
                     dependenciesContainerBuilder = {
                         dependency(SessionScreenRouteDestination) { timerService }
-                    }
+                    },
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         }

@@ -12,20 +12,19 @@ import android.os.Build
 
 object ServiceHelper {
     fun clickPendingIntent(context: Context): PendingIntent {
-        val deepLinkIntent = Intent(
-            Intent.ACTION_VIEW,
-            "myedenfocus://dashboard/session".toUri(),
-            context,
-            MainActivity::class.java
-        )
-
-        return TaskStackBuilder.create(context).run {
-            addNextIntentWithParentStack(deepLinkIntent)
-            getPendingIntent(
-                CLICK_REQUEST_CODE,
-                PendingIntent.FLAG_IMMUTABLE
-            )
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            action = Intent.ACTION_MAIN
+            addCategory(Intent.CATEGORY_LAUNCHER)
+            putExtra("navigate_to_session", true)
         }
+
+        return PendingIntent.getActivity(
+            context,
+            CLICK_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
     }
     fun triggerForegroundService(context: Context, action: String) {
         Intent(context, StudySessionTimerService::class.java).apply {
