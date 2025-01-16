@@ -12,6 +12,7 @@ import com.gorai.myedenfocus.domain.repository.SubjectRepository
 import com.gorai.myedenfocus.domain.repository.TaskRepository
 import com.gorai.myedenfocus.util.SnackbarEvent
 import com.gorai.myedenfocus.util.toHours
+import com.gorai.myedenfocus.data.local.PreferencesDataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +29,8 @@ import javax.inject.Inject
 class DashboardViewModel @Inject constructor(
     private val subjectRepository: SubjectRepository,
     private val sessionRepository: SessionRepository,
-    private val taskRepository: TaskRepository
+    private val taskRepository: TaskRepository,
+    private val preferencesDataStore: PreferencesDataStore
 ): ViewModel() {
     private val _state = MutableStateFlow(DashboardState())
     
@@ -92,12 +94,37 @@ class DashboardViewModel @Inject constructor(
     private val _snackbarEventFlow = MutableSharedFlow<SnackbarEvent>()
     val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
 
+    init {
+        viewModelScope.launch {
+            // Load saved daily study goal when ViewModel is created
+            preferencesDataStore.dailyStudyGoal.collect { hours ->
+                _state.update { it.copy(dailyStudyGoal = hours) }
+            }
+        }
+    }
+
     fun onEvent(event: DashboardEvent) {
         when(event) {
             DashboardEvent.SaveSubject -> saveSubject()
             DashboardEvent.DeleteSubject -> deleteSubject()
             DashboardEvent.DeleteSession -> deleteSession()
-            DashboardEvent.SaveDailyStudyGoal -> saveDailyStudyGoal()
+            DashboardEvent.SaveDailyStudyGoal -> {
+                viewModelScope.launch {
+                    try {
+                        preferencesDataStore.saveDailyStudyGoal(state.value.dailyStudyGoal)
+                        _snackbarEventFlow.emit(
+                            SnackbarEvent.ShowSnackbar("Daily study goal saved successfully")
+                        )
+                    } catch (e: Exception) {
+                        _snackbarEventFlow.emit(
+                            SnackbarEvent.ShowSnackbar(
+                                "Couldn't save daily study goal. ${e.message}",
+                                SnackbarDuration.Long
+                            )
+                        )
+                    }
+                }
+            }
             is DashboardEvent.OnDeleteSessionButtonClick -> {
                 _state.update { it.copy(session = event.session) }
             }
@@ -112,7 +139,7 @@ class DashboardViewModel @Inject constructor(
             }
             is DashboardEvent.OnTaskIsCompleteChange -> updateTask(event.task)
             is DashboardEvent.OnDailyStudyGoalChange -> {
-                _state.update { it.copy(dailyStudyGoal = event.hours) }
+                _state.update { it.copy(dailyStudyGoal = event.goal) }
             }
         }
     }
@@ -185,24 +212,6 @@ class DashboardViewModel @Inject constructor(
                     SnackbarEvent.ShowSnackbar(
                         message = "Couldn't delete session. ${e.message}",
                         duration = SnackbarDuration.Long
-                    )
-                )
-            }
-        }
-    }
-
-    private fun saveDailyStudyGoal() {
-        viewModelScope.launch {
-            try {
-                // Here you might want to save the daily goal to a persistent storage
-                _snackbarEventFlow.emit(
-                    SnackbarEvent.ShowSnackbar("Daily study goal saved successfully")
-                )
-            } catch (e: Exception) {
-                _snackbarEventFlow.emit(
-                    SnackbarEvent.ShowSnackbar(
-                        "Couldn't save daily study goal. ${e.message}",
-                        SnackbarDuration.Long
                     )
                 )
             }

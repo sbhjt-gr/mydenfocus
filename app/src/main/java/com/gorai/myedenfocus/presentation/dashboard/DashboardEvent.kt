@@ -5,14 +5,14 @@ import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.model.Task
 
 sealed interface DashboardEvent {
-    data object SaveSubject: DashboardEvent
-    data object DeleteSubject: DashboardEvent
-    data class OnDeleteSessionButtonClick(val session: Session): DashboardEvent
-    data class OnTaskIsCompleteChange(val task: Task): DashboardEvent
-    data class OnSubjectCardColorChange(val colors: List<Color>): DashboardEvent
     data class OnSubjectNameChange(val name: String): DashboardEvent
     data class OnGoalStudyHoursChange(val hours: String): DashboardEvent
-    data class OnDailyStudyGoalChange(val hours: String): DashboardEvent
-    object DeleteSession : DashboardEvent
-    object SaveDailyStudyGoal : DashboardEvent
+    data class OnSubjectCardColorChange(val colors: List<Color>): DashboardEvent
+    data class OnDeleteSessionButtonClick(val session: Session): DashboardEvent
+    data class OnTaskIsCompleteChange(val task: Task): DashboardEvent
+    data class OnDailyStudyGoalChange(val goal: String): DashboardEvent
+    object SaveSubject: DashboardEvent
+    object DeleteSubject: DashboardEvent
+    object DeleteSession: DashboardEvent
+    object SaveDailyStudyGoal: DashboardEvent
 }

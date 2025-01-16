@@ -1,7 +1,6 @@
 package com.gorai.myedenfocus.presentation.dashboard
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,22 +13,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FabPosition
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -46,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -56,16 +50,17 @@ import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.model.Task
 import com.gorai.myedenfocus.presentation.components.AddSubjectDialog
 import com.gorai.myedenfocus.presentation.components.BottomBar
+import com.gorai.myedenfocus.presentation.components.CommonTopBar
 import com.gorai.myedenfocus.presentation.components.DeleteDialog
 import com.gorai.myedenfocus.presentation.components.Speedometer
 import com.gorai.myedenfocus.presentation.components.SubjectCard
 import com.gorai.myedenfocus.presentation.components.studySessionsList
 import com.gorai.myedenfocus.presentation.components.tasksList
+import com.gorai.myedenfocus.presentation.destinations.MeditationScreenDestination
 import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestination
+import com.gorai.myedenfocus.presentation.destinations.SettingsScreenDestination
 import com.gorai.myedenfocus.presentation.destinations.SubjectScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
-import com.gorai.myedenfocus.presentation.subject.SubjectScreenNavArgs
-import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
 import com.gorai.myedenfocus.util.NavAnimation
 import com.gorai.myedenfocus.util.SnackbarEvent
 import com.ramcosta.composedestinations.annotation.Destination
@@ -73,19 +68,6 @@ import com.ramcosta.composedestinations.annotation.RootNavGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
-import com.gorai.myedenfocus.presentation.destinations.MeditationScreenDestination
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
-import com.gorai.myedenfocus.presentation.destinations.SettingsScreenDestination
-import com.gorai.myedenfocus.presentation.components.CommonTopBar
 
 @RootNavGraph(start = true)
 @Destination(
@@ -189,7 +171,6 @@ private fun DashboardScreen(
         )
     }
 
-    // Show add subject dialog
     if (showAddSubjectDialog) {
         AddSubjectDialog(
             isOpen = true,
@@ -242,7 +223,6 @@ private fun DashboardScreen(
                 .padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Daily Goal Section
             item {
                 Row(
                     modifier = Modifier
@@ -490,112 +470,68 @@ private fun DailyGoalDialog(
         onDismissRequest = onDismiss,
         title = { Text("Set Daily Study Goal") },
         text = {
-            Column(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Hours Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Hours:",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    
-                    IconButton(
-                        onClick = {
-                            val current = currentGoal.toFloatOrNull() ?: 0f
-                            if (current >= 1) {
-                                onGoalChange((current - 1f).toString())
-                            }
+                Text(
+                    text = "Hours:",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                
+                IconButton(
+                    onClick = {
+                        val current = currentGoal.toFloatOrNull() ?: 0f
+                        if (current >= 1) {
+                            onGoalChange((current - 1f).toString())
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Remove,
-                            contentDescription = "Decrease Hours"
-                        )
-                    }
-                    
-                    Text(
-                        text = "${currentGoal.toFloatOrNull()?.toInt() ?: 0}",
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                    },
+                    enabled = (currentGoal.toFloatOrNull() ?: 0f) > 0
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Remove,
+                        contentDescription = "Decrease Hours",
+                        tint = if ((currentGoal.toFloatOrNull() ?: 0f) > 0)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.outline
                     )
-                    
-                    IconButton(
-                        onClick = {
-                            val current = currentGoal.toFloatOrNull() ?: 0f
+                }
+                
+                Text(
+                    text = "${currentGoal.toFloatOrNull()?.toInt() ?: 0}",
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                
+                IconButton(
+                    onClick = {
+                        val current = currentGoal.toFloatOrNull() ?: 0f
+                        if (current < 16) {
                             onGoalChange((current + 1f).toString())
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Increase Hours"
-                        )
-                    }
-                }
-
-                // Minutes Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                    },
+                    enabled = (currentGoal.toFloatOrNull() ?: 0f) < 16
                 ) {
-                    Text(
-                        text = "Minutes:",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(end = 8.dp)
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Increase Hours",
+                        tint = if ((currentGoal.toFloatOrNull() ?: 0f) < 16)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.outline
                     )
-                    
-                    IconButton(
-                        onClick = {
-                            val current = currentGoal.toFloatOrNull() ?: 0f
-                            if (current >= 0.25f) {
-                                onGoalChange((current - 0.25f).toString())
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Remove,
-                            contentDescription = "Decrease Minutes"
-                        )
-                    }
-                    
-                    Text(
-                        text = "${((currentGoal.toFloatOrNull() ?: 0f) % 1 * 60).toInt()}",
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    
-                    IconButton(
-                        onClick = {
-                            val current = currentGoal.toFloatOrNull() ?: 0f
-                            onGoalChange((current + 0.25f).toString())
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Increase Minutes"
-                        )
-                    }
                 }
-
-                Text(
-                    text = "Total: ${currentGoal.toFloatOrNull() ?: 0}h",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
             }
         },
         confirmButton = {
             TextButton(
-                onClick = onConfirm,
+                onClick = {
+                    onGoalChange(currentGoal)
+                    onConfirm()
+                },
                 enabled = currentGoal.toFloatOrNull() ?: 0f > 0
             ) {
                 Text("Save")
