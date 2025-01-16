@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.font.FontWeight
 
 @Composable
 fun AddSubjectDialog(
@@ -173,7 +174,7 @@ fun AddSubjectDialog(
                         value = dailyGoalHours,
                         onValueChange = { onDailyGoalHoursChange(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Daily Goal Hours (${remainingHours}h available)") },
+                        label = { Text("Daily Goal Hours") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Decimal,
@@ -181,6 +182,18 @@ fun AddSubjectDialog(
                         ),
                         isError = goalHoursError != null,
                         supportingText = goalHoursError?.let { { Text(it) } }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Remaining Hours Text
+                    Text(
+                        text = "Remaining Hours: ${remainingHours}h",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (remainingHours < 0) MaterialTheme.colorScheme.error 
+                               else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp)
                     )
                 }
             },

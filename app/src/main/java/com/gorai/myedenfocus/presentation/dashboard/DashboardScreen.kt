@@ -157,32 +157,26 @@ private fun DashboardScreen(
     currentRoute: String = "schedule",
     onNavigate: (String) -> Unit = {}
 ) {
-    var isAddSubjectDialogOpen by rememberSaveable {
-        mutableStateOf(false)
-    }
-    var isDeleteSubjectDialogOpen by rememberSaveable {
-        mutableStateOf(false)
-    }
-    val snackbarHostState = remember {
-        SnackbarHostState()
-    }
     var showDailyGoalDialog by remember { mutableStateOf(false) }
     var showAddSubjectDialog by remember { mutableStateOf(false) }
+    var isDeleteSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(key1 = true) {
-        snackbarEvent.collectLatest {
-                event -> when(event) {
-            is SnackbarEvent.ShowSnackbar -> {
-                snackbarHostState.showSnackbar(
-                    message = event.message,
-                    duration = event.duration
-                )
+        snackbarEvent.collectLatest { event ->
+            when(event) {
+                is SnackbarEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message,
+                        duration = event.duration
+                    )
+                }
+                SnackbarEvent.NavigateUp -> {}
             }
-            SnackbarEvent.NavigateUp -> {}
-        }
         }
     }
 
+    // Show daily goal dialog
     if (showDailyGoalDialog) {
         DailyGoalDialog(
             currentGoal = state.dailyStudyGoal,
@@ -191,34 +185,29 @@ private fun DashboardScreen(
             onConfirm = {
                 onEvent(DashboardEvent.SaveDailyStudyGoal)
                 showDailyGoalDialog = false
-                showAddSubjectDialog = true
             }
         )
     }
 
+    // Show add subject dialog
     if (showAddSubjectDialog) {
-        if (state.dailyStudyGoal.isEmpty()) {
-            showDailyGoalDialog = true
-            showAddSubjectDialog = false
-        } else {
-            AddSubjectDialog(
-                isOpen = true,
-                selectedColors = state.subjectCardColors,
-                onColorChange = { onEvent(DashboardEvent.OnSubjectCardColorChange(it)) },
-                subjectName = state.subjectName,
-                dailyGoalHours = state.goalStudyHours,
-                remainingHours = state.dailyStudyGoal.toFloatOrNull()?.minus(
-                    state.subjects.sumOf { it.goalHours.toDouble() }.toFloat()
-                ) ?: 0f,
-                onSubjectNameChange = { onEvent(DashboardEvent.OnSubjectNameChange(it)) },
-                onDailyGoalHoursChange = { onEvent(DashboardEvent.OnGoalStudyHoursChange(it)) },
-                onDismissRequest = { showAddSubjectDialog = false },
-                onConfirmButtonClick = {
-                    onEvent(DashboardEvent.SaveSubject)
-                    showAddSubjectDialog = false
-                }
-            )
-        }
+        AddSubjectDialog(
+            isOpen = true,
+            selectedColors = state.subjectCardColors,
+            onColorChange = { onEvent(DashboardEvent.OnSubjectCardColorChange(it)) },
+            subjectName = state.subjectName,
+            dailyGoalHours = state.goalStudyHours,
+            remainingHours = state.dailyStudyGoal.toFloatOrNull()?.minus(
+                state.subjects.sumOf { it.goalHours.toDouble() }.toFloat()
+            ) ?: 0f,
+            onSubjectNameChange = { onEvent(DashboardEvent.OnSubjectNameChange(it)) },
+            onDailyGoalHoursChange = { onEvent(DashboardEvent.OnGoalStudyHoursChange(it)) },
+            onDismissRequest = { showAddSubjectDialog = false },
+            onConfirmButtonClick = {
+                onEvent(DashboardEvent.SaveSubject)
+                showAddSubjectDialog = false
+            }
+        )
     }
 
     DeleteDialog(
@@ -253,6 +242,36 @@ private fun DashboardScreen(
                 .padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Daily Goal Section
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Daily Study Goal",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = if (state.dailyStudyGoal.isEmpty()) "Not set" 
+                                  else "${state.dailyStudyGoal}h",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Button(
+                        onClick = { showDailyGoalDialog = true },
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text(text = if (state.dailyStudyGoal.isEmpty()) "Set Goal" else "Edit Goal")
+                    }
+                }
+            }
+
             item {
                 CountCardsSection(
                     modifier = Modifier
