@@ -370,31 +370,28 @@ private fun CountCardsSection(
         modifier = modifier,
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        // Subject Count Speedometer
         Speedometer(
             modifier = Modifier.weight(1f),
-            headingText = "Subjects",
+            headingText = "Total Subjects",
             value = subjectCount.toFloat(),
             maxValue = 10f,
             displayText = subjectCount.toString()
         )
 
-        // Daily Progress Speedometer
         Speedometer(
             modifier = Modifier.weight(1f),
-            headingText = "Today",
+            headingText = "Today's Hours",
             value = dailyStudiedHours.toFloatOrNull() ?: 0f,
             maxValue = dailyGoalHours.toFloatOrNull() ?: 1f,
-            displayText = "${dailyStudiedHours}h"
+            displayText = "${dailyStudiedHours} h"
         )
 
-        // Total Hours Speedometer
         Speedometer(
             modifier = Modifier.weight(1f),
-            headingText = "Total",
+            headingText = "Hours Studied",
             value = studiedHours.toFloatOrNull() ?: 0f,
             maxValue = 100f,
-            displayText = "${studiedHours}h"
+            displayText = "${studiedHours} h"
         )
     }
 }
@@ -474,42 +471,107 @@ private fun DailyGoalDialog(
         onDismissRequest = onDismiss,
         title = { Text("Set Daily Study Goal") },
         text = {
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                IconButton(
-                    onClick = {
-                        val current = currentGoal.toFloatOrNull() ?: 0f
-                        if (current > 0) {
-                            onGoalChange((current - 0.5f).toString())
+                // Hours Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Hours:",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    
+                    IconButton(
+                        onClick = {
+                            val current = currentGoal.toFloatOrNull() ?: 0f
+                            if (current >= 1) {
+                                onGoalChange((current - 1f).toString())
+                            }
                         }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Remove,
+                            contentDescription = "Decrease Hours"
+                        )
                     }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Remove,
-                        contentDescription = "Decrease"
+                    
+                    Text(
+                        text = "${currentGoal.toFloatOrNull()?.toInt() ?: 0}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     )
+                    
+                    IconButton(
+                        onClick = {
+                            val current = currentGoal.toFloatOrNull() ?: 0f
+                            onGoalChange((current + 1f).toString())
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Increase Hours"
+                        )
+                    }
                 }
-                
+
+                // Minutes Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Minutes:",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    
+                    IconButton(
+                        onClick = {
+                            val current = currentGoal.toFloatOrNull() ?: 0f
+                            if (current >= 0.25f) {
+                                onGoalChange((current - 0.25f).toString())
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Remove,
+                            contentDescription = "Decrease Minutes"
+                        )
+                    }
+                    
+                    Text(
+                        text = "${((currentGoal.toFloatOrNull() ?: 0f) % 1 * 60).toInt()}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    
+                    IconButton(
+                        onClick = {
+                            val current = currentGoal.toFloatOrNull() ?: 0f
+                            onGoalChange((current + 0.25f).toString())
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Increase Minutes"
+                        )
+                    }
+                }
+
                 Text(
-                    text = "${currentGoal.toFloatOrNull() ?: 0}h",
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    text = "Total: ${currentGoal.toFloatOrNull() ?: 0}h",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp)
                 )
-                
-                IconButton(
-                    onClick = {
-                        val current = currentGoal.toFloatOrNull() ?: 0f
-                        onGoalChange((current + 0.5f).toString())
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Increase"
-                    )
-                }
             }
         },
         confirmButton = {
