@@ -24,6 +24,18 @@ class SettingsViewModel @Inject constructor(
                 _state.update { it.copy(dailyStudyGoal = event.hours) }
             }
             SettingsEvent.SaveDailyStudyGoal -> saveDailyStudyGoal()
+            is SettingsEvent.ToggleTheme -> {
+                _state.update { it.copy(isDarkMode = event.isDark) }
+                // TODO: Save theme preference to DataStore
+            }
+            SettingsEvent.ToggleNotifications -> {
+                _state.update { it.copy(notificationsEnabled = !state.value.notificationsEnabled) }
+                // TODO: Handle notification permission and scheduling
+            }
+            is SettingsEvent.SetReminderTime -> {
+                _state.update { it.copy(reminderTime = event.time) }
+                // TODO: Update notification schedule if enabled
+            }
         }
     }
 

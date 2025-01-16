@@ -132,7 +132,11 @@ fun DashBoardScreenRoute(
             currentRoute = "schedule",
             onNavigate = { route ->
                 when (route) {
-                    "meditate" -> navigator.navigate(MeditationScreenDestination)
+                    "meditate" -> navigator.navigate(MeditationScreenDestination) {
+                        popUpTo(route = "schedule") { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                     else -> Unit
                 }
             }

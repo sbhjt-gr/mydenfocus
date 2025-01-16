@@ -93,11 +93,12 @@ import java.time.temporal.ChronoUnit
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.gorai.myedenfocus.util.NavigationStyles
 
 private val meditationDurations = listOf(5, 10, 15, 17, 20, 30)
 private val meditationMusic = listOf(
     "No Music",
-    "Wind Chimes Nature Symphony",
+    "Wind Chimes Nature",
     "Soothing Chime",
     "Full Brain Drop Down",
     "Focus on Yourself"
@@ -475,6 +476,7 @@ private fun PulsingStopButton(onClick: () -> Unit) {
 @RootNavGraph
 @Destination(
     route = "meditation",
+    style = NavigationStyles.SlideTransition::class,
     deepLinks = [
         DeepLink(
             uriPattern = "myedenfocus://meditation"
