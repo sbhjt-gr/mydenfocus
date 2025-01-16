@@ -79,6 +79,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gorai.myedenfocus.domain.model.MeditationSession
 import com.gorai.myedenfocus.presentation.components.BottomBar
+import com.gorai.myedenfocus.presentation.components.CommonTopBar
+import com.gorai.myedenfocus.presentation.destinations.SettingsScreenDestination
 import com.gorai.myedenfocus.service.MeditationTimerService
 import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
@@ -732,7 +734,11 @@ fun MeditationScreen(
 
     Scaffold(
         topBar = {
-            DashboardScreenTopBar()
+            CommonTopBar(
+                onSettingsClick = { 
+                    navigator.navigate(SettingsScreenDestination())
+                }
+            )
         },
         bottomBar = {
             BottomBar(

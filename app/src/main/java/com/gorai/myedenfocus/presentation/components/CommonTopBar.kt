@@ -26,7 +26,6 @@ fun CommonTopBar(
             ) {
                 Box(
                     modifier = Modifier
-                        .padding(start = 16.dp)
                         .size(32.dp)
                 ) {
                     Image(
