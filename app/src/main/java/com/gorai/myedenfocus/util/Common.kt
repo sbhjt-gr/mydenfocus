@@ -31,8 +31,7 @@ fun Long?.changeMillsToDateString(): String {
 }
 
 fun Long.toHours(): Float {
-    val hours = this.toFloat() / 3600f
-    return "%.2f".format(hours).toFloat()
+    return (this.toFloat() / 3600f).coerceIn(0f, Float.MAX_VALUE)
 }
 
 sealed class SnackbarEvent {

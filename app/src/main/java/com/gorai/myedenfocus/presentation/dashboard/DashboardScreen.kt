@@ -14,10 +14,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
@@ -25,10 +29,12 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -67,6 +74,18 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import com.gorai.myedenfocus.presentation.destinations.MeditationScreenDestination
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+import com.gorai.myedenfocus.presentation.destinations.SettingsScreenDestination
+import com.gorai.myedenfocus.presentation.components.CommonTopBar
 
 @RootNavGraph(start = true)
 @Destination(
@@ -75,40 +94,50 @@ import com.gorai.myedenfocus.presentation.destinations.MeditationScreenDestinati
 )
 @Composable
 fun DashBoardScreenRoute(
-    navigator: DestinationsNavigator
+    navigator: DestinationsNavigator,
+    viewModel: DashboardViewModel = hiltViewModel()
 ) {
-    val viewModel: DashboardViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val recentSessions by viewModel.recentSessions.collectAsStateWithLifecycle()
 
-    DashboardScreen(
-        state = state,
-        tasks = tasks,
-        recentSessions = recentSessions,
-        onEvent = viewModel::onEvent,
-        snackbarEvent = viewModel.snackbarEventFlow,
-        onSubjectCardClick = { subjectId ->
-            subjectId?.let {
-                navigator.navigate(SubjectScreenRouteDestination(subjectId = it))
-            }
-        },
-        onTaskCardClick = { taskId ->
-            taskId?.let {
-                navigator.navigate(TaskScreenRouteDestination(taskId = it, subjectId = null))
-            }
-        },
-        onStartSessionButtonClick = {
-            navigator.navigate(SessionScreenRouteDestination())
-        },
-        currentRoute = "schedule",
-        onNavigate = { route ->
-            when (route) {
-                "meditate" -> navigator.navigate(MeditationScreenDestination)
-                else -> Unit
-            }
+    Scaffold(
+        topBar = {
+            CommonTopBar(
+                onSettingsClick = { 
+                    navigator.navigate(SettingsScreenDestination())
+                }
+            )
         }
-    )
+    ) { padding ->
+        DashboardScreen(
+            state = state,
+            tasks = tasks,
+            recentSessions = recentSessions,
+            onEvent = viewModel::onEvent,
+            snackbarEvent = viewModel.snackbarEventFlow,
+            onSubjectCardClick = { subjectId ->
+                subjectId?.let {
+                    navigator.navigate(SubjectScreenRouteDestination(subjectId = it))
+                }
+            },
+            onTaskCardClick = { taskId ->
+                taskId?.let {
+                    navigator.navigate(TaskScreenRouteDestination(taskId = it, subjectId = null))
+                }
+            },
+            onStartSessionButtonClick = {
+                navigator.navigate(SessionScreenRouteDestination())
+            },
+            currentRoute = "schedule",
+            onNavigate = { route ->
+                when (route) {
+                    "meditate" -> navigator.navigate(MeditationScreenDestination)
+                    else -> Unit
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -133,6 +162,9 @@ private fun DashboardScreen(
     val snackbarHostState = remember {
         SnackbarHostState()
     }
+    var showDailyGoalDialog by remember { mutableStateOf(false) }
+    var showAddSubjectDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(key1 = true) {
         snackbarEvent.collectLatest {
                 event -> when(event) {
@@ -147,20 +179,43 @@ private fun DashboardScreen(
         }
     }
 
-    AddSubjectDialog(
-        isOpen = isAddSubjectDialogOpen,
-        onDismissRequest = { isAddSubjectDialogOpen = false },
-        onConfirmButtonClick = {
-            isAddSubjectDialogOpen = false
-            onEvent(DashboardEvent.SaveSubject)
-        },
-        subjectName = state.subjectName,
-        goalHours = state.goalStudyHours,
-        onSubjectNameChange = { onEvent(DashboardEvent.OnSubjectNameChange(it)) },
-        onGoalHoursChange = { onEvent(DashboardEvent.OnGoalStudyHoursChange(it)) },
-        selectedColors = state.subjectCardColors,
-        onColorChange = { onEvent(DashboardEvent.OnSubjectCardColorChange(it)) }
-    )
+    if (showDailyGoalDialog) {
+        DailyGoalDialog(
+            currentGoal = state.dailyStudyGoal,
+            onGoalChange = { onEvent(DashboardEvent.OnDailyStudyGoalChange(it)) },
+            onDismiss = { showDailyGoalDialog = false },
+            onConfirm = {
+                onEvent(DashboardEvent.SaveDailyStudyGoal)
+                showDailyGoalDialog = false
+                showAddSubjectDialog = true
+            }
+        )
+    }
+
+    if (showAddSubjectDialog) {
+        if (state.dailyStudyGoal.isEmpty()) {
+            showDailyGoalDialog = true
+            showAddSubjectDialog = false
+        } else {
+            AddSubjectDialog(
+                isOpen = true,
+                selectedColors = state.subjectCardColors,
+                onColorChange = { onEvent(DashboardEvent.OnSubjectCardColorChange(it)) },
+                subjectName = state.subjectName,
+                dailyGoalHours = state.goalStudyHours,
+                remainingHours = state.dailyStudyGoal.toFloatOrNull()?.minus(
+                    state.subjects.sumOf { it.goalHours.toDouble() }.toFloat()
+                ) ?: 0f,
+                onSubjectNameChange = { onEvent(DashboardEvent.OnSubjectNameChange(it)) },
+                onDailyGoalHoursChange = { onEvent(DashboardEvent.OnGoalStudyHoursChange(it)) },
+                onDismissRequest = { showAddSubjectDialog = false },
+                onConfirmButtonClick = {
+                    onEvent(DashboardEvent.SaveSubject)
+                    showAddSubjectDialog = false
+                }
+            )
+        }
+    }
 
     DeleteDialog(
         isOpen = isDeleteSubjectDialogOpen,
@@ -176,7 +231,9 @@ private fun DashboardScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            DashboardScreenTopBar()
+            DashboardScreenTopBar(
+                onDailyGoalClick = { showDailyGoalDialog = true }
+            )
         },
         bottomBar = {
             BottomBar(
@@ -196,34 +253,38 @@ private fun DashboardScreen(
                 CountCardsSection(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp)
-                        .padding(bottom = 8.dp),
+                        .padding(12.dp),
                     subjectCount = state.totalSubjectCount,
                     studiedHours = state.totalStudiedHours,
-                    goalHours = state.totalGoalStudyHours
+                    dailyStudiedHours = state.dailyStudiedHours,
+                    dailyGoalHours = state.dailyStudyGoal
                 )
-                
-                FloatingActionButton(
+            }
+
+            item {
+                Button(
                     onClick = onStartSessionButtonClick,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
+                        .height(56.dp)
+                        .padding(horizontal = 16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Start Session"
+                            contentDescription = "Start Session",
+                            modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Start Study Session",
-                            color = MaterialTheme.colorScheme.onPrimary
+                            style = MaterialTheme.typography.titleMedium
                         )
                     }
                 }
@@ -233,11 +294,9 @@ private fun DashboardScreen(
                 SubjectCardSection(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 0.dp),
+                        .padding(top = 16.dp),
                     subjectList = state.subjects,
-                    onAddIconClicked = {
-                        isAddSubjectDialogOpen = true
-                    },
+                    onAddIconClicked = { showAddSubjectDialog = true },
                     onSubjectCardClick = onSubjectCardClick
                 )
             }
@@ -263,7 +322,9 @@ private fun DashboardScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DashboardScreenTopBar() {
+private fun DashboardScreenTopBar(
+    onDailyGoalClick: () -> Unit
+) {
     CenterAlignedTopAppBar(
         title = {
             Row(
@@ -298,7 +359,8 @@ private fun CountCardsSection(
     modifier: Modifier,
     subjectCount: Int,
     studiedHours: String,
-    goalHours: String
+    dailyStudiedHours: String,
+    dailyGoalHours: String
 ) {
     Row(
         modifier = modifier,
@@ -309,26 +371,26 @@ private fun CountCardsSection(
             modifier = Modifier.weight(1f),
             headingText = "Subjects",
             value = subjectCount.toFloat(),
-            maxValue = 10f, // Assuming max 10 subjects
+            maxValue = 10f,
             displayText = subjectCount.toString()
         )
 
-        // Studied Hours Speedometer
+        // Daily Progress Speedometer
         Speedometer(
             modifier = Modifier.weight(1f),
-            headingText = "Studied",
-            value = studiedHours.toFloatOrNull() ?: 0f,
-            maxValue = goalHours.toFloatOrNull() ?: 100f,
-            displayText = "${studiedHours}h"
+            headingText = "Today",
+            value = dailyStudiedHours.toFloatOrNull() ?: 0f,
+            maxValue = dailyGoalHours.toFloatOrNull() ?: 1f,
+            displayText = "${dailyStudiedHours}h"
         )
 
-        // Goal Hours Speedometer
+        // Total Hours Speedometer
         Speedometer(
             modifier = Modifier.weight(1f),
-            headingText = "Goal",
-            value = goalHours.toFloatOrNull() ?: 0f,
+            headingText = "Total",
+            value = studiedHours.toFloatOrNull() ?: 0f,
             maxValue = 100f,
-            displayText = "${goalHours}h"
+            displayText = "${studiedHours}h"
         )
     }
 }
@@ -395,4 +457,69 @@ private fun SubjectCardSection(
             }
         }
     }
+}
+
+@Composable
+private fun DailyGoalDialog(
+    currentGoal: String,
+    onGoalChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Set Daily Study Goal") },
+        text = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = {
+                        val current = currentGoal.toFloatOrNull() ?: 0f
+                        if (current > 0) {
+                            onGoalChange((current - 0.5f).toString())
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Remove,
+                        contentDescription = "Decrease"
+                    )
+                }
+                
+                Text(
+                    text = "${currentGoal.toFloatOrNull() ?: 0}h",
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                
+                IconButton(
+                    onClick = {
+                        val current = currentGoal.toFloatOrNull() ?: 0f
+                        onGoalChange((current + 0.5f).toString())
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Increase"
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                enabled = currentGoal.toFloatOrNull() ?: 0f > 0
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

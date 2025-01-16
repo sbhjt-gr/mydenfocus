@@ -7,6 +7,7 @@ import com.gorai.myedenfocus.domain.repository.SessionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
+import java.util.Calendar
 import javax.inject.Inject
 
 class SessionRepositoryImpl @Inject constructor(
@@ -40,5 +41,18 @@ class SessionRepositoryImpl @Inject constructor(
 
     override fun getTotalSessionsDurationBySubject(subjectId: Int): Flow<Long> {
         return sessionDao.getTotalSessionsDurationBySubject(subjectId)
+    }
+
+    override fun getTodaySessionsDuration(): Flow<Long> {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        val startOfDay = calendar.timeInMillis
+
+        return sessionDao.getAllSessions().map { sessions ->
+            sessions.filter { it.date >= startOfDay }
+                   .sumOf { it.duration }
+        }
     }
 }

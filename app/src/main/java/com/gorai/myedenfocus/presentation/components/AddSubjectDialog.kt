@@ -47,9 +47,10 @@ fun AddSubjectDialog(
     selectedColors: List<Color>,
     onColorChange: (List<Color>) -> Unit,
     subjectName: String,
-    goalHours: String,
+    dailyGoalHours: String,
+    remainingHours: Float,
     onSubjectNameChange: (String) -> Unit,
-    onGoalHoursChange: (String) -> Unit,
+    onDailyGoalHoursChange: (String) -> Unit,
     onDismissRequest: () -> Unit,
     onConfirmButtonClick: () -> Unit
 ) {
@@ -66,10 +67,10 @@ fun AddSubjectDialog(
     }
 
     goalHoursError = when {
-        goalHours.isBlank() -> "Please Enter Goal Study Hours."
-        goalHours.toFloatOrNull() == null -> "Please Enter A Valid Number."
-        goalHours.toFloat() < 1f -> "Goal Study Hours Cannot Be Empty."
-        goalHours.toFloat() > 1000f -> "Please Set A Maximum Of 1000 Hours"
+        dailyGoalHours.isBlank() -> "Please Enter Daily Goal Hours."
+        dailyGoalHours.toFloatOrNull() == null -> "Please Enter A Valid Number."
+        dailyGoalHours.toFloat() < 0.25f -> "Minimum Goal Is 15 Minutes (0.25 Hours)"
+        dailyGoalHours.toFloat() > remainingHours -> "Cannot Exceed Available Hours: ${remainingHours}h"
         else -> null
     }
 
@@ -167,19 +168,19 @@ fun AddSubjectDialog(
                     
                     Spacer(modifier = Modifier.height(10.dp))
                     
-                    // Goal Hours TextField
+                    // Daily Goal Hours TextField
                     OutlinedTextField(
-                        value = goalHours,
-                        onValueChange = { onGoalHoursChange(it) },
+                        value = dailyGoalHours,
+                        onValueChange = { onDailyGoalHoursChange(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Goal Hours") },
-                        isError = goalHoursError != null && goalHours.isNotBlank(),
-                        supportingText = { Text(text = goalHoursError.orEmpty()) },
+                        label = { Text("Daily Goal Hours (${remainingHours}h available)") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
+                            keyboardType = KeyboardType.Decimal,
                             imeAction = ImeAction.Done
-                        )
+                        ),
+                        isError = goalHoursError != null,
+                        supportingText = goalHoursError?.let { { Text(it) } }
                     )
                 }
             },

@@ -15,7 +15,7 @@ interface SessionDao {
     @Delete
     suspend fun deleteSession(session: Session)
 
-    @Query("SELECT * FROM Session")
+    @Query("SELECT * FROM session")
     fun getAllSessions(): Flow<List<Session>>
 
     @Query("""

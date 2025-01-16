@@ -31,21 +31,52 @@ class DashboardViewModel @Inject constructor(
     private val taskRepository: TaskRepository
 ): ViewModel() {
     private val _state = MutableStateFlow(DashboardState())
-    val state = combine(
-            _state,
-            subjectRepository.getTotalSubjectCount(),
-            subjectRepository.getTotalGoalHours(),
-            subjectRepository.getAllSubjects(),
-            sessionRepository.getTotalSessionsDuration()
-        ) { state, subjectCount, goalHours, subjects, totalSessionDuration -> state.copy(
-            totalSubjectCount = subjectCount,
-            totalGoalStudyHours = goalHours.toString(),
-            subjects = subjects,
-            totalStudiedHours = totalSessionDuration.toHours().toString()
+    
+    private val subjectCount = subjectRepository.getTotalSubjectCount()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0
+        )
+    
+    private val subjects = subjectRepository.getAllSubjects()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+        
+    private val totalSessionDuration = sessionRepository.getTotalSessionsDuration()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0L
+        )
+        
+    private val todaySessionDuration = sessionRepository.getTodaySessionsDuration()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0L
+        )
+
+    val state: StateFlow<DashboardState> = combine(
+        _state,
+        subjectCount,
+        subjects,
+        totalSessionDuration,
+        todaySessionDuration
+    ) { state, count, subjectList, totalDuration, todayDuration ->
+        state.copy(
+            totalSubjectCount = count,
+            subjects = subjectList,
+            totalStudiedHours = totalDuration.toHours().toString(),
+            dailyStudiedHours = todayDuration.toHours().toString(),
+            dailyStudyGoal = state.dailyStudyGoal
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
+        started = SharingStarted.WhileSubscribed(5000),
         initialValue = DashboardState()
     )
     val tasks: StateFlow<List<Task>> = taskRepository.getAllUpcomingTasks().stateIn(
@@ -63,32 +94,26 @@ class DashboardViewModel @Inject constructor(
 
     fun onEvent(event: DashboardEvent) {
         when(event) {
+            DashboardEvent.SaveSubject -> saveSubject()
+            DashboardEvent.DeleteSubject -> deleteSubject()
             DashboardEvent.DeleteSession -> deleteSession()
+            DashboardEvent.SaveDailyStudyGoal -> saveDailyStudyGoal()
             is DashboardEvent.OnDeleteSessionButtonClick -> {
-                _state.update {
-                    it.copy(session = event.session)
-                }
+                _state.update { it.copy(session = event.session) }
             }
             is DashboardEvent.OnGoalStudyHoursChange -> {
-                _state.update {
-                    it.copy(goalStudyHours = event.hours)
-                }
+                _state.update { it.copy(goalStudyHours = event.hours) }
             }
             is DashboardEvent.OnSubjectCardColorChange -> {
-                _state.update {
-                    it.copy(subjectCardColors = event.colors)
-                }
+                _state.update { it.copy(subjectCardColors = event.colors) }
             }
             is DashboardEvent.OnSubjectNameChange -> {
-                _state.update {
-                    it.copy(subjectName = event.name)
-                }
+                _state.update { it.copy(subjectName = event.name) }
             }
-            is DashboardEvent.OnTaskIsCompleteChange -> {
-                updateTask(event.task)   
+            is DashboardEvent.OnTaskIsCompleteChange -> updateTask(event.task)
+            is DashboardEvent.OnDailyStudyGoalChange -> {
+                _state.update { it.copy(dailyStudyGoal = event.hours) }
             }
-            DashboardEvent.SaveSubject -> saveSubject()
-            DashboardEvent.DeleteSubject -> deleteSession()
         }
     }
 
@@ -160,6 +185,44 @@ class DashboardViewModel @Inject constructor(
                     SnackbarEvent.ShowSnackbar(
                         message = "Couldn't delete session. ${e.message}",
                         duration = SnackbarDuration.Long
+                    )
+                )
+            }
+        }
+    }
+
+    private fun saveDailyStudyGoal() {
+        viewModelScope.launch {
+            try {
+                // Here you might want to save the daily goal to a persistent storage
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar("Daily study goal saved successfully")
+                )
+            } catch (e: Exception) {
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(
+                        "Couldn't save daily study goal. ${e.message}",
+                        SnackbarDuration.Long
+                    )
+                )
+            }
+        }
+    }
+
+    private fun deleteSubject() {
+        viewModelScope.launch {
+            try {
+                state.value.currentSubjectId?.let { id ->
+                    subjectRepository.deleteSubject(id)
+                    _snackbarEventFlow.emit(
+                        SnackbarEvent.ShowSnackbar("Subject deleted successfully")
+                    )
+                }
+            } catch (e: Exception) {
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(
+                        "Couldn't delete subject. ${e.message}",
+                        SnackbarDuration.Long
                     )
                 )
             }

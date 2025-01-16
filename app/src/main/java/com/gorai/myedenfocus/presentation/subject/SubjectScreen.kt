@@ -60,6 +60,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import com.gorai.myedenfocus.util.NavAnimation
 import com.gorai.myedenfocus.presentation.components.Speedometer
+import com.gorai.myedenfocus.domain.model.Subject
 
 data class SubjectScreenNavArgs(
     val subjectId: Int
@@ -136,14 +137,21 @@ private fun SubjectScreen(
 
     AddSubjectDialog(
         isOpen = isEditSubjectDialogOpen,
+        title = "Edit Subject",
         onDismissRequest = { isEditSubjectDialogOpen = false },
         onConfirmButtonClick = {
             onEvent(SubjectEvent.UpdateSubject)
-            isEditSubjectDialogOpen = false },
+            isEditSubjectDialogOpen = false 
+        },
         subjectName = state.subjectName,
-        goalHours = state.goalStudyHours,
+        dailyGoalHours = state.goalStudyHours,
+        remainingHours = calculateRemainingHours(
+            dailyGoal = state.dailyStudyGoal.toFloatOrNull() ?: 0f,
+            currentSubject = state.currentSubjectId,
+            allSubjects = state.allSubjects
+        ),
         onSubjectNameChange = { onEvent(SubjectEvent.OnSubjectNameChange(it)) },
-        onGoalHoursChange = { onEvent(SubjectEvent.OnGoalStudyHoursChange(it)) },
+        onDailyGoalHoursChange = { onEvent(SubjectEvent.OnGoalStudyHoursChange(it)) },
         selectedColors = state.subjectCardColors,
         onColorChange = { onEvent(SubjectEvent.OnSubjectCardColorChange(it)) }
     )
@@ -310,4 +318,16 @@ private fun SubjectOverviewSection(
             displayText = "${(progress * 100).toInt()}%"
         )
     }
+}
+
+private fun calculateRemainingHours(
+    dailyGoal: Float,
+    currentSubject: Int?,
+    allSubjects: List<Subject>
+): Float {
+    return dailyGoal - allSubjects
+        .filter { it.subjectId != currentSubject }
+        .sumOf { it.goalHours.toDouble() }
+        .toFloat()
+        .coerceAtLeast(0f)
 }
