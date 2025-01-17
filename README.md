@@ -1,64 +1,58 @@
 # MyedenFocus Android Application
 
-MyedenFocus is a project aimed at improving academic performance by integrating study session scheduling, resulting in better time management for students. I started learning Jetpack Compose recently and the app is in development. Partial features are working.
+MyedenFocus is a productivity app designed to enhance academic performance through focused study sessions, meditation, and task management. Built with modern Android development practices using Jetpack Compose.
 
-## Table of Contents
+## Features
 
-- [Installation](#installation)
-- [Usage](#usage)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [License](#license)
+- **Study Session Timer**: Track study sessions with a customizable timer
+- **Meditation Timer**: Built-in meditation timer with background music options
+- **Task Management**: Schedule and track academic tasks with notifications
+- **Subject Management**: Organize study sessions by subjects
+- **Progress Tracking**: Monitor study hours and meditation sessions
+
+## Tech Stack
+
+- **UI**: Jetpack Compose with Material 3
+- **Architecture**: MVVM with Clean Architecture
+- **Dependency Injection**: Hilt
+- **Navigation**: Compose Destinations
+- **Background Processing**: Kotlin Coroutines
+- **Local Storage**: Room Database
+- **Services**: Foreground Services for timers
+- **Notifications**: NotificationCompat for Android 8.0+
+
+## Prerequisites
+
+- Android Studio Arctic Fox or newer
+- JDK 11 or higher
+- Android SDK 33 (minimum SDK 24)
+- Gradle 7.0 or higher
 
 ## Installation
 
-To get a local copy up and running follow these simple steps.
-
-### Prerequisites
-
-- Java Development Kit (JDK) 11 or higher
-- Gradle 6.0 or higher
-
-### Steps
-
-1. Clone the repo
+1. Clone the repository
    ```sh
    git clone https://github.com/your_username_/MyEdenFocus-Kotlin.git
    ```
-2. Navigate to the project directory
-   ```sh
-   cd MyEdenFocus-Kotlin
-   ```
-3. Build the project
-   ```sh
-   ./gradlew build
-   ```
-
-## Usage
-
-Provide examples and instructions for using the project. For example:
-
-```sh
-./gradlew run
-```
+2. Open in Android Studio
+3. Sync Gradle files
+4. Run on an emulator or physical device
 
 ## Project Structure
 
-- **.gitignore**: Specifies files and directories to ignore in Git.
-- **.idea/**: IntelliJ IDEA project settings.
-- **app/**: Contains the main application source code.
-  - **src/**: Source code directory.
-  - **resources/**: Resource files for the application.
-- **build.gradle.kts**: Build script for Gradle, written in Kotlin.
-- **gradle.properties**: Gradle configuration properties.
-- **gradle/**: Contains Gradle wrapper files.
-- **gradlew**: Unix shell script for Gradle wrapper.
-- **gradlew.bat**: Windows batch file for Gradle wrapper.
-- **settings.gradle.kts**: Gradle settings script, written in Kotlin.
+- **app/src/main/**
+  - **java/com/gorai/myedenfocus/**
+    - **data/**: Data layer with repositories and local storage
+    - **domain/**: Business logic and models
+    - **presentation/**: UI components and ViewModels
+    - **service/**: Background services for timers
+    - **util/**: Helper classes and extensions
+  - **res/**: Resources (layouts, drawables, values)
+  - **AndroidManifest.xml**: App configuration
 
 ## Contributing
 
-Contributions are not needed for now.
+Contributions are not currently being accepted as this is a personal learning project.
 
 ## License
 
@@ -66,4 +60,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## Contact
 
-For any inquiries & issues, please contact [Subhajit Gorai](mailto:sg_outlp@outlook.com). I will resolve it in the same day.
+For inquiries and issues, please contact:
+Subhajit Gorai - [sg_outlp@outlook.com](mailto:sg_outlp@outlook.com)
