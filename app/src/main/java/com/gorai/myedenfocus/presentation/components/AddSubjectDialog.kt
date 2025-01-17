@@ -364,7 +364,7 @@ fun AddSubjectDialog(
                                 )
                             }
 
-                            Text(
+                    Text(
                                 text = "$daysPerWeek",
                                 modifier = Modifier.width(40.dp),
                                 textAlign = TextAlign.Center,

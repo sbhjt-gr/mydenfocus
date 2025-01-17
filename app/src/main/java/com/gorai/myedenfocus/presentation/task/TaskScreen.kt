@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,6 +24,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -268,6 +272,147 @@ private fun TaskScreen(
                             isSelected = state.priority == priority,
                             onClick = { onEvent(TaskEvent.OnPriorityChange(priority)) }
                         )
+                    }
+                }
+            }
+
+            // Task Duration Section
+            Column {
+                Text(
+                    text = "Task Duration",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Hours Selector
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Hours",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outline,
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .padding(4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    val currentHours = (state.taskDuration / 60).toInt()
+                                    if (currentHours > 0) {
+                                        onEvent(TaskEvent.OnTaskDurationChange(
+                                            ((currentHours - 1) * 60 + state.taskDuration % 60).toInt()
+                                        ))
+                                    }
+                                },
+                                modifier = Modifier.size(32.dp),
+                                enabled = (state.taskDuration / 60).toInt() > 0
+                            ) {
+                                Icon(
+                                    Icons.Default.Remove,
+                                    "Decrease hours",
+                                    tint = if ((state.taskDuration / 60).toInt() > 0)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.outline
+                                )
+                            }
+
+                            Text(
+                                text = "${(state.taskDuration / 60).toInt()}",
+                                modifier = Modifier.width(40.dp),
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+
+                            IconButton(
+                                onClick = {
+                                    val currentHours = (state.taskDuration / 60).toInt()
+                                    if (currentHours < 15) {
+                                        onEvent(TaskEvent.OnTaskDurationChange(
+                                            ((currentHours + 1) * 60 + state.taskDuration % 60).toInt()
+                                        ))
+                                    }
+                                },
+                                modifier = Modifier.size(32.dp),
+                                enabled = (state.taskDuration / 60).toInt() < 15
+                            ) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    "Increase hours",
+                                    tint = if ((state.taskDuration / 60).toInt() < 15)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+                    }
+
+                    // Minutes Selector
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Minutes",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outline,
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .padding(4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    val currentMinutes = (state.taskDuration % 60).toInt()
+                                    val newMinutes = if (currentMinutes == 0) 55 else (currentMinutes - 5)
+                                    onEvent(TaskEvent.OnTaskDurationChange(
+                                        ((state.taskDuration / 60).toInt() * 60 + newMinutes).toInt()
+                                    ))
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Default.Remove, "Decrease minutes")
+                            }
+
+                            Text(
+                                text = "${(state.taskDuration % 60).toInt()}",
+                                modifier = Modifier.width(40.dp),
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+
+                            IconButton(
+                                onClick = {
+                                    val currentMinutes = (state.taskDuration % 60).toInt()
+                                    val newMinutes = if (currentMinutes == 55) 0 else (currentMinutes + 5)
+                                    onEvent(TaskEvent.OnTaskDurationChange(
+                                        ((state.taskDuration / 60).toInt() * 60 + newMinutes).toInt()
+                                    ))
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Default.Add, "Increase minutes")
+                            }
+                        }
                     }
                 }
             }

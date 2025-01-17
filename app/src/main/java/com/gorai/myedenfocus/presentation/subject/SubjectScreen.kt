@@ -209,7 +209,8 @@ private fun SubjectScreen(
                         .padding(12.dp),
                     studiedHours = state.studiedHours.toString(),
                     goalHours = state.goalStudyHours,
-                    progress = state.progress
+                    progress = state.progress,
+                    daysPerWeek = state.subjectDaysPerWeek
                 )
             }
             tasksList(
@@ -281,38 +282,49 @@ private fun SubjectOverviewSection(
     modifier: Modifier,
     studiedHours: String,
     goalHours: String,
-    progress: Float
+    progress: Float,
+    daysPerWeek: Int = 5
 ) {
+    // Format hours to 1 decimal place
+    val formattedStudiedHours = String.format("%.1f", studiedHours.toFloatOrNull() ?: 0f)
+    val formattedGoalHours = String.format("%.1f", goalHours.toFloatOrNull() ?: 0f)
+    
+    // Calculate weekly hours
+    val weeklyGoalHours = (goalHours.toFloatOrNull() ?: 0f) * daysPerWeek
+    val weeklyStudiedHours = (studiedHours.toFloatOrNull() ?: 0f)
+    val formattedWeeklyStudied = String.format("%.1f", weeklyStudiedHours)
+    val formattedWeeklyGoal = String.format("%.1f", weeklyGoalHours)
+
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Goal Hours Speedometer
+        // Daily Goal Hours Speedometer
         Speedometer(
             modifier = Modifier.weight(1f),
-            headingText = "Goal Hours",
+            headingText = "Daily Goal",
             value = goalHours.toFloatOrNull() ?: 0f,
-            maxValue = 100f,
-            displayText = "${goalHours}h"
+            maxValue = 15f,
+            displayText = "${formattedGoalHours}h"
         )
 
-        // Studied Hours Speedometer
+        // Daily Studied Hours Speedometer
         Speedometer(
             modifier = Modifier.weight(1f),
-            headingText = "Studied",
+            headingText = "Today's Hours",
             value = studiedHours.toFloatOrNull() ?: 0f,
-            maxValue = goalHours.toFloatOrNull() ?: 100f,
-            displayText = "${studiedHours}h"
+            maxValue = goalHours.toFloatOrNull() ?: 15f,
+            displayText = "${formattedStudiedHours}h"
         )
 
-        // Progress Speedometer
+        // Weekly Hours Speedometer
         Speedometer(
             modifier = Modifier.weight(1f),
-            headingText = "Progress",
-            value = progress * 100,
-            maxValue = 100f,
-            displayText = "${(progress * 100).toInt()}%"
+            headingText = "Weekly Hours",
+            value = weeklyStudiedHours,
+            maxValue = weeklyGoalHours,
+            displayText = "${formattedWeeklyStudied}h/${formattedWeeklyGoal}h"
         )
     }
 }

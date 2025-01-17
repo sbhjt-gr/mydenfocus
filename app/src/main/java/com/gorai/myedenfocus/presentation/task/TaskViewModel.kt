@@ -74,6 +74,11 @@ class TaskViewModel @Inject constructor(
                     it.copy(priority = event.priority)
                 }
             }
+            is TaskEvent.OnTaskDurationChange -> {
+                _state.update {
+                    it.copy(taskDuration = event.minutes)
+                }
+            }
             is TaskEvent.OnIsCompleteChange -> {
                 viewModelScope.launch {
                     try {

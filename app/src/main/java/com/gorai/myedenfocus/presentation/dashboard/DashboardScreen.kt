@@ -371,6 +371,12 @@ private fun CountCardsSection(
     // Calculate weekly goal
     val weeklyGoalHours = (dailyGoalHours.toFloatOrNull() ?: 0f) * studyDaysPerWeek
 
+    // Format hours to 1 decimal place
+    val formattedDailyStudied = String.format("%.1f", dailyStudiedHours.toFloatOrNull() ?: 0f)
+    val formattedDailyGoal = String.format("%.1f", dailyGoalHours.toFloatOrNull() ?: 0f)
+    val formattedWeeklyStudied = String.format("%.1f", studiedHours.toFloatOrNull() ?: 0f)
+    val formattedWeeklyGoal = String.format("%.1f", weeklyGoalHours)
+
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.SpaceEvenly
@@ -388,7 +394,7 @@ private fun CountCardsSection(
             headingText = "Today's Hours",
             value = dailyStudiedHours.toFloatOrNull() ?: 0f,
             maxValue = dailyGoalHours.toFloatOrNull() ?: 1f,
-            displayText = "${dailyStudiedHours}h/${dailyGoalHours}h"
+            displayText = "${formattedDailyStudied}h/${formattedDailyGoal}h"
         )
 
         Speedometer(
@@ -396,7 +402,7 @@ private fun CountCardsSection(
             headingText = "Weekly Hours",
             value = studiedHours.toFloatOrNull() ?: 0f,
             maxValue = weeklyGoalHours,
-            displayText = "${studiedHours}h/${weeklyGoalHours}h"
+            displayText = "${formattedWeeklyStudied}h/${formattedWeeklyGoal}h"
         )
     }
 }

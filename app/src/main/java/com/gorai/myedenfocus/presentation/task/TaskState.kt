@@ -11,5 +11,6 @@ data class TaskState(
     val relatedToSubject: String? = null,
     val subjects: List<Subject> = emptyList(),
     val subjectId: Int? = null,
-    val currentTaskId: Int? = null
+    val currentTaskId: Int? = null,
+    val taskDuration: Int = 0
 )
