@@ -264,7 +264,8 @@ private fun DashboardScreen(
                     subjectCount = state.totalSubjectCount,
                     studiedHours = state.totalStudiedHours,
                     dailyStudiedHours = state.dailyStudiedHours,
-                    dailyGoalHours = state.dailyStudyGoal
+                    dailyGoalHours = state.dailyStudyGoal,
+                    studyDaysPerWeek = state.studyDaysPerWeek
                 )
             }
 
@@ -367,8 +368,12 @@ private fun CountCardsSection(
     subjectCount: Int,
     studiedHours: String,
     dailyStudiedHours: String,
-    dailyGoalHours: String
+    dailyGoalHours: String,
+    studyDaysPerWeek: Int = 5
 ) {
+    // Calculate weekly goal
+    val weeklyGoalHours = (dailyGoalHours.toFloatOrNull() ?: 0f) * studyDaysPerWeek
+
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.SpaceEvenly
@@ -386,15 +391,15 @@ private fun CountCardsSection(
             headingText = "Today's Hours",
             value = dailyStudiedHours.toFloatOrNull() ?: 0f,
             maxValue = dailyGoalHours.toFloatOrNull() ?: 1f,
-            displayText = "${dailyStudiedHours} h"
+            displayText = "${dailyStudiedHours}h/${dailyGoalHours}h"
         )
 
         Speedometer(
             modifier = Modifier.weight(1f),
-            headingText = "Hours Studied",
+            headingText = "Weekly Hours",
             value = studiedHours.toFloatOrNull() ?: 0f,
-            maxValue = 100f,
-            displayText = "${studiedHours} h"
+            maxValue = weeklyGoalHours,
+            displayText = "${studiedHours}h/${weeklyGoalHours}h"
         )
     }
 }

@@ -581,11 +581,11 @@ fun MeditationScreen(
                 putExtra(MeditationTimerService.EXTRA_TIME, selectedMinutes * 60)
                 // Convert display name to file name
                 val musicFileName = when (selectedMusic) {
-                    "Wind Chimes Nature Symphony" -> "wind_chimes_nature_symphony.mp3"
+                    "Wind Chimes Nature" -> "wind_chimes_nature_symphony.mp3"
                     "Soothing Chime" -> "soothing_chime.mp3"
                     "Full Brain Drop Down" -> "full_brain_drop_down.mp3"
                     "Focus on Yourself" -> "focus_on_yourself.mp3"
-                    else -> "no_music"  // Handle No Music option
+                    else -> "no_music"
                 }
                 putExtra("selected_music", musicFileName)
             } else {
