@@ -70,6 +70,9 @@ class SessionViewModel @Inject constructor(
                     )
                 }
             }
+            is SessionEvent.OnDurationSelected -> {
+                _state.update { it.copy(selectedDuration = event.minutes) }
+            }
         }
     }
 

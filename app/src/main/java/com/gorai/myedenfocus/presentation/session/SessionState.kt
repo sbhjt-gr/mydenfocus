@@ -8,5 +8,7 @@ data class SessionState(
     val sessions: List<Session> = emptyList(),
     val relatedToSubject: String? = null,
     val subjectId: Int? = null,
-    val session: Session? = null
+    val session: Session? = null,
+    val selectedDuration: Int = 45, // default 45 minutes
+    val remainingSeconds: Int = 0
 )

@@ -54,9 +54,12 @@ class StudySessionTimerService : Service() {
         intent?.action.let {
             when (it) {
                 ACTION_SERVICE_START -> {
-                    startForegroundService()
-                    startTimer { hours, minutes, seconds ->
-                        updateNotification(hours, minutes, seconds)
+                    val durationMinutes = intent?.getIntExtra("DURATION", 0) ?: 0
+                    if (durationMinutes > 0) {
+                        startForegroundService()
+                        startTimer { hours, minutes, seconds ->
+                            updateNotification(hours, minutes, seconds)
+                        }
                     }
                 }
                 ACTION_SERVICE_STOP -> {

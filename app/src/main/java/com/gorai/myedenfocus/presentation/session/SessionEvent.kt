@@ -13,4 +13,5 @@ sealed class SessionEvent {
         val subjectId: Int?,
         val relatedToSubject: String
     ) : SessionEvent()
+    data class OnDurationSelected(val minutes: Int) : SessionEvent()
 }

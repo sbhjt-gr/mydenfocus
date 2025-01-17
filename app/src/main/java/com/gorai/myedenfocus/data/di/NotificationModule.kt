@@ -1,37 +1,49 @@
 package com.gorai.myedenfocus.data.di
 
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import androidx.core.app.NotificationCompat
+import com.gorai.myedenfocus.MainActivity
+import com.gorai.myedenfocus.R
 import com.gorai.myedenfocus.util.Constants.NOTIFICATION_CHANNEL_ID
-import com.gorai.myedenfocus.presentation.session.ServiceHelper
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.components.ServiceComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dagger.hilt.android.scopes.ServiceScoped
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
 
 @Module
-@InstallIn(ServiceComponent::class)
+@InstallIn(SingletonComponent::class)
 object NotificationModule {
 
-    @ServiceScoped
     @Provides
+    @Singleton
     fun provideNotificationBuilder(
         @ApplicationContext context: Context
     ): NotificationCompat.Builder {
-        return NotificationCompat
-            .Builder(context, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Study Timer")
-            .setContentText("00:00:00")
-            .setSmallIcon(android.R.drawable.ic_media_play)
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_timer)
+            .setAutoCancel(true)
             .setOngoing(true)
-            .setContentIntent(ServiceHelper.clickPendingIntent(context))
+            .setContentIntent(pendingIntent)
     }
 
-    @ServiceScoped
     @Provides
+    @Singleton
     fun provideNotificationManager(
         @ApplicationContext context: Context
     ): NotificationManager {
