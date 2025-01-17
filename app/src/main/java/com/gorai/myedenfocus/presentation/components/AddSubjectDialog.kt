@@ -66,7 +66,9 @@ fun AddSubjectDialog(
     onSubjectNameChange: (String) -> Unit,
     onDailyGoalHoursChange: (String) -> Unit,
     onDismissRequest: () -> Unit,
-    onConfirmButtonClick: () -> Unit
+    onConfirmButtonClick: () -> Unit,
+    daysPerWeek: Int = 5,
+    onDaysPerWeekChange: (Int) -> Unit
 ) {
     var subjectNameError by rememberSaveable { mutableStateOf<String?>(null) }
     var goalHoursError by rememberSaveable { mutableStateOf<String?>(null) }
@@ -189,12 +191,10 @@ fun AddSubjectDialog(
                     
                     // Daily Goal Hours TextField
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // Hours Selector
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "Hours",
@@ -216,18 +216,20 @@ fun AddSubjectDialog(
                                 IconButton(
                                     onClick = {
                                         if (currentHours > 0) {
-                                            val newValue = String.format("%.2f", (currentHours - 1) + (currentMinutes / 60f))
-                                            onDailyGoalHoursChange(newValue)
+                                            val newValue = (currentHours - 1) + (currentMinutes / 60f)
+                                            onDailyGoalHoursChange(newValue.toString())
                                         }
                                     },
                                     modifier = Modifier.size(32.dp),
                                     enabled = currentHours > 0
                                 ) {
                                     Icon(
-                                        Icons.Default.Remove,
+                                        Icons.Default.Remove, 
                                         "Decrease hours",
-                                        tint = if (currentHours > 0) MaterialTheme.colorScheme.primary 
-                                               else MaterialTheme.colorScheme.outline
+                                        tint = if (currentHours > 0) 
+                                            MaterialTheme.colorScheme.primary 
+                                        else 
+                                            MaterialTheme.colorScheme.outline
                                     )
                                 }
 
@@ -241,25 +243,26 @@ fun AddSubjectDialog(
                                 IconButton(
                                     onClick = {
                                         if (currentHours < 15) {
-                                            val newValue = String.format("%.2f", (currentHours + 1) + (currentMinutes / 60f))
-                                            onDailyGoalHoursChange(newValue)
+                                            val newValue = (currentHours + 1) + (currentMinutes / 60f)
+                                            onDailyGoalHoursChange(newValue.toString())
                                         }
                                     },
                                     modifier = Modifier.size(32.dp),
                                     enabled = currentHours < 15
                                 ) {
                                     Icon(
-                                        Icons.Default.Add,
+                                        Icons.Default.Add, 
                                         "Increase hours",
-                                        tint = if (currentHours < 15) MaterialTheme.colorScheme.primary 
-                                               else MaterialTheme.colorScheme.outline
+                                        tint = if (currentHours < 15) 
+                                            MaterialTheme.colorScheme.primary 
+                                        else 
+                                            MaterialTheme.colorScheme.outline
                                     )
                                 }
                             }
                         }
 
-                        Spacer(modifier = Modifier.width(16.dp))
-
+                        // Minutes Selector
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "Minutes",
@@ -281,8 +284,8 @@ fun AddSubjectDialog(
                                 IconButton(
                                     onClick = {
                                         val newMinutes = if (currentMinutes == 0) 55 else (currentMinutes - 5)
-                                        val newValue = String.format("%.2f", currentHours + (newMinutes / 60f))
-                                        onDailyGoalHoursChange(newValue)
+                                        val newValue = currentHours + (newMinutes / 60f)
+                                        onDailyGoalHoursChange(newValue.toString())
                                     },
                                     modifier = Modifier.size(32.dp)
                                 ) {
@@ -290,7 +293,7 @@ fun AddSubjectDialog(
                                 }
 
                                 Text(
-                                    text = String.format("%02d", currentMinutes),
+                                    text = "$currentMinutes",
                                     modifier = Modifier.width(40.dp),
                                     textAlign = TextAlign.Center,
                                     style = MaterialTheme.typography.titleMedium
@@ -299,8 +302,8 @@ fun AddSubjectDialog(
                                 IconButton(
                                     onClick = {
                                         val newMinutes = if (currentMinutes == 55) 0 else (currentMinutes + 5)
-                                        val newValue = String.format("%.2f", currentHours + (newMinutes / 60f))
-                                        onDailyGoalHoursChange(newValue)
+                                        val newValue = currentHours + (newMinutes / 60f)
+                                        onDailyGoalHoursChange(newValue.toString())
                                     },
                                     modifier = Modifier.size(32.dp)
                                 ) {
@@ -321,20 +324,75 @@ fun AddSubjectDialog(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    // Remaining Hours Text
-                    Text(
-                        text = run {
-                            val hours = remainingHours.toInt()
-                            val minutes = ((remainingHours - hours) * 60).toInt()
-                            val minutesFormatted = String.format("%02d", minutes)
-                            "Remaining Time: ${hours}h ${minutesFormatted}m"
-                        },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (remainingHours < 0) MaterialTheme.colorScheme.error 
-                               else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
+                    // Days per Week selector
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Days per week:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outline,
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .padding(4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    if (daysPerWeek > 1) {
+                                        onDaysPerWeekChange(daysPerWeek - 1)
+                                    }
+                                },
+                                modifier = Modifier.size(32.dp),
+                                enabled = daysPerWeek > 1
+                            ) {
+                                Icon(
+                                    Icons.Default.Remove,
+                                    "Decrease days",
+                                    tint = if (daysPerWeek > 1)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.outline
+                                )
+                            }
+
+                            Text(
+                                text = "$daysPerWeek",
+                                modifier = Modifier.width(40.dp),
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+
+                            IconButton(
+                                onClick = {
+                                    if (daysPerWeek < 7) {
+                                        onDaysPerWeekChange(daysPerWeek + 1)
+                                    }
+                                },
+                                modifier = Modifier.size(32.dp),
+                                enabled = daysPerWeek < 7
+                            ) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    "Increase days",
+                                    tint = if (daysPerWeek < 7)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+                    }
                 }
             },
             dismissButton = {

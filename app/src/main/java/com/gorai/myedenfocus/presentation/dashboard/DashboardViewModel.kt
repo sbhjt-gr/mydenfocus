@@ -141,6 +141,12 @@ class DashboardViewModel @Inject constructor(
             is DashboardEvent.OnDailyStudyGoalChange -> {
                 _state.update { it.copy(dailyStudyGoal = event.goal) }
             }
+            is DashboardEvent.OnStudyDaysPerWeekChange -> {
+                _state.update { it.copy(studyDaysPerWeek = event.days) }
+            }
+            is DashboardEvent.OnSubjectDaysPerWeekChange -> {
+                _state.update { it.copy(subjectDaysPerWeek = event.days) }
+            }
         }
     }
 

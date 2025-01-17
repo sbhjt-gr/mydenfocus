@@ -9,14 +9,14 @@ data class SubjectState(
     val currentSubjectId: Int? = null,
     val subjectName: String = "",
     val goalStudyHours: String = "",
+    val dailyStudyGoal: String = "",
     val studiedHours: Float = 0f,
     val progress: Float = 0f,
     val subjectCardColors: List<Color> = Subject.subjectCardColors.random(),
-    val recentSessions: List<Session> = emptyList(),
     val upcomingTasks: List<Task> = emptyList(),
     val completedTasks: List<Task> = emptyList(),
+    val recentSessions: List<Session> = emptyList(),
+    val allSubjects: List<Subject> = emptyList(),
     val session: Session? = null,
-    val isLoading: Boolean = false,
-    val dailyStudyGoal: String = "",
-    val allSubjects: List<Subject> = emptyList()
+    val subjectDaysPerWeek: Int = 5
 )

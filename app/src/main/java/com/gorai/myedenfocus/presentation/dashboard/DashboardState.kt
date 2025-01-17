@@ -14,5 +14,7 @@ data class DashboardState(
     val totalStudiedHours: String = "",
     val dailyStudiedHours: String = "",
     val subjectCardColors: List<Color> = Subject.subjectCardColors.random(),
-    val session: Session? = null
+    val session: Session? = null,
+    val studyDaysPerWeek: Int = 5,
+    val subjectDaysPerWeek: Int = 5
 )

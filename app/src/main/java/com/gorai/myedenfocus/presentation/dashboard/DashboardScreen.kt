@@ -167,7 +167,9 @@ private fun DashboardScreen(
             onConfirm = {
                 onEvent(DashboardEvent.SaveDailyStudyGoal)
                 showDailyGoalDialog = false
-            }
+            },
+            state = state,
+            onEvent = onEvent
         )
     }
 
@@ -187,7 +189,9 @@ private fun DashboardScreen(
             onConfirmButtonClick = {
                 onEvent(DashboardEvent.SaveSubject)
                 showAddSubjectDialog = false
-            }
+            },
+            daysPerWeek = state.subjectDaysPerWeek,
+            onDaysPerWeekChange = { onEvent(DashboardEvent.OnSubjectDaysPerWeekChange(it)) }
         )
     }
 
@@ -464,65 +468,137 @@ private fun DailyGoalDialog(
     currentGoal: String,
     onGoalChange: (String) -> Unit,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
+    state: DashboardState,
+    onEvent: (DashboardEvent) -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Set Daily Study Goal") },
         text = {
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                Text(
-                    text = "Hours:",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-                
-                IconButton(
-                    onClick = {
-                        val current = currentGoal.toFloatOrNull() ?: 0f
-                        if (current >= 1) {
-                            onGoalChange((current - 1f).toString())
-                        }
-                    },
-                    enabled = (currentGoal.toFloatOrNull() ?: 0f) > 0
+                // Hours selector
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Remove,
-                        contentDescription = "Decrease Hours",
-                        tint = if ((currentGoal.toFloatOrNull() ?: 0f) > 0)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.outline
+                    Text(
+                        text = "Hours per day:",
+                        style = MaterialTheme.typography.bodyLarge
                     )
+                    
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                val current = currentGoal.toFloatOrNull() ?: 0f
+                                if (current >= 1) {
+                                    onGoalChange((current - 1f).toString())
+                                }
+                            },
+                            enabled = (currentGoal.toFloatOrNull() ?: 0f) > 0
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Remove,
+                                contentDescription = "Decrease Hours",
+                                tint = if ((currentGoal.toFloatOrNull() ?: 0f) > 0)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.outline
+                            )
+                        }
+                        
+                        Text(
+                            text = "${currentGoal.toFloatOrNull()?.toInt() ?: 0}",
+                            style = MaterialTheme.typography.headlineMedium,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        
+                        IconButton(
+                            onClick = {
+                                val current = currentGoal.toFloatOrNull() ?: 0f
+                                if (current < 16) {
+                                    onGoalChange((current + 1f).toString())
+                                }
+                            },
+                            enabled = (currentGoal.toFloatOrNull() ?: 0f) < 16
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Increase Hours",
+                                tint = if ((currentGoal.toFloatOrNull() ?: 0f) < 16)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
                 }
-                
-                Text(
-                    text = "${currentGoal.toFloatOrNull()?.toInt() ?: 0}",
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                
-                IconButton(
-                    onClick = {
-                        val current = currentGoal.toFloatOrNull() ?: 0f
-                        if (current < 16) {
-                            onGoalChange((current + 1f).toString())
-                        }
-                    },
-                    enabled = (currentGoal.toFloatOrNull() ?: 0f) < 16
+
+                // Days per week selector
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Increase Hours",
-                        tint = if ((currentGoal.toFloatOrNull() ?: 0f) < 16)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.outline
+                    Text(
+                        text = "Days per week:",
+                        style = MaterialTheme.typography.bodyLarge
                     )
+                    
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                val current = state.studyDaysPerWeek
+                                if (current > 1) {
+                                    onEvent(DashboardEvent.OnStudyDaysPerWeekChange(current - 1))
+                                }
+                            },
+                            enabled = state.studyDaysPerWeek > 1
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Remove,
+                                contentDescription = "Decrease Days",
+                                tint = if (state.studyDaysPerWeek > 1)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.outline
+                            )
+                        }
+                        
+                        Text(
+                            text = "${state.studyDaysPerWeek}",
+                            style = MaterialTheme.typography.headlineMedium,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        
+                        IconButton(
+                            onClick = {
+                                val current = state.studyDaysPerWeek
+                                if (current < 7) {
+                                    onEvent(DashboardEvent.OnStudyDaysPerWeekChange(current + 1))
+                                }
+                            },
+                            enabled = state.studyDaysPerWeek < 7
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Increase Days",
+                                tint = if (state.studyDaysPerWeek < 7)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
                 }
             }
         },

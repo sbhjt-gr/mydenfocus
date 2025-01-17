@@ -148,12 +148,15 @@ private fun SubjectScreen(
         remainingHours = calculateRemainingHours(
             dailyGoal = state.dailyStudyGoal.toFloatOrNull() ?: 0f,
             currentSubject = state.currentSubjectId,
-            allSubjects = state.allSubjects
+            allSubjects = state.allSubjects,
+            currentGoalHours = state.goalStudyHours.toFloatOrNull() ?: 0f
         ),
         onSubjectNameChange = { onEvent(SubjectEvent.OnSubjectNameChange(it)) },
         onDailyGoalHoursChange = { onEvent(SubjectEvent.OnGoalStudyHoursChange(it)) },
         selectedColors = state.subjectCardColors,
-        onColorChange = { onEvent(SubjectEvent.OnSubjectCardColorChange(it)) }
+        onColorChange = { onEvent(SubjectEvent.OnSubjectCardColorChange(it)) },
+        daysPerWeek = state.subjectDaysPerWeek,
+        onDaysPerWeekChange = { onEvent(SubjectEvent.OnSubjectDaysPerWeekChange(it)) }
     )
     DeleteDialog(
         isOpen = isDeleteSubjectDialogOpen,
@@ -323,11 +326,13 @@ private fun SubjectOverviewSection(
 private fun calculateRemainingHours(
     dailyGoal: Float,
     currentSubject: Int?,
-    allSubjects: List<Subject>
+    allSubjects: List<Subject>,
+    currentGoalHours: Float
 ): Float {
-    return dailyGoal - allSubjects
+    val totalOtherSubjectsHours = allSubjects
         .filter { it.subjectId != currentSubject }
         .sumOf { it.goalHours.toDouble() }
         .toFloat()
-        .coerceAtLeast(0f)
+    
+    return (dailyGoal - totalOtherSubjectsHours + currentGoalHours).coerceAtLeast(0f)
 }

@@ -11,6 +11,8 @@ sealed interface DashboardEvent {
     data class OnDeleteSessionButtonClick(val session: Session): DashboardEvent
     data class OnTaskIsCompleteChange(val task: Task): DashboardEvent
     data class OnDailyStudyGoalChange(val goal: String): DashboardEvent
+    data class OnStudyDaysPerWeekChange(val days: Int): DashboardEvent
+    data class OnSubjectDaysPerWeekChange(val days: Int): DashboardEvent
     object SaveSubject: DashboardEvent
     object DeleteSubject: DashboardEvent
     object DeleteSession: DashboardEvent

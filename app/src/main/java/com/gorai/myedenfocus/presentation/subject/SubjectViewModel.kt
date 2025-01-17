@@ -111,13 +111,16 @@ class SubjectViewModel @Inject constructor(
                 _state.update { it.copy(goalStudyHours = event.hours) }
             }
             is SubjectEvent.OnSubjectCardColorChange -> {
-                _state.update { it.copy(subjectCardColors = event.color) }
+                _state.update { it.copy(subjectCardColors = event.colors) }
             }
             is SubjectEvent.OnSubjectNameChange -> {
                 _state.update { it.copy(subjectName = event.name) }
             }
             is SubjectEvent.OnTaskIsCompletedChange -> updateTask(event.task)
             SubjectEvent.UpdateProgress -> updateProgress()
+            is SubjectEvent.OnSubjectDaysPerWeekChange -> {
+                _state.update { it.copy(subjectDaysPerWeek = event.days) }
+            }
         }
     }
 
