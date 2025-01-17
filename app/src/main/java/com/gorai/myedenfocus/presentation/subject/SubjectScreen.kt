@@ -145,12 +145,6 @@ private fun SubjectScreen(
         },
         subjectName = state.subjectName,
         dailyGoalHours = state.goalStudyHours,
-        remainingHours = calculateRemainingHours(
-            dailyGoal = state.dailyStudyGoal.toFloatOrNull() ?: 0f,
-            currentSubject = state.currentSubjectId,
-            allSubjects = state.allSubjects,
-            currentGoalHours = state.goalStudyHours.toFloatOrNull() ?: 0f
-        ),
         onSubjectNameChange = { onEvent(SubjectEvent.OnSubjectNameChange(it)) },
         onDailyGoalHoursChange = { onEvent(SubjectEvent.OnGoalStudyHoursChange(it)) },
         selectedColors = state.subjectCardColors,

@@ -180,9 +180,6 @@ private fun DashboardScreen(
             onColorChange = { onEvent(DashboardEvent.OnSubjectCardColorChange(it)) },
             subjectName = state.subjectName,
             dailyGoalHours = state.goalStudyHours,
-            remainingHours = state.dailyStudyGoal.toFloatOrNull()?.minus(
-                state.subjects.sumOf { it.goalHours.toDouble() }.toFloat()
-            ) ?: 0f,
             onSubjectNameChange = { onEvent(DashboardEvent.OnSubjectNameChange(it)) },
             onDailyGoalHoursChange = { onEvent(DashboardEvent.OnGoalStudyHoursChange(it)) },
             onDismissRequest = { showAddSubjectDialog = false },
@@ -237,7 +234,7 @@ private fun DashboardScreen(
                 ) {
                     Column {
                         Text(
-                            text = "Daily Study Goal",
+                            text = "Study Goal",
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(

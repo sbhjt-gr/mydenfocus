@@ -62,7 +62,6 @@ fun AddSubjectDialog(
     onColorChange: (List<Color>) -> Unit,
     subjectName: String,
     dailyGoalHours: String,
-    remainingHours: Float,
     onSubjectNameChange: (String) -> Unit,
     onDailyGoalHoursChange: (String) -> Unit,
     onDismissRequest: () -> Unit,
@@ -91,7 +90,6 @@ fun AddSubjectDialog(
     goalHoursError = when {
         dailyGoalHours.isBlank() -> "Please select study time"
         dailyGoalHours.toFloat() < 0.25f -> "Minimum goal is 15 minutes"
-        dailyGoalHours.toFloat() > remainingHours -> "Cannot exceed available hours: ${remainingHours}h"
         else -> null
     }
 
