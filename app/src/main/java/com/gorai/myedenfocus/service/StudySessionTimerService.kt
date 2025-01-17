@@ -1,20 +1,22 @@
 package com.gorai.myedenfocus.service
 
+import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.os.Build
 import android.os.IBinder
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.lifecycleScope
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_CANCEL
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_START
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_STOP
 import com.gorai.myedenfocus.util.ServiceHelper
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class StudySessionTimerService : LifecycleService() {
+class StudySessionTimerService : Service() {
     private var timerJob: Job? = null
     private var totalTimeSeconds = 0
     private var elapsedTimeSeconds = 0
@@ -51,7 +53,7 @@ class StudySessionTimerService : LifecycleService() {
     private fun startTimer() {
         currentTimerState.value = TimerState.STARTED
         
-        timerJob = lifecycleScope.launch {
+        GlobalScope.launch {
             while (elapsedTimeSeconds < totalTimeSeconds) {
                 val remainingSeconds = totalTimeSeconds - elapsedTimeSeconds
                 updateTimeDisplay(remainingSeconds)
@@ -87,7 +89,7 @@ class StudySessionTimerService : LifecycleService() {
             seconds = seconds.value
         ).build()
         
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(ServiceHelper.NOTIFICATION_ID, notification)
     }
 
@@ -96,6 +98,7 @@ class StudySessionTimerService : LifecycleService() {
         currentTimerState.value = TimerState.STOPPED
     }
 
+    @RequiresApi(Build.VERSION_CODES.N)
     private fun stopTimer() {
         timerJob?.cancel()
         currentTimerState.value = TimerState.IDLE
@@ -114,7 +117,6 @@ class StudySessionTimerService : LifecycleService() {
     }
 
     override fun onBind(intent: Intent): IBinder? {
-        super.onBind(intent)
         return null
     }
 }
