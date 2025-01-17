@@ -61,6 +61,7 @@ import kotlinx.coroutines.flow.collectLatest
 import com.gorai.myedenfocus.util.NavAnimation
 import com.gorai.myedenfocus.presentation.components.Speedometer
 import com.gorai.myedenfocus.domain.model.Subject
+import com.gorai.myedenfocus.util.formatHours
 
 data class SubjectScreenNavArgs(
     val subjectId: Int
@@ -285,46 +286,38 @@ private fun SubjectOverviewSection(
     progress: Float,
     daysPerWeek: Int = 5
 ) {
-    // Format hours to 1 decimal place
-    val formattedStudiedHours = String.format("%.1f", studiedHours.toFloatOrNull() ?: 0f)
-    val formattedGoalHours = String.format("%.1f", goalHours.toFloatOrNull() ?: 0f)
-    
-    // Calculate weekly hours
-    val weeklyGoalHours = (goalHours.toFloatOrNull() ?: 0f) * daysPerWeek
-    val weeklyStudiedHours = (studiedHours.toFloatOrNull() ?: 0f)
-    val formattedWeeklyStudied = String.format("%.1f", weeklyStudiedHours)
-    val formattedWeeklyGoal = String.format("%.1f", weeklyGoalHours)
+    val studiedHoursFloat = studiedHours.toFloatOrNull() ?: 0f
+    val goalHoursFloat = goalHours.toFloatOrNull() ?: 0f
+    val weeklyGoalHours = goalHoursFloat * daysPerWeek
+    val weeklyStudiedHours = studiedHoursFloat
 
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Daily Goal Hours Speedometer
         Speedometer(
             modifier = Modifier.weight(1f),
             headingText = "Daily Goal",
-            value = goalHours.toFloatOrNull() ?: 0f,
+            value = goalHoursFloat,
             maxValue = 15f,
-            displayText = "${formattedGoalHours}h"
+            displayText = goalHoursFloat.formatHours()
         )
 
-        // Daily Studied Hours Speedometer
         Speedometer(
             modifier = Modifier.weight(1f),
             headingText = "Today's Hours",
-            value = studiedHours.toFloatOrNull() ?: 0f,
-            maxValue = goalHours.toFloatOrNull() ?: 15f,
-            displayText = "${formattedStudiedHours}h"
+            value = studiedHoursFloat,
+            maxValue = goalHoursFloat,
+            displayText = studiedHoursFloat.formatHours()
         )
 
-        // Weekly Hours Speedometer
         Speedometer(
             modifier = Modifier.weight(1f),
             headingText = "Weekly Hours",
             value = weeklyStudiedHours,
             maxValue = weeklyGoalHours,
-            displayText = "${formattedWeeklyStudied}h/${formattedWeeklyGoal}h"
+            displayText = "${weeklyStudiedHours.formatHours()}/${weeklyGoalHours.formatHours()}"
         )
     }
 }
@@ -341,4 +334,12 @@ private fun calculateRemainingHours(
         .toFloat()
     
     return (dailyGoal - totalOtherSubjectsHours + currentGoalHours).coerceAtLeast(0f)
+}
+
+private fun formatHours(hours: Float): String {
+    return if (hours % 1 == 0f) {
+        "${hours.toInt()}h"
+    } else {
+        String.format("%.1fh", hours)
+    }
 }

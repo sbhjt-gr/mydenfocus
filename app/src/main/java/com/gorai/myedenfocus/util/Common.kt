@@ -45,3 +45,15 @@ sealed class SnackbarEvent {
 fun Int.pad(): String {
     return this.toString().padStart(length = 2, padChar = '0')
 }
+
+fun Float.formatHours(): String {
+    return if (this % 1 == 0f) {
+        "${this.toInt()}h"
+    } else {
+        String.format("%.1fh", this)
+    }
+}
+
+fun String.formatHoursFromString(): String {
+    return (this.toFloatOrNull() ?: 0f).formatHours()
+}

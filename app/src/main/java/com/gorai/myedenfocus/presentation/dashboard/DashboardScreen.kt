@@ -63,6 +63,8 @@ import com.gorai.myedenfocus.presentation.destinations.SubjectScreenRouteDestina
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
 import com.gorai.myedenfocus.util.NavAnimation
 import com.gorai.myedenfocus.util.SnackbarEvent
+import com.gorai.myedenfocus.util.formatHours
+import com.gorai.myedenfocus.util.formatHoursFromString
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootNavGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -239,7 +241,7 @@ private fun DashboardScreen(
                         )
                         Text(
                             text = if (state.dailyStudyGoal.isEmpty()) "Not set" 
-                                  else "${state.dailyStudyGoal}h",
+                                  else state.dailyStudyGoal.formatHoursFromString(),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -368,14 +370,10 @@ private fun CountCardsSection(
     dailyGoalHours: String,
     studyDaysPerWeek: Int = 5
 ) {
-    // Calculate weekly goal
     val weeklyGoalHours = (dailyGoalHours.toFloatOrNull() ?: 0f) * studyDaysPerWeek
-
-    // Format hours to 1 decimal place
-    val formattedDailyStudied = String.format("%.1f", dailyStudiedHours.toFloatOrNull() ?: 0f)
-    val formattedDailyGoal = String.format("%.1f", dailyGoalHours.toFloatOrNull() ?: 0f)
-    val formattedWeeklyStudied = String.format("%.1f", studiedHours.toFloatOrNull() ?: 0f)
-    val formattedWeeklyGoal = String.format("%.1f", weeklyGoalHours)
+    val studiedHoursFloat = studiedHours.toFloatOrNull() ?: 0f
+    val dailyStudiedHoursFloat = dailyStudiedHours.toFloatOrNull() ?: 0f
+    val dailyGoalHoursFloat = dailyGoalHours.toFloatOrNull() ?: 0f
 
     Row(
         modifier = modifier,
@@ -392,17 +390,17 @@ private fun CountCardsSection(
         Speedometer(
             modifier = Modifier.weight(1f),
             headingText = "Today's Hours",
-            value = dailyStudiedHours.toFloatOrNull() ?: 0f,
-            maxValue = dailyGoalHours.toFloatOrNull() ?: 1f,
-            displayText = "${formattedDailyStudied}h/${formattedDailyGoal}h"
+            value = dailyStudiedHoursFloat,
+            maxValue = dailyGoalHoursFloat,
+            displayText = "${dailyStudiedHoursFloat.formatHours()}/${dailyGoalHoursFloat.formatHours()}"
         )
 
         Speedometer(
             modifier = Modifier.weight(1f),
             headingText = "Weekly Hours",
-            value = studiedHours.toFloatOrNull() ?: 0f,
+            value = studiedHoursFloat,
             maxValue = weeklyGoalHours,
-            displayText = "${formattedWeeklyStudied}h/${formattedWeeklyGoal}h"
+            displayText = "${studiedHoursFloat.formatHours()}/${weeklyGoalHours.formatHours()}"
         )
     }
 }
@@ -523,7 +521,7 @@ private fun DailyGoalDialog(
                         }
                         
                         Text(
-                            text = "${currentGoal.toFloatOrNull()?.toInt() ?: 0}",
+                            text = "${(currentGoal.toFloatOrNull() ?: 0f).formatHours()}",
                             style = MaterialTheme.typography.headlineMedium,
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )
@@ -627,4 +625,12 @@ private fun DailyGoalDialog(
             }
         }
     )
+}
+
+private fun formatHours(hours: Float): String {
+    return if (hours % 1 == 0f) {
+        "${hours.toInt()}h"
+    } else {
+        String.format("%.1fh", hours)
+    }
 }
