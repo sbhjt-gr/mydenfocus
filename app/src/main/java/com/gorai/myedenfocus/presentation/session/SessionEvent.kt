@@ -9,8 +9,9 @@ sealed class SessionEvent {
     data class OnRelatedSubjectChange(val subject: Subject) : SessionEvent()
     data class OnDeleteSessionButtonClick(val session: Session) : SessionEvent()
     data class OnDurationSelected(val minutes: Int) : SessionEvent()
+    data class InitializeWithTopic(val topicId: Int) : SessionEvent()
+    data class CompleteTask(val taskId: Int) : SessionEvent()
     object DeleteSession : SessionEvent()
     object SaveSession : SessionEvent()
     object CheckSubjectId : SessionEvent()
-    data class InitializeWithTopic(val topicId: Int) : SessionEvent()
 }

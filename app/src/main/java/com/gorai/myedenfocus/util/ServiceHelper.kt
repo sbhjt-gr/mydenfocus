@@ -60,16 +60,14 @@ object ServiceHelper {
     fun triggerForegroundService(
         context: Context,
         action: String,
-        duration: Int = 0
+        duration: Int = 0,
+        topicId: Int? = null
     ) {
         Intent(context, StudySessionTimerService::class.java).apply {
             this.action = action
             putExtra("DURATION", duration)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(this)
-            } else {
-                context.startService(this)
-            }
+            topicId?.let { putExtra("TOPIC_ID", it) }
+            context.startService(this)
         }
     }
 } 

@@ -234,12 +234,13 @@ private fun SessionScreen(
         if (currentTimerState == TimerState.IDLE && state.selectedTopicId != null) {
             // Check if timer was actually completed (not just cancelled)
             val duration = timerService.duration.toLong()
-            if (duration == 0L) {  // Timer reached 0
+            if (duration > 0) {  // Timer reached completion
                 ServiceHelper.triggerForegroundService(
                     context = context,
                     action = ACTION_SERVICE_CANCEL
                 )
                 onEvent(SessionEvent.SaveSession)
+                onEvent(SessionEvent.CompleteTask(state.selectedTopicId))
             }
         }
     }
@@ -641,7 +642,8 @@ private fun ButtonSection(
                             ServiceHelper.triggerForegroundService(
                                 context = context,
                                 action = ACTION_SERVICE_START,
-                                duration = durationMinutes
+                                duration = durationMinutes,
+                                topicId = selectedTopicId
                             )
                         }
                     }

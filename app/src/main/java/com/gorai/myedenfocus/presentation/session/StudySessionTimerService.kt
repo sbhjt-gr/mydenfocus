@@ -12,6 +12,10 @@ import android.os.Build
 import android.os.IBinder
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.NotificationCompat
+import com.gorai.myedenfocus.R
+import com.gorai.myedenfocus.domain.model.Session
+import com.gorai.myedenfocus.domain.repository.SessionRepository
+import com.gorai.myedenfocus.domain.repository.TaskRepository
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_CANCEL
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_START
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_STOP
@@ -20,14 +24,20 @@ import com.gorai.myedenfocus.util.Constants.NOTIFICATION_CHANNEL_NAME
 import com.gorai.myedenfocus.util.Constants.NOTIFICATION_ID
 import com.gorai.myedenfocus.util.pad
 import dagger.hilt.android.AndroidEntryPoint
+import java.time.Instant
 import java.util.Timer
 import javax.inject.Inject
 import kotlin.concurrent.fixedRateTimer
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class StudySessionTimerService : Service() {
@@ -38,11 +48,21 @@ class StudySessionTimerService : Service() {
     @Inject
     lateinit var notificationBuilder: NotificationCompat.Builder
 
+    @Inject
+    lateinit var sessionRepository: SessionRepository
+
+    @Inject
+    lateinit var taskRepository: TaskRepository
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
     private val binder = StudySessionTimerBinder()
 
     private var timer: Timer? = null
     private var totalDurationMinutes: Int = 0
     private var elapsedSeconds: Int = 0
+    private var wasManuallyFinished = false
+    private var selectedTopicId: Int? = null
 
     var duration: Int = 0
         private set
@@ -78,11 +98,16 @@ class StudySessionTimerService : Service() {
                 if (minutes > 0) {
                     totalDurationMinutes = minutes
                     elapsedSeconds = 0  // Reset elapsed seconds
+                    wasManuallyFinished = false
+                    selectedTopicId = intent.getIntExtra("TOPIC_ID", -1).let { if (it == -1) null else it }
                     startTimer()
                 }
             }
             ACTION_SERVICE_STOP -> pauseTimer()
-            ACTION_SERVICE_CANCEL -> stopTimer()
+            ACTION_SERVICE_CANCEL -> {
+                wasManuallyFinished = true
+                stopTimer()
+            }
         }
         return START_NOT_STICKY
     }
@@ -171,9 +196,32 @@ class StudySessionTimerService : Service() {
         currentTimerState.value = TimerState.IDLE
         stopForegroundService()
         
-        // Only play alarm if timer completed naturally
-        if (wasTimerCompleted) {
+        // Only play alarm and complete task if timer completed naturally and wasn't manually finished
+        if (wasTimerCompleted && !wasManuallyFinished) {
             playAlarm()
+            selectedTopicId?.let { topicId ->
+                // Save session and complete task
+                serviceScope.launch {
+                    try {
+                        sessionRepository.insertSession(
+                            Session(
+                                sessionSubjectId = subjectId.value ?: -1,
+                                relatedToSubject = "",  // This will be updated by the UI if needed
+                                date = Instant.now().toEpochMilli(),
+                                duration = totalDurationMinutes.toLong()
+                            )
+                        )
+
+                        taskRepository.getTaskById(topicId)?.let { task ->
+                            taskRepository.upsertTask(
+                                task.copy(isComplete = true)
+                            )
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
         }
     }
 
@@ -225,6 +273,7 @@ class StudySessionTimerService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        serviceScope.cancel()
         stopAlarm()
     }
 

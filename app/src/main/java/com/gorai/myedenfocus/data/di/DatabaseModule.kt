@@ -30,25 +30,18 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideDatabase(
-        application: Application
+    fun provideAppDatabase(
+        @ApplicationContext context: Context
     ): AppDatabase {
         return Room.databaseBuilder(
-            application,
+            context,
             AppDatabase::class.java,
-            "database.db"
+            "app_db"
         )
-        .addMigrations(
-            object : Migration(1, 2) {
-                override fun migrate(database: SupportSQLiteDatabase) {
-                    database.execSQL(
-                        "ALTER TABLE Task ADD COLUMN taskDuration INTEGER NOT NULL DEFAULT 0"
-                    )
-                }
-            }
-        )
+        .addMigrations(AppDatabase.MIGRATION_1_2)
         .build()
     }
+
     @Provides
     @Singleton
     fun provideSubjectDao(database: AppDatabase): SubjectDao {

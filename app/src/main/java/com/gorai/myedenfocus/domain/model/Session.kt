@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class Session(
     val sessionSubjectId: Int,
     val relatedToSubject: String,
+    val topicName: String = "",
     val date: Long,
     val duration: Long,
     @PrimaryKey(autoGenerate = true)

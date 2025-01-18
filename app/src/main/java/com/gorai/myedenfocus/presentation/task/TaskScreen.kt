@@ -72,6 +72,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 
 data class TaskScreenNavArgs(
     val taskId: Int?,
@@ -261,10 +262,14 @@ private fun TaskScreen(
 
             // Topic Duration Section
             DurationSelector(
-                hours = (state.taskDuration / 60).toInt(),
+                hours = (state.taskDuration / 60),
                 minutes = state.taskDuration % 60,
-                onHoursChange = { onEvent(TaskEvent.OnTaskDurationChange(it * 60)) },
-                onMinutesChange = { onEvent(TaskEvent.OnTaskDurationChange(it)) }
+                onHoursChange = { newHours -> 
+                    onEvent(TaskEvent.OnTaskDurationChange((newHours * 60) + (state.taskDuration % 60)))
+                },
+                onMinutesChange = { newMinutes ->
+                    onEvent(TaskEvent.OnTaskDurationChange((state.taskDuration / 60 * 60) + newMinutes))
+                }
             )
 
             // Subject Selection
@@ -447,102 +452,111 @@ private fun DurationSelector(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.Start
     ) {
         Text(
             text = "Topic Duration",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp)
         )
         Row(
-            modifier = Modifier
-                .padding(vertical = 8.dp)
-                .fillMaxWidth(0.7f), // Takes up 70% of the width
-            horizontalArrangement = Arrangement.SpaceEvenly
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Hours Selector
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    "Hours",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-                NumberPicker(
-                    value = hours,
-                    onValueChange = onHoursChange,
-                    range = 0..24
-                )
-            }
+            // Hours
+            TimeUnit(
+                value = hours,
+                onValueChange = { newHours ->
+                    if (newHours in 0..24) {
+                        onHoursChange(newHours)
+                    }
+                },
+                label = "Hours"
+            )
             
-            // Minutes Selector
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    "Minutes",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-                NumberPicker(
-                    value = minutes,
-                    onValueChange = onMinutesChange,
-                    range = 0..59,
-                    step = 1
-                )
-            }
+            Spacer(modifier = Modifier.width(24.dp))
+            
+            // Minutes
+            TimeUnit(
+                value = minutes,
+                onValueChange = { newMinutes ->
+                    when {
+                        newMinutes > 59 -> {
+                            if (hours < 24) {
+                                onHoursChange(hours + 1)
+                                onMinutesChange(0)
+                            }
+                        }
+                        newMinutes < 0 -> {
+                            if (hours > 0) {
+                                onHoursChange(hours - 1)
+                                onMinutesChange(59)
+                            }
+                        }
+                        else -> onMinutesChange(newMinutes)
+                    }
+                },
+                label = "Minutes"
+            )
         }
     }
 }
 
 @Composable
-private fun NumberPicker(
+private fun TimeUnit(
     value: Int,
     onValueChange: (Int) -> Unit,
-    range: IntRange,
-    step: Int = 1
+    label: String
 ) {
     Row(
-        modifier = Modifier
-            .background(
-                MaterialTheme.colorScheme.surfaceVariant,
-                RoundedCornerShape(8.dp)
-            )
-            .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        IconButton(
-            onClick = {
-                val newValue = (value - step).coerceIn(range)
-                onValueChange(newValue)
-            }
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
         ) {
-            Icon(
-                imageVector = Icons.Default.Remove,
-                contentDescription = "Decrease"
-            )
+            Row(
+                modifier = Modifier.padding(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = { onValueChange(value - 1) },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Remove,
+                        contentDescription = "Decrease",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                Text(
+                    text = value.toString().padStart(2, '0'),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+                
+                IconButton(
+                    onClick = { onValueChange(value + 1) },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Increase",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
         
         Text(
-            text = value.toString().padStart(2, '0'),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 8.dp)
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
-        IconButton(
-            onClick = {
-                val newValue = (value + step).coerceIn(range)
-                onValueChange(newValue)
-            }
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Increase"
-            )
-        }
     }
-    }
+}
