@@ -12,7 +12,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,27 +21,25 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -55,15 +52,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gorai.myedenfocus.domain.model.Subject
+import com.gorai.myedenfocus.domain.model.Task
 import com.gorai.myedenfocus.presentation.components.DeleteDialog
 import com.gorai.myedenfocus.presentation.components.MeditationReminderDialog
 import com.gorai.myedenfocus.presentation.components.SubjectListBottomSheet
@@ -74,6 +72,7 @@ import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_CANCEL
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_START
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_STOP
 import com.gorai.myedenfocus.util.NavAnimation
+import com.gorai.myedenfocus.util.Priority
 import com.gorai.myedenfocus.util.ServiceHelper
 import com.gorai.myedenfocus.util.SnackbarEvent
 import com.ramcosta.composedestinations.annotation.DeepLink
@@ -83,13 +82,10 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import kotlin.time.DurationUnit
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
+import kotlin.time.DurationUnit
 
 @Destination(
     deepLinks = [
@@ -244,27 +240,19 @@ private fun SessionScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                DurationSelector(
-                    selectedMinutes = state.selectedDuration,
-                    onDurationSelected = { minutes ->
-                        onEvent(SessionEvent.OnDurationSelected(minutes))
-                    }
-                )
-            }
-            item {
                 TimerSection(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f),
-                    hours = timerService?.hours?.value ?: "00",
-                    minutes = timerService?.minutes?.value ?: "00",
-                    seconds = timerService?.seconds?.value ?: "00",
-                    totalSeconds = timerService?.let {
-                        val h = it.hours.value.toIntOrNull() ?: 0
-                        val m = it.minutes.value.toIntOrNull() ?: 0
-                        val s = it.seconds.value.toIntOrNull() ?: 0
+                    hours = hours,
+                    minutes = minutes,
+                    seconds = seconds,
+                    totalSeconds = timerService.let {
+                        val h = hours.toIntOrNull() ?: 0
+                        val m = minutes.toIntOrNull() ?: 0
+                        val s = seconds.toIntOrNull() ?: 0
                         (h * 3600) + (m * 60) + s
-                    } ?: 0,
+                    },
                     selectedDurationMinutes = state.selectedDuration
                 )
             }
@@ -286,6 +274,25 @@ private fun SessionScreen(
             }
             
             item {
+                TopicSelector(
+                    topics = state.topics,
+                    selectedTopicId = state.selectedTopicId,
+                    onTopicSelected = { task -> 
+                        onEvent(SessionEvent.OnTopicSelect(task))
+                        if (task.taskDuration > 0) {
+                            ServiceHelper.triggerForegroundService(
+                                context = context,
+                                action = ACTION_SERVICE_START,
+                                duration = task.taskDuration
+                            )
+                            timerService.subjectId.value = task.taskSubjectId
+                        }
+                    },
+                    selectedSubjectId = state.subjectId
+                )
+            }
+            
+            item {
                 ButtonSection(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -303,7 +310,7 @@ private fun SessionScreen(
                                 context = context,
                                 action = ACTION_SERVICE_CANCEL
                             )
-                            onEvent(SessionEvent.SaveSession(duration))
+                            onEvent(SessionEvent.SaveSession)
                         }
                     },
                     timerState = currentTimerState,
@@ -311,7 +318,8 @@ private fun SessionScreen(
                     context = context,
                     onShowMeditationDialog = { showMeditationDialog = true },
                     durationMinutes = state.selectedDuration,
-                    hasMeditatedToday = hasMeditatedToday
+                    hasMeditatedToday = hasMeditatedToday,
+                    selectedTopicId = state.selectedTopicId
                 )
             }
             studySessionsList(
@@ -467,45 +475,84 @@ private fun RelatedToSubjectSection(
     subjects: List<Subject>,
     onSubjectSelected: (Subject) -> Unit
 ) {
-    Column(
+    var showSubjectPicker by remember { mutableStateOf(false) }
+
+    Row(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Related to Subject",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            text = "Select Subject:",
+            style = MaterialTheme.typography.titleMedium
         )
         
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = selectSubjectButtonClick),
-            shape = RoundedCornerShape(8.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            color = MaterialTheme.colorScheme.surface
+        Button(
+            onClick = { showSubjectPicker = true },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = relatedToSubject.ifEmpty { "Select Subject" },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (relatedToSubject.isEmpty()) 
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    else 
-                        MaterialTheme.colorScheme.onSurface
-                )
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = "Select Subject"
-                )
-            }
+            Text(
+                text = relatedToSubject.ifEmpty { "Select Subject" },
+                style = MaterialTheme.typography.bodyLarge
+            )
         }
+    }
+
+    if (showSubjectPicker) {
+        AlertDialog(
+            onDismissRequest = { showSubjectPicker = false },
+            title = { Text("Select Subject") },
+            text = {
+                if (subjects.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No subjects available",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn {
+                        items(subjects) { subject ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onSubjectSelected(subject)
+                                        showSubjectPicker = false
+                                    }
+                                    .padding(vertical = 12.dp, horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = subject.name,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Text(
+                                    text = "${subject.goalHours}h/day",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSubjectPicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -519,7 +566,8 @@ private fun ButtonSection(
     context: Context,
     onShowMeditationDialog: () -> Unit,
     durationMinutes: Int,
-    hasMeditatedToday: Boolean
+    hasMeditatedToday: Boolean,
+    selectedTopicId: Int?
 ) {
     Row(
         modifier = modifier,
@@ -540,25 +588,24 @@ private fun ButtonSection(
         Button(
             onClick = { 
                 if (timerState == TimerState.STARTED) {
-                    // If timer is running, stop it
                     ServiceHelper.triggerForegroundService(
                         context = context,
                         action = ACTION_SERVICE_STOP
                     )
                 } else {
-                    // If timer is not running, check meditation and start
+                    if (selectedTopicId == null) {
+                        // Show snackbar or dialog to select topic first
+                        return@Button
+                    }
                     if (!hasMeditatedToday) {
                         onShowMeditationDialog()
                     } else {
-                        // Make sure duration is passed here
                         if (durationMinutes > 0) {
                             ServiceHelper.triggerForegroundService(
                                 context = context,
                                 action = ACTION_SERVICE_START,
                                 duration = durationMinutes
                             )
-                            // Add debug logging
-                            println("Starting timer with duration: $durationMinutes minutes")
                         }
                     }
                 }
@@ -567,7 +614,8 @@ private fun ButtonSection(
                 containerColor = if (timerState == TimerState.STARTED) Red
                 else MaterialTheme.colorScheme.primary,
                 contentColor = Color.White
-            )
+            ),
+            enabled = selectedTopicId != null
         ) {
             Text(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
@@ -601,11 +649,13 @@ private fun timerTextAnimation(duration: Int = 600): ContentTransform {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DurationSelector(
-    selectedMinutes: Int,
-    onDurationSelected: (Int) -> Unit
+private fun TopicSelector(
+    topics: List<Task>,
+    selectedTopicId: Int?,
+    onTopicSelected: (Task) -> Unit,
+    selectedSubjectId: Int?
 ) {
-    var showTimePicker by remember { mutableStateOf(false) }
+    var showTopicPicker by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
@@ -615,168 +665,98 @@ private fun DurationSelector(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Duration:",
+            text = "Select Topic:",
             style = MaterialTheme.typography.titleMedium
         )
         
         Button(
-            onClick = { showTimePicker = true },
+            onClick = { showTopicPicker = true },
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            ),
+            enabled = selectedSubjectId != null
         ) {
             Text(
-                text = formatDuration(selectedMinutes),
+                text = topics.find { it.taskId == selectedTopicId }?.title ?: 
+                    if (selectedSubjectId == null) "Select subject first" else "Select Topic",
                 style = MaterialTheme.typography.bodyLarge
             )
         }
     }
 
-    if (showTimePicker) {
-        TimePickerDialog(
-            onDismiss = { showTimePicker = false },
-            onConfirm = { hours, minutes ->
-                val totalMinutes = (hours * 60) + minutes
-                if (totalMinutes in 1..(16 * 60)) {
-                    onDurationSelected(totalMinutes)
+    if (showTopicPicker) {
+        AlertDialog(
+            onDismissRequest = { showTopicPicker = false },
+            title = { Text("Select Topic") },
+            text = {
+                val filteredTopics = topics.filter { task -> 
+                    !task.isComplete && task.taskSubjectId == selectedSubjectId 
                 }
-                showTimePicker = false
-            },
-            initialHours = selectedMinutes / 60,
-            initialMinutes = selectedMinutes % 60
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TimePickerDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (hours: Int, minutes: Int) -> Unit,
-    initialHours: Int = 0,
-    initialMinutes: Int = 0
-) {
-    var hours by remember { mutableStateOf(initialHours) }
-    var minutes by remember { mutableStateOf(initialMinutes) }
-    val totalMinutes = (hours * 60) + minutes
-    val maxMinutes = 16 * 60  // 16 hours in minutes
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Select Duration") },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Hours Selector
-                    NumberPicker(
-                        value = hours,
-                        onValueChange = { newHours ->
-                            // Only update if total minutes would be <= maxMinutes
-                            if ((newHours * 60 + minutes) <= maxMinutes) {
-                                hours = newHours
+                if (filteredTopics.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No topics available for this subject",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn {
+                        items(filteredTopics) { task ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onTopicSelected(task)
+                                        showTopicPicker = false
+                                    }
+                                    .padding(vertical = 12.dp, horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = task.title,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        text = if (task.taskDuration > 0) {
+                                            "${task.taskDuration / 60}h ${task.taskDuration % 60}m"
+                                        } else {
+                                            "No duration set"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Priority.fromInt(task.priority).color.copy(alpha = 0.1f),
+                                    contentColor = Priority.fromInt(task.priority).color
+                                ) {
+                                    Text(
+                                        text = Priority.fromInt(task.priority).name,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
                             }
-                        },
-                        range = 0..16,  // Allow up to 16 hours
-                        label = "Hours"
-                    )
-
-                    Text(":", style = MaterialTheme.typography.headlineMedium)
-
-                    // Minutes Selector
-                    NumberPicker(
-                        value = minutes,
-                        onValueChange = { newMinutes ->
-                            // Only update if total minutes would be <= maxMinutes
-                            if ((hours * 60 + newMinutes) <= maxMinutes) {
-                                minutes = newMinutes
-                            }
-                        },
-                        range = 0..59,
-                        label = "Minutes"
-                    )
+                        }
+                    }
                 }
-
-                if (totalMinutes == 0) {
-                    Text(
-                        text = "Please select a duration (max 16 hours)",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+            },
+            confirmButton = {
+                TextButton(onClick = { showTopicPicker = false }) {
+                    Text("Cancel")
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(hours, minutes) },
-                enabled = totalMinutes in 1..maxMinutes
-            ) {
-                Text("OK")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-private fun NumberPicker(
-    value: Int,
-    onValueChange: (Int) -> Unit,
-    range: IntRange,
-    label: String
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        IconButton(
-            onClick = { 
-                if (value < range.last) onValueChange(value + 1)
-            },
-            enabled = value < range.last
-        ) {
-            Icon(Icons.Default.KeyboardArrowUp, "Increase")
-        }
-
-        Text(
-            text = value.toString().padStart(2, '0'),
-            style = MaterialTheme.typography.headlineMedium
         )
-
-        IconButton(
-            onClick = { 
-                if (value > range.first) onValueChange(value - 1)
-            },
-            enabled = value > range.first
-        ) {
-            Icon(Icons.Default.KeyboardArrowDown, "Decrease")
-        }
-
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-private fun formatDuration(minutes: Int): String {
-    val hours = minutes / 60
-    val mins = minutes % 60
-    return when {
-        hours > 0 -> "${hours}h ${mins}m"
-        else -> "${mins}m"
     }
 }

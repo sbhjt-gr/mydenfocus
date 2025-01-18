@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.repository.SessionRepository
 import com.gorai.myedenfocus.domain.repository.SubjectRepository
+import com.gorai.myedenfocus.domain.repository.TaskRepository
 import com.gorai.myedenfocus.util.SnackbarEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -21,23 +22,41 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SessionViewModel @Inject constructor(
-    subjectRepository: SubjectRepository,
-    private val sessionRepository: SessionRepository
+    private val subjectRepository: SubjectRepository,
+    private val sessionRepository: SessionRepository,
+    private val taskRepository: TaskRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SessionState())
+    
+    private val subjects = subjectRepository.getAllSubjects()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+        
+    private val topics = taskRepository.getAllUpcomingTasks()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     val state = combine(
         _state,
-        subjectRepository.getAllSubjects(),
-        sessionRepository.getAllSessions()
-    ) { state, subjects, sessions ->
+        subjects,
+        topics,
+        sessionRepository.getRecentFiveSessions(subjectId = 0)
+    ) { state, subjects, topics, sessions ->
         state.copy(
             subjects = subjects,
+            topics = topics,
             sessions = sessions
         )
     }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
+        viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
         initialValue = SessionState()
     )
 
@@ -45,12 +64,14 @@ class SessionViewModel @Inject constructor(
     val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
 
     fun onEvent(event: SessionEvent) {
-        when (event) {
-            is SessionEvent.CheckSubjectId -> notifyToUpdateSubject()
-            is SessionEvent.DeleteSession -> deleteSession()
-            is SessionEvent.OnDeleteSessionButtonClick -> {
-                _state.update {
-                    it.copy(session = event.session)
+        when(event) {
+            is SessionEvent.OnTopicSelect -> {
+                _state.update { 
+                    it.copy(
+                        selectedTopicId = event.task.taskId,
+                        subjectId = event.task.taskSubjectId,
+                        selectedDuration = event.task.taskDuration
+                    )
                 }
             }
             is SessionEvent.OnRelatedSubjectChange -> {
@@ -61,18 +82,40 @@ class SessionViewModel @Inject constructor(
                     )
                 }
             }
-            is SessionEvent.SaveSession -> insertSession(event.duration)
-            is SessionEvent.UpdateSubjectIdAndRelatedSubject -> {
+            is SessionEvent.DeleteSession -> deleteSession()
+            is SessionEvent.OnDeleteSessionButtonClick -> {
                 _state.update {
-                    it.copy(
-                        relatedToSubject = event.relatedToSubject,
-                        subjectId = event.subjectId
-                    )
+                    it.copy(session = event.session)
+                }
+            }
+            is SessionEvent.SaveSession -> {
+                viewModelScope.launch {
+                    try {
+                        sessionRepository.insertSession(
+                            session = Session(
+                                sessionSubjectId = state.value.subjectId ?: -1,
+                                relatedToSubject = state.value.relatedToSubject ?: "",
+                                date = Instant.now().toEpochMilli(),
+                                duration = state.value.selectedDuration.toLong()
+                            )
+                        )
+                        _snackbarEventFlow.emit(
+                            SnackbarEvent.ShowSnackbar(message = "Session saved successfully.")
+                        )
+                    } catch (e: Exception) {
+                        _snackbarEventFlow.emit(
+                            SnackbarEvent.ShowSnackbar(
+                                "Couldn't save session",
+                                SnackbarDuration.Long
+                            )
+                        )
+                    }
                 }
             }
             is SessionEvent.OnDurationSelected -> {
                 _state.update { it.copy(selectedDuration = event.minutes) }
             }
+            is SessionEvent.CheckSubjectId -> notifyToUpdateSubject()
         }
     }
 
@@ -104,39 +147,6 @@ class SessionViewModel @Inject constructor(
                     SnackbarEvent.ShowSnackbar(
                         message = "Couldn't delete session. ${e.message}",
                         duration = SnackbarDuration.Long
-                    )
-                )
-            }
-        }
-    }
-
-    private fun insertSession(duration: Long) {
-        viewModelScope.launch {
-            if (duration < 36) {
-                _snackbarEventFlow.emit(
-                    SnackbarEvent.ShowSnackbar(
-                        message = "Single session can not be less than 36 seconds"
-                    )
-                )
-                return@launch
-            }
-            try {
-                sessionRepository.insertSession(
-                    session = Session(
-                        sessionSubjectId = state.value.subjectId ?: -1,
-                        relatedToSubject = state.value.relatedToSubject ?: "",
-                        date = Instant.now().toEpochMilli(),
-                        duration = duration
-                    )
-                )
-                _snackbarEventFlow.emit(
-                    SnackbarEvent.ShowSnackbar(message = "Session saved successfully.")
-                )
-            } catch (e: Exception) {
-                _snackbarEventFlow.emit(
-                    SnackbarEvent.ShowSnackbar(
-                        "Couldn't save session",
-                        SnackbarDuration.Long
                     )
                 )
             }
