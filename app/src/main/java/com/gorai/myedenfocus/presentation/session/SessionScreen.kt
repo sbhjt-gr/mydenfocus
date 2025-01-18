@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,13 +19,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -53,7 +56,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -85,7 +87,13 @@ import java.time.LocalDate
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.time.DurationUnit
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+
+data class SessionScreenNavArgs(
+    val preSelectedTopicId: Int? = null,
+    val preSelectedSubjectId: Int? = null
+)
 
 @Destination(
     deepLinks = [
@@ -100,10 +108,23 @@ import kotlin.time.DurationUnit
 @Composable
 fun SessionScreenRoute(
     navigator: DestinationsNavigator,
-    timerService: StudySessionTimerService
+    timerService: StudySessionTimerService,
+    preSelectedTopicId: Int? = null,
+    preSelectedSubjectId: Int? = null
 ) {
     val viewModel: SessionViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
+    
+    LaunchedEffect(preSelectedTopicId, preSelectedSubjectId) {
+        if (preSelectedTopicId != null) {
+            viewModel.onEvent(SessionEvent.InitializeWithTopic(preSelectedTopicId))
+            // Get task duration and set timer
+            viewModel.getTaskById(preSelectedTopicId)?.let { task ->
+                timerService.setDuration(task.taskDuration)
+            }
+        }
+    }
+
     SessionScreen(
         state = state,
         snackbarEvent = viewModel.snackbarEventFlow,
@@ -153,25 +174,20 @@ private fun SessionScreen(
 
     if (showMeditationDialog) {
         MeditationReminderDialog(
-            onDismissRequest = { 
-                showMeditationDialog = false 
-            },
+            onDismissRequest = { showMeditationDialog = false },
             onMeditateClick = {
                 showMeditationDialog = false
                 navigator.navigate(MeditationScreenDestination)
             },
             onSkipClick = {
                 showMeditationDialog = false
-                // Start the timer after skipping meditation
-                if (state.subjectId != null) {
+                // Start timer when skipping meditation
+                if (state.selectedDuration > 0) {
                     ServiceHelper.triggerForegroundService(
                         context = context,
                         action = ACTION_SERVICE_START,
                         duration = state.selectedDuration
                     )
-                    timerService.subjectId.value = state.subjectId
-                } else {
-                    onEvent(SessionEvent.CheckSubjectId)
                 }
             }
         )
@@ -269,7 +285,8 @@ private fun SessionScreen(
                     onSubjectSelected = { subject ->
                         onEvent(SessionEvent.OnRelatedSubjectChange(subject))
                         timerService.subjectId.value = subject.subjectId
-                    }
+                    },
+                    onEvent = onEvent
                 )
             }
             
@@ -279,16 +296,10 @@ private fun SessionScreen(
                     selectedTopicId = state.selectedTopicId,
                     onTopicSelected = { task -> 
                         onEvent(SessionEvent.OnTopicSelect(task))
-                        if (task.taskDuration > 0) {
-                            ServiceHelper.triggerForegroundService(
-                                context = context,
-                                action = ACTION_SERVICE_START,
-                                duration = task.taskDuration
-                            )
-                            timerService.subjectId.value = task.taskSubjectId
-                        }
+                        timerService.setDuration(task.taskDuration)
                     },
-                    selectedSubjectId = state.subjectId
+                    selectedSubjectId = state.subjectId,
+                    timerService = timerService
                 )
             }
             
@@ -304,7 +315,7 @@ private fun SessionScreen(
                         )
                     },
                     finishButtonClick = {
-                        val duration = timerService.duration.toLong(DurationUnit.SECONDS)
+                        val duration = timerService.duration.toLong()
                         if (duration >= 36) {
                             ServiceHelper.triggerForegroundService(
                                 context = context,
@@ -473,7 +484,8 @@ private fun RelatedToSubjectSection(
     selectSubjectButtonClick: () -> Unit,
     seconds: String,
     subjects: List<Subject>,
-    onSubjectSelected: (Subject) -> Unit
+    onSubjectSelected: (Subject) -> Unit,
+    onEvent: (SessionEvent) -> Unit
 ) {
     var showSubjectPicker by remember { mutableStateOf(false) }
 
@@ -508,8 +520,8 @@ private fun RelatedToSubjectSection(
             text = {
                 if (subjects.isEmpty()) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
                             .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -522,18 +534,20 @@ private fun RelatedToSubjectSection(
                 } else {
                     LazyColumn {
                         items(subjects) { subject ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
                                     .clickable {
                                         onSubjectSelected(subject)
+                                        // Reset topic selection when subject changes
+                                        onEvent(SessionEvent.OnTopicSelect(null))
                                         showSubjectPicker = false
                                     }
                                     .padding(vertical = 12.dp, horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
                                     text = subject.name,
                                     style = MaterialTheme.typography.bodyLarge
                                 )
@@ -569,38 +583,30 @@ private fun ButtonSection(
     hasMeditatedToday: Boolean,
     selectedTopicId: Int?
 ) {
-    Row(
+    Column(
         modifier = modifier,
-        horizontalArrangement = Arrangement.SpaceAround
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Cancel Button
-        Button(
-            onClick = cancelButtonClick,
-            enabled = seconds != "00" && timerState != TimerState.STARTED
-        ) {
-            Text(
-                text = "Cancel",
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-            )
-        }
-
-        // Start/Stop Button
         Button(
             onClick = { 
-                if (timerState == TimerState.STARTED) {
-                    ServiceHelper.triggerForegroundService(
-                        context = context,
-                        action = ACTION_SERVICE_STOP
-                    )
-                } else {
-                    if (selectedTopicId == null) {
-                        // Show snackbar or dialog to select topic first
-                        return@Button
+                when (timerState) {
+                    TimerState.STARTED -> {
+                        ServiceHelper.triggerForegroundService(
+                            context = context,
+                            action = ACTION_SERVICE_STOP
+                        )
                     }
-                    if (!hasMeditatedToday) {
-                        onShowMeditationDialog()
-                    } else {
-                        if (durationMinutes > 0) {
+                    TimerState.STOPPED -> {
+                        ServiceHelper.triggerForegroundService(
+                            context = context,
+                            action = ACTION_SERVICE_START,
+                            duration = durationMinutes
+                        )
+                    }
+                    TimerState.IDLE -> {
+                        if (!hasMeditatedToday) {
+                            onShowMeditationDialog()
+                        } else {
                             ServiceHelper.triggerForegroundService(
                                 context = context,
                                 action = ACTION_SERVICE_START,
@@ -610,32 +616,78 @@ private fun ButtonSection(
                     }
                 }
             },
+            enabled = selectedTopicId != null && durationMinutes > 0,
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (timerState == TimerState.STARTED) Red
-                else MaterialTheme.colorScheme.primary,
-                contentColor = Color.White
-            ),
-            enabled = selectedTopicId != null
-        ) {
-            Text(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                text = when (timerState) {
-                    TimerState.STARTED -> "Stop"
-                    TimerState.STOPPED -> "Resume"
-                    else -> "Start"
+                containerColor = when (timerState) {
+                    TimerState.STARTED -> Red
+                    else -> MaterialTheme.colorScheme.primary
                 }
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+        ) {
+            Icon(
+                imageVector = when (timerState) {
+                    TimerState.STARTED -> Icons.Default.Pause
+                    else -> Icons.Default.PlayArrow
+                },
+                contentDescription = when (timerState) {
+                    TimerState.STARTED -> "Pause Timer"
+                    TimerState.STOPPED -> "Resume Timer"
+                    TimerState.IDLE -> "Start Timer"
+                }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = when (timerState) {
+                    TimerState.STARTED -> "Pause"
+                    TimerState.STOPPED -> "Resume"
+                    TimerState.IDLE -> "Start"
+                },
+                style = MaterialTheme.typography.titleMedium
             )
         }
 
-        // Finish Button
-        Button(
-            onClick = finishButtonClick,
-            enabled = seconds != "00" && timerState != TimerState.STARTED
-        ) {
-            Text(
-                text = "Finish",
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-            )
+        if (timerState != TimerState.IDLE) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = cancelButtonClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Cancel,
+                        contentDescription = "Cancel Timer"
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Cancel",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                Button(
+                    onClick = finishButtonClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Finish Timer"
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Finish",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            }
         }
     }
 }
@@ -653,7 +705,8 @@ private fun TopicSelector(
     topics: List<Task>,
     selectedTopicId: Int?,
     onTopicSelected: (Task) -> Unit,
-    selectedSubjectId: Int?
+    selectedSubjectId: Int?,
+    timerService: StudySessionTimerService
 ) {
     var showTopicPicker by remember { mutableStateOf(false) }
 
@@ -714,12 +767,13 @@ private fun TopicSelector(
                                     .fillMaxWidth()
                                     .clickable {
                                         onTopicSelected(task)
+                                        timerService.setDuration(task.taskDuration)
                                         showTopicPicker = false
                                     }
                                     .padding(vertical = 12.dp, horizontal = 16.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                                 Column {
                                     Text(
                                         text = task.title,
@@ -741,7 +795,7 @@ private fun TopicSelector(
                                     color = Priority.fromInt(task.priority).color.copy(alpha = 0.1f),
                                     contentColor = Priority.fromInt(task.priority).color
                                 ) {
-                                    Text(
+                    Text(
                                         text = Priority.fromInt(task.priority).name,
                                         style = MaterialTheme.typography.labelSmall,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -749,14 +803,14 @@ private fun TopicSelector(
                                 }
                             }
                         }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showTopicPicker = false }) {
-                    Text("Cancel")
                 }
             }
-        )
+        },
+        confirmButton = {
+                TextButton(onClick = { showTopicPicker = false }) {
+                Text("Cancel")
+            }
+        }
+    )
     }
 }

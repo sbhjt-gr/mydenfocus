@@ -9,7 +9,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.gorai.myedenfocus.MainActivity
 import com.gorai.myedenfocus.R
-import com.gorai.myedenfocus.service.StudySessionTimerService
+import com.gorai.myedenfocus.presentation.session.StudySessionTimerService
 
 object ServiceHelper {
     const val CHANNEL_ID = "study_timer_channel"
@@ -60,23 +60,16 @@ object ServiceHelper {
     fun triggerForegroundService(
         context: Context,
         action: String,
-        duration: Int? = null
+        duration: Int = 0
     ) {
-        val intent = Intent(context, StudySessionTimerService::class.java).apply {
+        Intent(context, StudySessionTimerService::class.java).apply {
             this.action = action
-            duration?.let {
-                putExtra("DURATION", it)
-            }
-        }
-        
-        try {
+            putExtra("DURATION", duration)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
+                context.startForegroundService(this)
             } else {
-                context.startService(intent)
+                context.startService(this)
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 } 

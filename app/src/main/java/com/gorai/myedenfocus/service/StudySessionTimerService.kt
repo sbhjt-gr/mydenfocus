@@ -25,7 +25,6 @@ class StudySessionTimerService : Service() {
     var minutes = mutableStateOf("00")
     var seconds = mutableStateOf("00")
     var currentTimerState = mutableStateOf(TimerState.IDLE)
-    var subjectId = mutableStateOf<Int?>(null)
 
     override fun onCreate() {
         super.onCreate()
@@ -47,16 +46,15 @@ class StudySessionTimerService : Service() {
                 ACTION_SERVICE_CANCEL -> stopTimer()
             }
         }
-        return super.onStartCommand(intent, flags, startId)
+        return START_NOT_STICKY
     }
 
     private fun startTimer() {
         currentTimerState.value = TimerState.STARTED
         
-        GlobalScope.launch {
+        timerJob = GlobalScope.launch {
             while (elapsedTimeSeconds < totalTimeSeconds) {
-                val remainingSeconds = totalTimeSeconds - elapsedTimeSeconds
-                updateTimeDisplay(remainingSeconds)
+                updateTimeDisplay()
                 updateNotification()
                 delay(1000)
                 elapsedTimeSeconds++
@@ -75,7 +73,8 @@ class StudySessionTimerService : Service() {
         )
     }
 
-    private fun updateTimeDisplay(remainingSeconds: Int) {
+    private fun updateTimeDisplay() {
+        val remainingSeconds = totalTimeSeconds - elapsedTimeSeconds
         hours.value = String.format("%02d", remainingSeconds / 3600)
         minutes.value = String.format("%02d", (remainingSeconds % 3600) / 60)
         seconds.value = String.format("%02d", remainingSeconds % 60)

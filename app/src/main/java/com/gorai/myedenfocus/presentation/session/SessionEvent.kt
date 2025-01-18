@@ -5,11 +5,12 @@ import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.model.Task
 
 sealed class SessionEvent {
-    data class OnTopicSelect(val task: Task) : SessionEvent()
+    data class OnTopicSelect(val task: Task?) : SessionEvent()
     data class OnRelatedSubjectChange(val subject: Subject) : SessionEvent()
     data class OnDeleteSessionButtonClick(val session: Session) : SessionEvent()
     data class OnDurationSelected(val minutes: Int) : SessionEvent()
     object DeleteSession : SessionEvent()
     object SaveSession : SessionEvent()
     object CheckSubjectId : SessionEvent()
+    data class InitializeWithTopic(val topicId: Int) : SessionEvent()
 }

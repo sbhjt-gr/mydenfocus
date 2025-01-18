@@ -47,6 +47,7 @@ import com.gorai.myedenfocus.presentation.components.DeleteDialog
 import com.gorai.myedenfocus.presentation.components.Speedometer
 import com.gorai.myedenfocus.presentation.components.studySessionsList
 import com.gorai.myedenfocus.presentation.components.tasksList
+import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
 import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
 import com.gorai.myedenfocus.util.NavAnimation
@@ -83,7 +84,8 @@ fun SubjectScreenRoute(
         onTaskCardClick = { taskId ->
             val navArg = TaskScreenNavArgs(taskId = taskId, subjectId = null)
             navigator.navigate(TaskScreenRouteDestination(navArgs = navArg))
-        }
+        },
+        navigator = navigator
     )
 }
 
@@ -96,6 +98,7 @@ private fun SubjectScreen(
     onBackButtonClick: () -> Unit,
     onAddTaskButtonClick: () -> Unit,
     onTaskCardClick: (Int?) -> Unit,
+    navigator: DestinationsNavigator
 ) {
     val listState = rememberLazyListState()
     val isFABExpanded by remember {
@@ -213,7 +216,13 @@ private fun SubjectScreen(
                 emptyListText = "No upcoming topics\nPress + button to add new topics",
                 tasks = state.upcomingTasks,
                 onTaskCardClick = onTaskCardClick,
-                onCheckBoxClick = { onEvent(SubjectEvent.OnTaskIsCompletedChange(it))}
+                onStartSession = { task ->
+                    navigator.navigate(
+                        SessionScreenRouteDestination(
+                            preSelectedTopicId = task.taskId
+                        )
+                    )
+                }
             )
             item { Spacer(modifier = Modifier.height(20.dp)) }
             tasksList(
@@ -221,7 +230,13 @@ private fun SubjectScreen(
                 emptyListText = "No completed topics\nClick the checkboxes to complete topics",
                 tasks = state.completedTasks,
                 onTaskCardClick = onTaskCardClick,
-                onCheckBoxClick = { onEvent(SubjectEvent.OnTaskIsCompletedChange(it))}
+                onStartSession = { task ->
+                    navigator.navigate(
+                        SessionScreenRouteDestination(
+                            preSelectedTopicId = task.taskId
+                        )
+                    )
+                }
             )
             item { Spacer(modifier = Modifier.height(20.dp)) }
             studySessionsList(

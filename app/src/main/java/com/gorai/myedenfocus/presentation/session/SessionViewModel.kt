@@ -4,6 +4,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gorai.myedenfocus.domain.model.Session
+import com.gorai.myedenfocus.domain.model.Task
 import com.gorai.myedenfocus.domain.repository.SessionRepository
 import com.gorai.myedenfocus.domain.repository.SubjectRepository
 import com.gorai.myedenfocus.domain.repository.TaskRepository
@@ -63,14 +64,17 @@ class SessionViewModel @Inject constructor(
     private val _snackbarEventFlow = MutableSharedFlow<SnackbarEvent>()
     val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
 
+    suspend fun getTaskById(taskId: Int): Task? {
+        return taskRepository.getTaskById(taskId)
+    }
+
     fun onEvent(event: SessionEvent) {
         when(event) {
             is SessionEvent.OnTopicSelect -> {
                 _state.update { 
                     it.copy(
-                        selectedTopicId = event.task.taskId,
-                        subjectId = event.task.taskSubjectId,
-                        selectedDuration = event.task.taskDuration
+                        selectedTopicId = event.task?.taskId,
+                        selectedDuration = event.task?.taskDuration ?: 0
                     )
                 }
             }
@@ -99,8 +103,17 @@ class SessionViewModel @Inject constructor(
                                 duration = state.value.selectedDuration.toLong()
                             )
                         )
+
+                        state.value.selectedTopicId?.let { topicId ->
+                            taskRepository.getTaskById(topicId)?.let { task ->
+                                taskRepository.upsertTask(
+                                    task.copy(isComplete = true)
+                                )
+                            }
+                        }
+
                         _snackbarEventFlow.emit(
-                            SnackbarEvent.ShowSnackbar(message = "Session saved successfully.")
+                            SnackbarEvent.ShowSnackbar(message = "Session saved and topic marked as complete")
                         )
                     } catch (e: Exception) {
                         _snackbarEventFlow.emit(
@@ -116,6 +129,22 @@ class SessionViewModel @Inject constructor(
                 _state.update { it.copy(selectedDuration = event.minutes) }
             }
             is SessionEvent.CheckSubjectId -> notifyToUpdateSubject()
+            is SessionEvent.InitializeWithTopic -> {
+                viewModelScope.launch {
+                    taskRepository.getTaskById(event.topicId)?.let { task ->
+                        subjectRepository.getSubjectById(task.taskSubjectId)?.let { subject ->
+                            _state.update { 
+                                it.copy(
+                                    selectedTopicId = task.taskId,
+                                    subjectId = subject.subjectId,
+                                    relatedToSubject = subject.name,
+                                    selectedDuration = task.taskDuration
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

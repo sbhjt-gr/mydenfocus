@@ -35,14 +35,17 @@ class StudySessionTimerService : Service() {
 
     private val binder = StudySessionTimerBinder()
 
-    private lateinit var timer: Timer
-    var duration: Duration = Duration.ZERO
+    private var timer: Timer? = null
+    private var totalDurationMinutes: Int = 0
+    private var elapsedSeconds: Int = 0
+
+    var duration: Int = 0
         private set
-    var seconds = mutableStateOf(value = "00")
+    var seconds = mutableStateOf("00")
         private set
-    var minutes = mutableStateOf(value = "00")
+    var minutes = mutableStateOf("00")
         private set
-    var hours = mutableStateOf(value = "00")
+    var hours = mutableStateOf("00")
         private set
     var currentTimerState = mutableStateOf(TimerState.IDLE)
         private set
@@ -51,28 +54,19 @@ class StudySessionTimerService : Service() {
     override fun onBind(p0: Intent?) = binder
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        intent?.action.let {
-            when (it) {
-                ACTION_SERVICE_START -> {
-                    val durationMinutes = intent?.getIntExtra("DURATION", 0) ?: 0
-                    if (durationMinutes > 0) {
-                        startForegroundService()
-                        startTimer { hours, minutes, seconds ->
-                            updateNotification(hours, minutes, seconds)
-                        }
-                    }
-                }
-                ACTION_SERVICE_STOP -> {
-                    stopTimer()
-                }
-                ACTION_SERVICE_CANCEL -> {
-                    stopTimer()
-                    cancelTimer()
-                    stopForegroundService()
+        when (intent?.action) {
+            ACTION_SERVICE_START -> {
+                val minutes = intent.getIntExtra("DURATION", 0)
+                if (minutes > 0) {
+                    totalDurationMinutes = minutes
+                    elapsedSeconds = 0  // Reset elapsed seconds
+                    startTimer()
                 }
             }
+            ACTION_SERVICE_STOP -> pauseTimer()
+            ACTION_SERVICE_CANCEL -> stopTimer()
         }
-        return super.onStartCommand(intent, flags, startId)
+        return START_NOT_STICKY
     }
 
     @SuppressLint("ForegroundServiceType")
@@ -111,46 +105,64 @@ class StudySessionTimerService : Service() {
         )
     }
 
-    private fun startTimer(
-        onTick: (h: String, m: String, s: String) -> Unit
-    ) {
-        try {
-            currentTimerState.value = TimerState.STARTED
-            timer = fixedRateTimer(initialDelay = 1000L, period = 1000L) {
-                duration = duration.plus(1.seconds)
-                updateTimeUnits()
-                onTick(hours.value, minutes.value, seconds.value)
+    private fun startTimer() {
+        currentTimerState.value = TimerState.STARTED
+        startForegroundService()
+
+        timer?.cancel()
+        timer = fixedRateTimer(initialDelay = 0L, period = 1000L) {
+            if (elapsedSeconds >= totalDurationMinutes * 60) {
+                stopTimer()
+                return@fixedRateTimer
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            currentTimerState.value = TimerState.IDLE
+
+            elapsedSeconds++
+            duration = elapsedSeconds
+
+            val remainingSeconds = (totalDurationMinutes * 60) - elapsedSeconds
+            val h = remainingSeconds / 3600
+            val m = (remainingSeconds % 3600) / 60
+            val s = remainingSeconds % 60
+
+            hours.value = h.pad()
+            minutes.value = m.pad()
+            seconds.value = s.pad()
+
+            updateNotification(hours.value, minutes.value, seconds.value)
         }
+    }
+
+    private fun pauseTimer() {
+        timer?.cancel()
+        timer = null
+        currentTimerState.value = TimerState.STOPPED
     }
 
     private fun stopTimer() {
-        try {
-            if (this::timer.isInitialized) {
-                timer.cancel()
-            }
-            currentTimerState.value = TimerState.STOPPED
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    private fun cancelTimer() {
-        duration = Duration.ZERO
-        updateTimeUnits()
+        timer?.cancel()
+        timer = null
+        elapsedSeconds = 0
+        totalDurationMinutes = 0
+        
+        hours.value = "00"
+        minutes.value = "00"
+        seconds.value = "00"
+        
         currentTimerState.value = TimerState.IDLE
+        stopForegroundService()
     }
 
-    private fun updateTimeUnits() {
-        duration.toComponents { hours, minutes, seconds, _ ->
-            this@StudySessionTimerService.hours.value = hours.toInt().pad()
-            this@StudySessionTimerService.minutes.value = minutes.pad()
-            this@StudySessionTimerService.seconds.value = seconds.pad()
-        }
+    fun setDuration(durationMinutes: Int) {
+        totalDurationMinutes = durationMinutes
+        // Reset timer values and convert minutes to hours and minutes
+        val h = durationMinutes / 60  // Get hours
+        val m = durationMinutes % 60  // Get remaining minutes
+        
+        hours.value = h.pad()
+        minutes.value = m.pad()
+        seconds.value = "00"
     }
+
     inner class StudySessionTimerBinder : Binder() {
         fun getService(): StudySessionTimerService = this@StudySessionTimerService
     }

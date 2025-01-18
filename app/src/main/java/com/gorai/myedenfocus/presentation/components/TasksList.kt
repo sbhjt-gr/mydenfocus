@@ -31,7 +31,7 @@ fun LazyListScope.tasksList(
     emptyListText: String,
     tasks: List<Task>,
     onTaskCardClick: (Int) -> Unit,
-    onCheckBoxClick: (Task) -> Unit
+    onStartSession: (Task) -> Unit
 ) {
     item {
         Text(
@@ -74,7 +74,7 @@ fun LazyListScope.tasksList(
                 items(tasks) { task ->
                     TaskCard(
                         task = task,
-                        onCheckBoxClick = { onCheckBoxClick(task) },
+                        onStartSession = { onStartSession(task) },
                         onClick = { task.taskId?.let { onTaskCardClick(it) } }
                     )
                 }
@@ -87,7 +87,7 @@ fun LazyListScope.tasksList(
 private fun TaskCard(
     modifier: Modifier = Modifier,
     task: Task,
-    onCheckBoxClick: () -> Unit,
+    onStartSession: () -> Unit,
     onClick: () -> Unit
 ) {
     Card(
@@ -106,7 +106,7 @@ private fun TaskCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Top Row - Priority Badge and Checkbox
+            // Top Row - Priority Badge and Start Button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -124,16 +124,16 @@ private fun TaskCard(
                     )
                 }
                 
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Priority.fromInt(task.priority).color.copy(alpha = 0.1f))
+                Button(
+                    onClick = onStartSession,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 ) {
-                    TaskCheckBox(
-                        isComplete = task.isComplete,
-                        borderColor = Priority.fromInt(task.priority).color,
-                        onCheckBoxClick = onCheckBoxClick
+                    Text(
+                        text = "Start",
+                        style = MaterialTheme.typography.labelMedium
                     )
                 }
             }

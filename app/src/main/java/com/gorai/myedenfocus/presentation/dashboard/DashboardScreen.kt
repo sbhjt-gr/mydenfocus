@@ -61,6 +61,9 @@ import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestina
 import com.gorai.myedenfocus.presentation.destinations.SettingsScreenDestination
 import com.gorai.myedenfocus.presentation.destinations.SubjectScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
+import com.gorai.myedenfocus.presentation.session.SessionScreenNavArgs
+import com.gorai.myedenfocus.presentation.subject.SubjectScreenNavArgs
+import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
 import com.gorai.myedenfocus.util.NavAnimation
 import com.gorai.myedenfocus.util.SnackbarEvent
 import com.gorai.myedenfocus.util.formatHours
@@ -78,9 +81,9 @@ import kotlinx.coroutines.flow.collectLatest
 )
 @Composable
 fun DashBoardScreenRoute(
-    navigator: DestinationsNavigator,
-    viewModel: DashboardViewModel = hiltViewModel()
+    navigator: DestinationsNavigator
 ) {
+    val viewModel: DashboardViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val recentSessions by viewModel.recentSessions.collectAsStateWithLifecycle()
@@ -101,29 +104,12 @@ fun DashBoardScreenRoute(
             onEvent = viewModel::onEvent,
             snackbarEvent = viewModel.snackbarEventFlow,
             onSubjectCardClick = { subjectId ->
-                subjectId?.let {
-                    navigator.navigate(SubjectScreenRouteDestination(subjectId = it))
-                }
+                navigator.navigate(SubjectScreenRouteDestination(SubjectScreenNavArgs(subjectId)))
             },
             onTaskCardClick = { taskId ->
-                taskId?.let {
-                    navigator.navigate(TaskScreenRouteDestination(taskId = it, subjectId = null))
-                }
+                navigator.navigate(TaskScreenRouteDestination(TaskScreenNavArgs(taskId = taskId, subjectId = null)))
             },
-            onStartSessionButtonClick = {
-                navigator.navigate(SessionScreenRouteDestination())
-            },
-            currentRoute = "schedule",
-            onNavigate = { route ->
-                when (route) {
-                    "meditate" -> navigator.navigate(MeditationScreenDestination) {
-                        popUpTo(route = "schedule") { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                    else -> Unit
-                }
-            }
+            navigator = navigator
         )
     }
 }
@@ -135,11 +121,9 @@ private fun DashboardScreen(
     recentSessions: List<Session>,
     onEvent: (DashboardEvent) -> Unit,
     snackbarEvent: SharedFlow<SnackbarEvent>,
-    onSubjectCardClick: (Int?) -> Unit,
+    onSubjectCardClick: (Int) -> Unit,
     onTaskCardClick: (Int?) -> Unit,
-    onStartSessionButtonClick: () -> Unit,
-    currentRoute: String = "schedule",
-    onNavigate: (String) -> Unit = {}
+    navigator: DestinationsNavigator
 ) {
     var showDailyGoalDialog by remember { mutableStateOf(false) }
     var showAddSubjectDialog by remember { mutableStateOf(false) }
@@ -214,8 +198,17 @@ private fun DashboardScreen(
         },
         bottomBar = {
             BottomBar(
-                currentRoute = currentRoute,
-                onNavigate = onNavigate
+                currentRoute = "schedule",
+                onNavigate = { route ->
+                    when (route) {
+                        "meditate" -> navigator.navigate(MeditationScreenDestination) {
+                            popUpTo(route = "schedule") { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                        else -> Unit
+                    }
+                }
             )
         }
     ) { paddingValues ->
@@ -270,7 +263,14 @@ private fun DashboardScreen(
 
             item {
                 Button(
-                    onClick = onStartSessionButtonClick,
+                    onClick = {
+                        navigator.navigate(
+                            SessionScreenRouteDestination(
+                                preSelectedTopicId = null,
+                                preSelectedSubjectId = null
+                            )
+                        )
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
@@ -308,11 +308,18 @@ private fun DashboardScreen(
                 )
             }
             tasksList(
-                sectionTitle = "All Topics",
+                sectionTitle = "Incomplete Topics",
                 emptyListText = "No topics are listed\nPress + button to add new topics",
                 tasks = tasks,
                 onTaskCardClick = onTaskCardClick,
-                onCheckBoxClick = { onEvent(DashboardEvent.OnTaskIsCompleteChange(it)) }
+                onStartSession = { task ->
+                    navigator.navigate(
+                        SessionScreenRouteDestination(
+                            preSelectedTopicId = task.taskId,
+                            preSelectedSubjectId = task.taskSubjectId
+                        )
+                    )
+                }
             )
             studySessionsList(
                 sectionTitle = "Recent Study Sessions",
