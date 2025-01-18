@@ -205,7 +205,8 @@ class TaskViewModel @Inject constructor(
             priority = currentState.priority.value,
             relatedToSubject = currentState.relatedToSubject ?: "",
             isComplete = currentState.isTaskComplete,
-            taskSubjectId = currentState.subjectId
+            taskSubjectId = currentState.subjectId,
+            taskDuration = currentState.taskDuration
         )
     }
 
@@ -222,7 +223,8 @@ class TaskViewModel @Inject constructor(
                             relatedToSubject = task.relatedToSubject,
                             priority = Priority.fromInt(task.priority),
                             subjectId = task.taskSubjectId,
-                            currentTaskId = task.taskId
+                            currentTaskId = task.taskId,
+                            taskDuration = task.taskDuration
                         )
                     }
                 }

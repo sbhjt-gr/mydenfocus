@@ -3,6 +3,8 @@ package com.gorai.myedenfocus.data.di
 import android.app.Application
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.gorai.myedenfocus.data.local.AppDatabase
 import com.gorai.myedenfocus.data.local.SessionDao
 import com.gorai.myedenfocus.data.local.SubjectDao
@@ -35,7 +37,17 @@ object DatabaseModule {
             application,
             AppDatabase::class.java,
             "database.db"
-        ).build()
+        )
+        .addMigrations(
+            object : Migration(1, 2) {
+                override fun migrate(database: SupportSQLiteDatabase) {
+                    database.execSQL(
+                        "ALTER TABLE Task ADD COLUMN taskDuration INTEGER NOT NULL DEFAULT 0"
+                    )
+                }
+            }
+        )
+        .build()
     }
     @Provides
     @Singleton
