@@ -26,23 +26,22 @@ import com.gorai.myedenfocus.domain.model.Task
 import com.gorai.myedenfocus.util.Priority
 import com.gorai.myedenfocus.util.changeMillsToDateString
 
-fun LazyListScope.tasksList(
+@Composable
+fun TasksList(
     sectionTitle: String,
     emptyListText: String,
     tasks: List<Task>,
-    onTaskCardClick: (Int) -> Unit,
-    onStartSession: (Task) -> Unit
+    onTaskCardClick: (Int?) -> Unit,
+    onStartSession: ((Task) -> Unit)? = null
 ) {
-    item {
+    Column {
         Text(
             text = sectionTitle.replace("Task", "Topic"),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
         )
-    }
-    
-    item {
+        
         if (tasks.isEmpty()) {
             Column(
                 modifier = Modifier
@@ -74,7 +73,7 @@ fun LazyListScope.tasksList(
                 items(tasks) { task ->
                     TaskCard(
                         task = task,
-                        onStartSession = { onStartSession(task) },
+                        onStartSession = onStartSession?.let { { it(task) } },
                         onClick = { task.taskId?.let { onTaskCardClick(it) } }
                     )
                 }
@@ -87,7 +86,7 @@ fun LazyListScope.tasksList(
 private fun TaskCard(
     modifier: Modifier = Modifier,
     task: Task,
-    onStartSession: () -> Unit,
+    onStartSession: (() -> Unit)?,
     onClick: () -> Unit
 ) {
     Card(
@@ -124,17 +123,19 @@ private fun TaskCard(
                     )
                 }
                 
-                Button(
-                    onClick = onStartSession,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                ) {
-                    Text(
-                        text = "Start",
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                if (onStartSession != null) {
+                    Button(
+                        onClick = onStartSession,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) {
+                        Text(
+                            text = "Start",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
                 }
             }
             

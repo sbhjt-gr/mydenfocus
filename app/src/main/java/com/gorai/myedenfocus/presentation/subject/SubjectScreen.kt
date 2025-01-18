@@ -45,8 +45,8 @@ import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.presentation.components.AddSubjectDialog
 import com.gorai.myedenfocus.presentation.components.DeleteDialog
 import com.gorai.myedenfocus.presentation.components.Speedometer
+import com.gorai.myedenfocus.presentation.components.TasksList
 import com.gorai.myedenfocus.presentation.components.studySessionsList
-import com.gorai.myedenfocus.presentation.components.tasksList
 import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
 import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
@@ -211,33 +211,31 @@ private fun SubjectScreen(
                     daysPerWeek = state.subjectDaysPerWeek
                 )
             }
-            tasksList(
-                sectionTitle = "Topics to Complete",
-                emptyListText = "No upcoming topics\nPress + button to add new topics",
-                tasks = state.upcomingTasks,
-                onTaskCardClick = onTaskCardClick,
-                onStartSession = { task ->
-                    navigator.navigate(
-                        SessionScreenRouteDestination(
-                            preSelectedTopicId = task.taskId
+            item {
+                TasksList(
+                    sectionTitle = "Topics to Complete",
+                    emptyListText = "No upcoming topics\nPress + button to add new topics",
+                    tasks = state.upcomingTasks,
+                    onTaskCardClick = onTaskCardClick,
+                    onStartSession = { task ->
+                        navigator.navigate(
+                            SessionScreenRouteDestination(
+                                preSelectedTopicId = task.taskId
+                            )
                         )
-                    )
-                }
-            )
+                    }
+                )
+            }
             item { Spacer(modifier = Modifier.height(20.dp)) }
-            tasksList(
-                sectionTitle = "Completed Topics",
-                emptyListText = "No completed topics\nClick the checkboxes to complete topics",
-                tasks = state.completedTasks,
-                onTaskCardClick = onTaskCardClick,
-                onStartSession = { task ->
-                    navigator.navigate(
-                        SessionScreenRouteDestination(
-                            preSelectedTopicId = task.taskId
-                        )
-                    )
-                }
-            )
+            item {
+                TasksList(
+                    sectionTitle = "Completed Topics",
+                    emptyListText = "No completed topics\nClick the checkboxes to complete topics",
+                    tasks = state.completedTasks,
+                    onTaskCardClick = onTaskCardClick,
+                    onStartSession = null
+                )
+            }
             item { Spacer(modifier = Modifier.height(20.dp)) }
             studySessionsList(
                 sectionTitle = "Recent Study Sessions (${state.recentSessions.size})",

@@ -909,13 +909,13 @@ fun MeditationScreen(
             }
             
             item {
+                Text(
+                    text = "Sessions This Week",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+                
                 if (thisWeekSessions.isNotEmpty()) {
-                    Text(
-                        text = "This Week",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                    
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -936,6 +936,21 @@ fun MeditationScreen(
                                 }
                             }
                         }
+                    }
+                } else if (meditationSessions.isEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "You haven't meditated yet",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 24.dp)
+                        )
                     }
                 }
             }

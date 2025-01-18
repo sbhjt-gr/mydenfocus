@@ -55,7 +55,7 @@ import com.gorai.myedenfocus.presentation.components.DeleteDialog
 import com.gorai.myedenfocus.presentation.components.Speedometer
 import com.gorai.myedenfocus.presentation.components.SubjectCard
 import com.gorai.myedenfocus.presentation.components.studySessionsList
-import com.gorai.myedenfocus.presentation.components.tasksList
+import com.gorai.myedenfocus.presentation.components.TasksList
 import com.gorai.myedenfocus.presentation.destinations.MeditationScreenDestination
 import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.SettingsScreenDestination
@@ -307,20 +307,22 @@ private fun DashboardScreen(
                     onSubjectCardClick = onSubjectCardClick
                 )
             }
-            tasksList(
-                sectionTitle = "Incomplete Topics",
-                emptyListText = "No topics are listed\nPress + button to add new topics",
-                tasks = tasks,
-                onTaskCardClick = onTaskCardClick,
-                onStartSession = { task ->
-                    navigator.navigate(
-                        SessionScreenRouteDestination(
-                            preSelectedTopicId = task.taskId,
-                            preSelectedSubjectId = task.taskSubjectId
+            item {
+                TasksList(
+                    sectionTitle = "Incomplete Topics",
+                    emptyListText = "No topics are listed\nPress + button to add new topics",
+                    tasks = tasks,
+                    onTaskCardClick = onTaskCardClick,
+                    onStartSession = { task ->
+                        navigator.navigate(
+                            SessionScreenRouteDestination(
+                                preSelectedTopicId = task.taskId,
+                                preSelectedSubjectId = task.taskSubjectId
+                            )
                         )
-                    )
-                }
-            )
+                    }
+                )
+            }
             studySessionsList(
                 sectionTitle = "Recent Study Sessions",
                 emptyListText = "No study sessions\nStart a study session to begin recording your progress",
