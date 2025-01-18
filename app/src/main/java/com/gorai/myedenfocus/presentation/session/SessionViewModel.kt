@@ -181,35 +181,4 @@ class SessionViewModel @Inject constructor(
             }
         }
     }
-
-    private fun saveSession() {
-        viewModelScope.launch {
-            try {
-                state.value.selectedTopicId?.let { taskId ->
-                    state.value.subjectId?.let { subjectId ->
-                        sessionRepository.insertSession(
-                            Session(
-                                taskId = taskId,
-                                subjectId = subjectId,
-                                duration = state.value.selectedDuration * 60L, // Convert minutes to seconds
-                                timestamp = System.currentTimeMillis()
-                            )
-                        )
-                        _snackbarEventFlow.emit(
-                            SnackbarEvent.ShowSnackbar(
-                                message = "Session saved successfully"
-                            )
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                _snackbarEventFlow.emit(
-                    SnackbarEvent.ShowSnackbar(
-                        message = "Couldn't save session. ${e.message}",
-                        duration = SnackbarDuration.Long
-                    )
-                )
-            }
-        }
-    }
 }
