@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -253,28 +254,10 @@ private fun TaskScreen(
             }
 
             // Priority Section
-            Column {
-                Text(
-                    text = "Priority",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Priority.entries.forEach { priority ->
-                        PriorityChip(
-                            modifier = Modifier.weight(1f),
-                            priority = priority,
-                            isSelected = state.priority == priority,
-                            onClick = { onEvent(TaskEvent.OnPriorityChange(priority)) }
-                        )
-                    }
-                }
-            }
+            PrioritySelector(
+                selectedPriority = state.priority,
+                onPriorityChange = { onEvent(TaskEvent.OnPriorityChange(it)) }
+            )
 
             // Task Duration Section
             Column {
@@ -469,25 +452,79 @@ private fun TaskScreen(
 }
 
 @Composable
+private fun PrioritySelector(
+    selectedPriority: Priority,
+    onPriorityChange: (Priority) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = "Priority",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Priority.entries.forEach { priority ->
+                PriorityChip(
+                    modifier = Modifier.weight(1f),
+                    priority = priority,
+                    isSelected = selectedPriority == priority,
+                    onClick = { onPriorityChange(priority) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun PriorityChip(
-    modifier: Modifier = Modifier,
     priority: Priority,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier.clickable { onClick() },
-        shape = RoundedCornerShape(8.dp),
-        color = if (isSelected) priority.color.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, if (isSelected) priority.color else MaterialTheme.colorScheme.outline)
-    ) {
-        Text(
-            text = priority.name,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.labelLarge,
-            color = if (isSelected) priority.color else MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
+        modifier = modifier
+            .height(48.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) {
+            priority.color.copy(alpha = 0.12f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        },
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isSelected) priority.color else MaterialTheme.colorScheme.outline
         )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(priority.color, CircleShape)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(
+                text = priority.name.lowercase()
+                    .replaceFirstChar { it.uppercase() },
+                style = MaterialTheme.typography.labelLarge,
+                color = if (isSelected) priority.color else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

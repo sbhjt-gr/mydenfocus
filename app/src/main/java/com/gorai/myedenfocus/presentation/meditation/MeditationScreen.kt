@@ -95,7 +95,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import com.gorai.myedenfocus.util.NavigationStyles
 
-private val meditationDurations = listOf(5, 10, 15, 17, 20, 30)
+private val meditationDurations = listOf(1, 5, 10, 15, 17, 20, 30)
 private val meditationMusic = listOf(
     "No Music",
     "Wind Chimes Nature",
@@ -546,10 +546,12 @@ fun MeditationScreen(
             
             // Only add session if timer actually completed (not reset/cancelled)
             if (remainingSeconds == 0) {
-                viewModel.addSession(selectedMinutes)
+                // Get the actual selected duration from preferences
+                val prefs = context.getSharedPreferences("meditation_prefs", Context.MODE_PRIVATE)
+                val actualDuration = prefs.getInt("last_meditation_duration", selectedMinutes)
+                viewModel.addSession(actualDuration)
                 
                 // Save meditation completion for today
-                val prefs = context.getSharedPreferences("meditation_prefs", Context.MODE_PRIVATE)
                 prefs.edit().putString("last_meditation_date", LocalDate.now().toString()).apply()
             }
             
@@ -579,6 +581,8 @@ fun MeditationScreen(
             if (!isTimerRunning) {
                 action = MeditationTimerService.ACTION_START
                 putExtra(MeditationTimerService.EXTRA_TIME, selectedMinutes * 60)
+                // Store the selected duration for later use when completing the session
+                putExtra("selected_duration", selectedMinutes)
                 // Convert display name to file name
                 val musicFileName = when (selectedMusic) {
                     "Wind Chimes Nature" -> "wind_chimes_nature_symphony.mp3"
@@ -699,12 +703,11 @@ fun MeditationScreen(
                 TextButton(
                     onClick = {
                         showHeadphoneDialog = false
-                        // Start timer anyway
                         val serviceIntent = Intent(context, MeditationTimerService::class.java).apply {
                             action = MeditationTimerService.ACTION_START
                             putExtra(MeditationTimerService.EXTRA_TIME, selectedMinutes * 60)
                             val musicFileName = when (selectedMusic) {
-                                "Wind Chimes Nature Symphony" -> "wind_chimes_nature_symphony.mp3"
+                                "Wind Chimes Nature" -> "wind_chimes_nature_symphony.mp3"
                                 "Soothing Chime" -> "soothing_chime.mp3"
                                 "Full Brain Drop Down" -> "full_brain_drop_down.mp3"
                                 "Focus on Yourself" -> "focus_on_yourself.mp3"
@@ -724,13 +727,11 @@ fun MeditationScreen(
         )
     }
 
-    // Add this LaunchedEffect to monitor timer state
     LaunchedEffect(timerState) {
         if (timerState == 0) {
-            // Reset everything when timer is reset to 0
             isTimerRunning = false
-            selectedMinutes = 17  // Reset to 17 minutes
-            selectedMusic = meditationMusic[0]  // Reset to default music
+            selectedMinutes = 17
+            selectedMusic = meditationMusic[0]
         }
     }
 

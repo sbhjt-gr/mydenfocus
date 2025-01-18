@@ -29,6 +29,7 @@ class MeditationTimerService : Service() {
     private var timeLeft = 0
     private var isTimerRunning = false
     private var mediaPlayer: MediaPlayer? = null
+    private var selectedDuration = 0
     
     companion object {
         const val CHANNEL_ID = "meditation_timer_channel"
@@ -105,6 +106,7 @@ class MeditationTimerService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 timeLeft = intent.getIntExtra(EXTRA_TIME, 0)
+                selectedDuration = intent.getIntExtra("selected_duration", 0)
                 val selectedMusic = intent.getStringExtra("selected_music") ?: "no_music"
                 isServiceRunning = true
                 _isPaused.value = false
@@ -282,77 +284,85 @@ class MeditationTimerService : Service() {
 
     private fun showCompletionNotification() {
         try {
-            // No need to manually cancel NOTIFICATION_ID since stopForeground(STOP_FOREGROUND_REMOVE) handles it
-            
-            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).apply {
-                // Create and show completion notification with ID 2
-                val deepLinkIntent = Intent(
-                    Intent.ACTION_VIEW,
-                    "myedenfocus://meditation".toUri(),
-                    this@MeditationTimerService,
-                    MainActivity::class.java
-                ).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                }
+            // Only show completion notification and add session if timer actually completed
+            if (timeLeft == 0 && selectedDuration > 0) {
+                // Create completion notification
+                // No need to manually cancel NOTIFICATION_ID since stopForeground(STOP_FOREGROUND_REMOVE) handles it
+                
+                (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).apply {
+                    // Create and show completion notification with ID 2
+                    val deepLinkIntent = Intent(
+                        Intent.ACTION_VIEW,
+                        "myedenfocus://meditation".toUri(),
+                        this@MeditationTimerService,
+                        MainActivity::class.java
+                    ).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
 
-                val openMeditationPendingIntent = TaskStackBuilder.create(this@MeditationTimerService).run {
-                    addNextIntentWithParentStack(deepLinkIntent)
-                    getPendingIntent(
-                        3,
+                    val openMeditationPendingIntent = TaskStackBuilder.create(this@MeditationTimerService).run {
+                        addNextIntentWithParentStack(deepLinkIntent)
+                        getPendingIntent(
+                            3,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                    }
+
+                    val stopAlarmIntent = Intent(this@MeditationTimerService, MeditationTimerService::class.java).apply {
+                        action = "STOP_ALARM"
+                    }
+                    val stopAlarmPendingIntent = PendingIntent.getService(
+                        this@MeditationTimerService,
+                        1,
+                        stopAlarmIntent,
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
+
+                    val notification = NotificationCompat.Builder(this@MeditationTimerService, CHANNEL_ID)
+                        .setContentTitle("Meditation Complete")
+                        .setContentText("Great job! You've completed your meditation session.")
+                        .setSmallIcon(R.drawable.ic_launcher_foreground)
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setOngoing(true)
+                        .setContentIntent(openMeditationPendingIntent)
+                        .addAction(
+                            R.drawable.ic_launcher_foreground,
+                            "Stop Alarm",
+                            stopAlarmPendingIntent
+                        )
+                        .build()
+
+                    notify(2, notification)
                 }
 
-                val stopAlarmIntent = Intent(this@MeditationTimerService, MeditationTimerService::class.java).apply {
-                    action = "STOP_ALARM"
-                }
-                val stopAlarmPendingIntent = PendingIntent.getService(
-                    this@MeditationTimerService,
-                    1,
-                    stopAlarmIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-
-                val notification = NotificationCompat.Builder(this@MeditationTimerService, CHANNEL_ID)
-                    .setContentTitle("Meditation Complete")
-                    .setContentText("Great job! You've completed your meditation session.")
-                    .setSmallIcon(R.drawable.ic_launcher_foreground)
-                    .setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setOngoing(true)
-                    .setContentIntent(openMeditationPendingIntent)
-                    .addAction(
-                        R.drawable.ic_launcher_foreground,
-                        "Stop Alarm",
-                        stopAlarmPendingIntent
-                    )
-                    .build()
-
-                notify(2, notification)
-            }
-
-            // Play alarm sound
-            serviceScope.launch(Dispatchers.Main) {
-                try {
-                    val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                    currentRingtone = RingtoneManager.getRingtone(applicationContext, alarmUri)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        currentRingtone?.isLooping = true
-                    }
-                    currentRingtone?.play()
-                    _isAlarmPlaying.value = true
-                } catch (e: Exception) {
+                // Play alarm sound
+                serviceScope.launch(Dispatchers.Main) {
                     try {
-                        val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                        currentRingtone = RingtoneManager.getRingtone(applicationContext, fallbackUri)
+                        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                        currentRingtone = RingtoneManager.getRingtone(applicationContext, alarmUri)
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                             currentRingtone?.isLooping = true
                         }
                         currentRingtone?.play()
                         _isAlarmPlaying.value = true
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        try {
+                            val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                            currentRingtone = RingtoneManager.getRingtone(applicationContext, fallbackUri)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                currentRingtone?.isLooping = true
+                            }
+                            currentRingtone?.play()
+                            _isAlarmPlaying.value = true
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                     }
                 }
+
+                // Store the actual selected duration
+                val prefs = getSharedPreferences("meditation_prefs", Context.MODE_PRIVATE)
+                prefs.edit().putInt("last_meditation_duration", selectedDuration).apply()
             }
         } catch (e: Exception) {
             e.printStackTrace()
