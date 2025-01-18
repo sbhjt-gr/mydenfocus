@@ -9,6 +9,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
 import java.util.Calendar
 import javax.inject.Inject
+import kotlinx.coroutines.flow.flow
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneOffset
 
 class SessionRepositoryImpl @Inject constructor(
     private val sessionDao: SessionDao
@@ -43,16 +47,17 @@ class SessionRepositoryImpl @Inject constructor(
         return sessionDao.getTotalSessionsDurationBySubject(subjectId)
     }
 
-    override fun getTodaySessionsDuration(): Flow<Long> {
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        val startOfDay = calendar.timeInMillis
+    override fun getTodaySessionsDuration(): Flow<Long> = flow {
+        val startOfDay = LocalDateTime.now().with(LocalTime.MIN).toInstant(ZoneOffset.UTC).toEpochMilli()
+        val endOfDay = LocalDateTime.now().with(LocalTime.MAX).toInstant(ZoneOffset.UTC).toEpochMilli()
+        
+        emit(sessionDao.getTotalDurationBetween(startOfDay, endOfDay))
+    }
 
-        return sessionDao.getAllSessions().map { sessions ->
-            sessions.filter { it.date >= startOfDay }
-                   .sumOf { it.duration }
-        }
+    override fun getTodaySessionsDurationBySubject(subjectId: Int): Flow<Long> = flow {
+        val startOfDay = LocalDateTime.now().with(LocalTime.MIN).toInstant(ZoneOffset.UTC).toEpochMilli()
+        val endOfDay = LocalDateTime.now().with(LocalTime.MAX).toInstant(ZoneOffset.UTC).toEpochMilli()
+        
+        emit(sessionDao.getTotalDurationBetweenForSubject(startOfDay, endOfDay, subjectId))
     }
 }

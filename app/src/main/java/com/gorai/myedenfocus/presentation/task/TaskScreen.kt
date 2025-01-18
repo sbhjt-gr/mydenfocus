@@ -128,9 +128,9 @@ private fun TaskScreen(
     var taskTitleError by rememberSaveable { mutableStateOf<String?>(null) }
 
     taskTitleError = when {
-        state.title.isBlank() -> "Please Enter Task Title"
-        state.title.length < 3 -> "Task Title Is Too Short"
-        state.title.length > 100 -> "Task Title Is Too Long"
+        state.title.isBlank() -> "Please Enter Topic Title"
+        state.title.length < 3 -> "Title Is Too Short"
+        state.title.length > 100 -> "Title Is Too Long"
         else -> null
     }
 
@@ -230,7 +230,7 @@ private fun TaskScreen(
             // Due Date Section
             Column {
                 Text(
-                    text = "Due Date",
+                    text = "Complete By",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -260,145 +260,12 @@ private fun TaskScreen(
             )
 
             // Topic Duration Section
-            Column {
-                Text(
-                    text = "Topic Duration",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Hours Selector
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "Hours",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .border(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.outline,
-                                    RoundedCornerShape(4.dp)
-                                )
-                                .padding(4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = {
-                                    val currentHours = (state.taskDuration / 60).toInt()
-                                    if (currentHours > 0) {
-                                        onEvent(TaskEvent.OnTaskDurationChange(
-                                            ((currentHours - 1) * 60 + state.taskDuration % 60).toInt()
-                                        ))
-                                    }
-                                },
-                                modifier = Modifier.size(32.dp),
-                                enabled = (state.taskDuration / 60).toInt() > 0
-                            ) {
-                                Icon(
-                                    Icons.Default.Remove,
-                                    "Decrease hours",
-                                    tint = if ((state.taskDuration / 60).toInt() > 0)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.outline
-                                )
-                            }
-
-                            Text(
-                                text = "${(state.taskDuration / 60).toInt()}",
-                                modifier = Modifier.width(40.dp),
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-
-                            IconButton(
-                                onClick = {
-                                    val currentHours = (state.taskDuration / 60).toInt()
-                                    if (currentHours < 15) {
-                                        onEvent(TaskEvent.OnTaskDurationChange(
-                                            ((currentHours + 1) * 60 + state.taskDuration % 60).toInt()
-                                        ))
-                                    }
-                                },
-                                modifier = Modifier.size(32.dp),
-                                enabled = (state.taskDuration / 60).toInt() < 15
-                            ) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    "Increase hours",
-                                    tint = if ((state.taskDuration / 60).toInt() < 15)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.outline
-                                )
-                            }
-                        }
-                    }
-
-                    // Minutes Selector
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "Minutes",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .border(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.outline,
-                                    RoundedCornerShape(4.dp)
-                                )
-                                .padding(4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = {
-                                    val currentMinutes = (state.taskDuration % 60).toInt()
-                                    val newMinutes = if (currentMinutes == 0) 55 else (currentMinutes - 5)
-                                    onEvent(TaskEvent.OnTaskDurationChange(
-                                        ((state.taskDuration / 60).toInt() * 60 + newMinutes).toInt()
-                                    ))
-                                },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(Icons.Default.Remove, "Decrease minutes")
-                            }
-
-                            Text(
-                                text = "${(state.taskDuration % 60).toInt()}",
-                                modifier = Modifier.width(40.dp),
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-
-                            IconButton(
-                                onClick = {
-                                    val currentMinutes = (state.taskDuration % 60).toInt()
-                                    val newMinutes = if (currentMinutes == 55) 0 else (currentMinutes + 5)
-                                    onEvent(TaskEvent.OnTaskDurationChange(
-                                        ((state.taskDuration / 60).toInt() * 60 + newMinutes).toInt()
-                                    ))
-                                },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(Icons.Default.Add, "Increase minutes")
-                            }
-                        }
-                    }
-                }
-            }
+            DurationSelector(
+                hours = (state.taskDuration / 60).toInt(),
+                minutes = state.taskDuration % 60,
+                onHoursChange = { onEvent(TaskEvent.OnTaskDurationChange(it * 60)) },
+                onMinutesChange = { onEvent(TaskEvent.OnTaskDurationChange(it)) }
+            )
 
             // Subject Selection
             Column {
@@ -570,3 +437,112 @@ private fun PriorityChip(
             }
         )
     }
+
+@Composable
+private fun DurationSelector(
+    hours: Int,
+    minutes: Int,
+    onHoursChange: (Int) -> Unit,
+    onMinutesChange: (Int) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Topic Duration",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(
+            modifier = Modifier
+                .padding(vertical = 8.dp)
+                .fillMaxWidth(0.7f), // Takes up 70% of the width
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            // Hours Selector
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    "Hours",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                NumberPicker(
+                    value = hours,
+                    onValueChange = onHoursChange,
+                    range = 0..24
+                )
+            }
+            
+            // Minutes Selector
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    "Minutes",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                NumberPicker(
+                    value = minutes,
+                    onValueChange = onMinutesChange,
+                    range = 0..59,
+                    step = 1
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NumberPicker(
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    range: IntRange,
+    step: Int = 1
+) {
+    Row(
+        modifier = Modifier
+            .background(
+                MaterialTheme.colorScheme.surfaceVariant,
+                RoundedCornerShape(8.dp)
+            )
+            .padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        IconButton(
+            onClick = {
+                val newValue = (value - step).coerceIn(range)
+                onValueChange(newValue)
+            }
+        ) {
+            Icon(
+                imageVector = Icons.Default.Remove,
+                contentDescription = "Decrease"
+            )
+        }
+        
+        Text(
+            text = value.toString().padStart(2, '0'),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 8.dp)
+        )
+        
+        IconButton(
+            onClick = {
+                val newValue = (value + step).coerceIn(range)
+                onValueChange(newValue)
+            }
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Increase"
+            )
+        }
+    }
+}

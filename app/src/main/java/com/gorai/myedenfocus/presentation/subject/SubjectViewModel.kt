@@ -63,6 +63,13 @@ class SubjectViewModel @Inject constructor(
             initialValue = 0L
         )
 
+    private val todaySessionDuration = sessionRepository.getTodaySessionsDurationBySubject(navArgs.subjectId)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0L
+        )
+
     private val allSubjects = subjectRepository.getAllSubjects()
         .stateIn(
             scope = viewModelScope,
@@ -70,30 +77,28 @@ class SubjectViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    val state: StateFlow<SubjectState> = upcomingTasks
-        .combine(completedTasks) { upcoming, completed -> 
-            _state.value.copy(
-                upcomingTasks = upcoming,
-                completedTasks = completed
-            )
-        }
-        .combine(recentSessions) { state, sessions ->
-            state.copy(recentSessions = sessions)
-        }
-        .combine(totalDuration) { state, duration ->
-            state.copy(studiedHours = duration.toHours())
-        }
-        .combine(allSubjects) { state, subjects ->
-            state.copy(
-                allSubjects = subjects,
-                dailyStudyGoal = "8"
-            )
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = SubjectState(currentSubjectId = navArgs.subjectId)
+    val state: StateFlow<SubjectState> = combine(
+        upcomingTasks,
+        completedTasks,
+        recentSessions,
+        totalDuration,
+        todaySessionDuration,
+        allSubjects
+    ) { upcoming, completed, sessions, totalDuration, todayDuration, subjects ->
+        _state.value.copy(
+            upcomingTasks = upcoming,
+            completedTasks = completed,
+            recentSessions = sessions,
+            studiedHours = totalDuration.toHours(),
+            todayStudiedHours = todayDuration.toHours(),
+            allSubjects = subjects,
+            dailyStudyGoal = "8"
         )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = SubjectState(currentSubjectId = navArgs.subjectId)
+    )
 
     init {
         fetchSubject()
