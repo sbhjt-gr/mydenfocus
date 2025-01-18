@@ -103,7 +103,7 @@ class TaskViewModel @Inject constructor(
                                 
                                 _snackbarEventFlow.emit(
                                     SnackbarEvent.ShowSnackbar(
-                                        message = if (updatedTask.isComplete) "Topic marked as incomplete" else "Topic marked as complete",
+                                        message = if (updatedTask.isComplete) "Topic marked as complete" else "Topic marked as incomplete",
                                         duration = SnackbarDuration.Short
                                     )
                                 )

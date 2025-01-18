@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,8 +42,8 @@ fun LazyListScope.tasksList(
         )
     }
     
-    if (tasks.isEmpty()) {
-        item {
+    item {
+        if (tasks.isEmpty()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -63,16 +64,21 @@ fun LazyListScope.tasksList(
                     textAlign = TextAlign.Center
                 )
             }
-        }
-    } else {
-        items(tasks) { task ->
-            TaskCard(
+        } else {
+            LazyRow(
                 modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                task = task,
-                onCheckBoxClick = { onCheckBoxClick(task) },
-                onClick = { task.taskId?.let { onTaskCardClick(it) } }
-            )
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(tasks) { task ->
+                    TaskCard(
+                        task = task,
+                        onCheckBoxClick = { onCheckBoxClick(task) },
+                        onClick = { task.taskId?.let { onTaskCardClick(it) } }
+                    )
+                }
+            }
         }
     }
 }
@@ -86,7 +92,7 @@ private fun TaskCard(
 ) {
     Card(
         modifier = modifier
-            .fillMaxWidth()
+            .width(280.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -94,98 +100,109 @@ private fun TaskCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Priority indicator and Checkbox
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Priority.fromInt(task.priority).color.copy(alpha = 0.1f))
+            // Top Row - Priority Badge and Checkbox
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                TaskCheckBox(
-                    isComplete = task.isComplete,
-                    borderColor = Priority.fromInt(task.priority).color,
-                    onCheckBoxClick = onCheckBoxClick
-                )
-            }
-            
-            // Task Details
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = task.title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textDecoration = if (task.isComplete) TextDecoration.LineThrough else TextDecoration.None
-                )
-                
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Priority.fromInt(task.priority).color.copy(alpha = 0.1f),
+                    contentColor = Priority.fromInt(task.priority).color
                 ) {
-                    // Due Date
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CalendarToday,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = task.dueDate.changeMillsToDateString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    
-                    // Duration
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Timer,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = if (task.taskDuration > 0) {
-                                "${task.taskDuration / 60}h ${task.taskDuration % 60}m"
-                            } else {
-                                "No duration"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(
+                        text = Priority.fromInt(task.priority).name,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Priority.fromInt(task.priority).color.copy(alpha = 0.1f))
+                ) {
+                    TaskCheckBox(
+                        isComplete = task.isComplete,
+                        borderColor = Priority.fromInt(task.priority).color,
+                        onCheckBoxClick = onCheckBoxClick
+                    )
                 }
             }
             
-            // Priority Badge
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Priority.fromInt(task.priority).color.copy(alpha = 0.1f),
-                contentColor = Priority.fromInt(task.priority).color
-            ) {
+            // Title
+            Text(
+                text = task.title,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textDecoration = if (task.isComplete) TextDecoration.LineThrough else TextDecoration.None
+            )
+            
+            // Description
+            if (task.description.isNotEmpty()) {
                 Text(
-                    text = Priority.fromInt(task.priority).name,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    text = task.description,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+            
+            // Bottom Row - Due Date and Duration
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Due Date
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarToday,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = task.dueDate.changeMillsToDateString(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                // Duration
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = if (task.taskDuration > 0) {
+                            "${task.taskDuration / 60}h ${task.taskDuration % 60}m"
+                        } else {
+                            "No duration"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
