@@ -166,7 +166,7 @@ class SubjectViewModel @Inject constructor(
                 taskRepository.upsertTask(task.copy(isComplete = !task.isComplete))
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
-                        if (task.isComplete) "Saved in upcoming tasks." else "Saved in completed tasks."
+                        message = if (task.isComplete) "Topic marked as complete" else "Topic marked as incomplete"
                     )
                 )
             } catch (e: Exception) {

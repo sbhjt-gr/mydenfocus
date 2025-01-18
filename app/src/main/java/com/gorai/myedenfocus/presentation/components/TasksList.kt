@@ -34,7 +34,7 @@ fun LazyListScope.tasksList(
 ) {
     item {
         Text(
-            text = sectionTitle,
+            text = sectionTitle.replace("Task", "Topic"),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
@@ -54,10 +54,10 @@ fun LazyListScope.tasksList(
                         .size(140.dp)
                         .padding(bottom = 16.dp),
                     painter = painterResource(R.drawable.img_tasks),
-                    contentDescription = emptyListText
+                    contentDescription = emptyListText.replace("task", "topic")
                 )
                 Text(
-                    text = emptyListText,
+                    text = emptyListText.replace("task", "topic"),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center

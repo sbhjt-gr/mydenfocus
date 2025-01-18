@@ -103,7 +103,7 @@ class TaskViewModel @Inject constructor(
                                 
                                 _snackbarEventFlow.emit(
                                     SnackbarEvent.ShowSnackbar(
-                                        message = if (updatedTask.isComplete) "Task marked as complete" else "Task marked as incomplete",
+                                        message = if (updatedTask.isComplete) "Topic marked as incomplete" else "Topic marked as complete",
                                         duration = SnackbarDuration.Short
                                     )
                                 )
@@ -141,18 +141,18 @@ class TaskViewModel @Inject constructor(
                         taskRepository.deleteTask(taskId = currentTaskId)
                     }
                     _snackbarEventFlow.emit(
-                        SnackbarEvent.ShowSnackbar(message = "Task deleted successfully")
+                        SnackbarEvent.ShowSnackbar(message = "Topic deleted successfully")
                     )
                     _snackbarEventFlow.emit(SnackbarEvent.NavigateUp)
                 } else {
                     _snackbarEventFlow.emit(
-                        SnackbarEvent.ShowSnackbar(message = "No task to delete")
+                        SnackbarEvent.ShowSnackbar(message = "No topic to delete")
                     )
                 }
             } catch (e: Exception) {
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
-                        message = "Couldn't delete task. ${e.message}",
+                        message = "Couldn't delete topic. ${e.message}",
                         duration = SnackbarDuration.Long
                     )
                 )
@@ -165,16 +165,15 @@ class TaskViewModel @Inject constructor(
             try {
                 val task = createTaskFromState()
                 taskRepository.upsertTask(task)
-
                 
                 _snackbarEventFlow.emit(
-                    SnackbarEvent.ShowSnackbar(message = "Task saved successfully")
+                    SnackbarEvent.ShowSnackbar(message = "Topic saved successfully")
                 )
                 _snackbarEventFlow.emit(SnackbarEvent.NavigateUp)
             } catch(e: Exception) {
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
-                        message = e.message ?: "Couldn't save task",
+                        message = e.message ?: "Couldn't save topic",
                         duration = SnackbarDuration.Long
                     )
                 )

@@ -150,8 +150,8 @@ private fun TaskScreen(
 
     DeleteDialog(
         isOpen = isDeleteDialogOpen,
-        title = "Delete Task?",
-        bodyText = "Are You Sure You Want To Delete This Task? This Action Cannot Be Undone.",
+        title = "Delete Topic?",
+        bodyText = "Are You Sure You Want To Delete This Topic? This Action Cannot Be Undone.",
         onDismissRequest = { isDeleteDialogOpen = false },
         onConfirmButtonClick = {
             onEvent(TaskEvent.DeleteTask)
@@ -206,13 +206,13 @@ private fun TaskScreen(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.title,
                 onValueChange = { onEvent(TaskEvent.OnTitleChange(it)) },
-                label = { Text("Task Title") },
+                label = { Text("Topic Title") },
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Words,
                     imeAction = ImeAction.Next
                 ),
                 isError = taskTitleError != null,
-                supportingText = taskTitleError?.let { { Text(it) } }
+                supportingText = taskTitleError?.let { { Text(it.replace("task", "topic")) } }
             )
 
             // Description Input
@@ -259,10 +259,10 @@ private fun TaskScreen(
                 onPriorityChange = { onEvent(TaskEvent.OnPriorityChange(it)) }
             )
 
-            // Task Duration Section
+            // Topic Duration Section
             Column {
                 Text(
-                    text = "Task Duration",
+                    text = "Topic Duration",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -441,7 +441,7 @@ private fun TaskScreen(
                 enabled = taskTitleError == null && state.title.isNotBlank()
             ) {
                 Text(
-                    text = "Save Task",
+                    text = "Save Topic",
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             }
@@ -549,7 +549,7 @@ private fun PriorityChip(
             },
             title = {
                 Text(
-                    text = "Task",
+                    text = "Topic",
                     style = MaterialTheme.typography.headlineSmall
                 )
             },
@@ -562,7 +562,8 @@ private fun PriorityChip(
                     )
                     IconButton(onClick = onDeleteButtonClick) {
                         Icon(
-                            imageVector = Icons.Default.Delete, contentDescription = "Delete Task"
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Topic"
                         )
                     }
                 }

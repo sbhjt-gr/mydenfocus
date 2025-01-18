@@ -308,8 +308,8 @@ private fun DashboardScreen(
                 )
             }
             tasksList(
-                sectionTitle = "Task List",
-                emptyListText = "No tasks for are listed\nPress + button to add new tasks",
+                sectionTitle = "All Topics",
+                emptyListText = "No topics are listed\nPress + button to add new topics",
                 tasks = tasks,
                 onTaskCardClick = onTaskCardClick,
                 onCheckBoxClick = { onEvent(DashboardEvent.OnTaskIsCompleteChange(it)) }

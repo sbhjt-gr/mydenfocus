@@ -191,8 +191,8 @@ private fun SubjectScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onAddTaskButtonClick,
-                text = { Text(text = "Add Task") },
-                icon = { Icon(imageVector = Icons.Default.Add, contentDescription = "Add Task") },
+                text = { Text(text = "Add Topic") },
+                icon = { Icon(imageVector = Icons.Default.Add, contentDescription = "Add Topic") },
                 expanded = isFABExpanded
             )
         }
@@ -215,19 +215,19 @@ private fun SubjectScreen(
                 )
             }
             tasksList(
-                sectionTitle = "Upcoming Tasks",
-                emptyListText = "No upcoming tasks\nPress + button to add new tasks",
+                sectionTitle = "Upcoming Topics",
+                emptyListText = "No upcoming topics\nPress + button to add new topics",
                 tasks = state.upcomingTasks,
                 onTaskCardClick = onTaskCardClick,
                 onCheckBoxClick = { onEvent(SubjectEvent.OnTaskIsCompletedChange(it))}
             )
             item { Spacer(modifier = Modifier.height(20.dp)) }
             tasksList(
-                sectionTitle = "Completed Tasks",
-                emptyListText = "No completed tasks\nClick the checkboxes to complete tasks",
+                sectionTitle = "Completed Topics",
+                emptyListText = "No completed topics\nClick the checkboxes to complete topics",
                 tasks = state.completedTasks,
                 onTaskCardClick = onTaskCardClick,
-                onCheckBoxClick = { onEvent(SubjectEvent.OnTaskIsCompletedChange(it)) }
+                onCheckBoxClick = { onEvent(SubjectEvent.OnTaskIsCompletedChange(it))}
             )
             item { Spacer(modifier = Modifier.height(20.dp)) }
             studySessionsList(

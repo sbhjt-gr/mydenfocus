@@ -160,7 +160,7 @@ class DashboardViewModel @Inject constructor(
                 )
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
-                        "Saved in completed tasks"
+                        "Topic saved in completed topics"
                     )
                 )
             } catch (e: Exception) {
