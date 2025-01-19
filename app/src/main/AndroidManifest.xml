@@ -39,7 +39,6 @@
         </activity>
         <service
             android:name=".presentation.session.StudySessionTimerService"
-            android:foregroundServiceType="dataSync"
             android:exported="false" />
         <service
             android:name=".service.MeditationTimerService"

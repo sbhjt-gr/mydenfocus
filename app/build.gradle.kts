@@ -13,8 +13,8 @@ android {
         applicationId = "com.gorai.myedenfocus"
         minSdk = 23
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -106,5 +106,8 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.5.4")
 
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // System UI Controller
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.32.0")
 
 }

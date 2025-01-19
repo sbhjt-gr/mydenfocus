@@ -14,12 +14,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gorai.myedenfocus.data.repository.UserPreferencesRepository
 import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.model.Task
 import com.gorai.myedenfocus.presentation.NavGraphs
+import com.gorai.myedenfocus.presentation.destinations.OnboardingScreenDestination
 import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestination
 import com.gorai.myedenfocus.presentation.session.StudySessionTimerService
 import com.gorai.myedenfocus.presentation.theme.MyedenFocusTheme
@@ -31,13 +35,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gorai.myedenfocus.presentation.navigation.NavigationViewModel
 import androidx.navigation.compose.rememberNavController
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var userPreferencesRepository: UserPreferencesRepository
 
     private var isBound by mutableStateOf(false)
     private lateinit var timerService: StudySessionTimerService
@@ -52,6 +59,7 @@ class MainActivity : ComponentActivity() {
             isBound = false
         }
     }
+
     override fun onStart() {
         super.onStart()
         Intent(this, StudySessionTimerService::class.java).also { intent ->
@@ -63,8 +71,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
         setContent {
-            val viewModel: NavigationViewModel = hiltViewModel()
+            val isOnboardingCompleted by userPreferencesRepository.isOnboardingCompleted.collectAsStateWithLifecycle(initialValue = false)
             
             MyedenFocusTheme {
                 val navController = rememberNavController()
@@ -81,7 +90,7 @@ class MainActivity : ComponentActivity() {
 
                 DestinationsNavHost(
                     navGraph = NavGraphs.root,
-                    navController = navController,
+                    startRoute = if (isOnboardingCompleted) NavGraphs.root.startRoute else OnboardingScreenDestination,
                     dependenciesContainerBuilder = {
                         dependency(SessionScreenRouteDestination) { timerService }
                     },
@@ -89,7 +98,6 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
-        requestPermission()
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -102,15 +110,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun requestPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
-                0
-            )
-        }
-    }
     override fun onStop() {
         super.onStop()
         unbindService(connection)
