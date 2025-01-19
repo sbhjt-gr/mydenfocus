@@ -28,7 +28,7 @@ MyedenFocus is a productivity app designed to enhance academic performance throu
 - Android SDK 33 (minimum SDK 24)
 - Gradle 7.0 or higher
 
-## Installation
+## Installation (Only for Contributions)
 
 1. Clone the repository
    ```sh
