@@ -14,6 +14,7 @@ import com.gorai.myedenfocus.presentation.session.StudySessionTimerService
 object ServiceHelper {
     const val CHANNEL_ID = "study_timer_channel"
     const val NOTIFICATION_ID = 1
+    const val FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
 
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

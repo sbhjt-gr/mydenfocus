@@ -135,18 +135,29 @@ class StudySessionTimerService : Service() {
                 hours = hours.value,
                 minutes = minutes.value,
                 seconds = seconds.value
-            ).build()
+            ).build(),
+            ServiceHelper.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
         )
     }
 
     private suspend fun completeTimer() {
-        // Only complete if we haven't manually finished
         if (!wasManuallyFinished) {
             playAlarm()
             selectedTopicId?.let { topicId ->
                 try {
-                    // Only mark task as complete, don't save session
                     taskRepository.getTaskById(topicId)?.let { task ->
+                        // Save session
+                        sessionRepository.insertSession(
+                            Session(
+                                sessionSubjectId = subjectId.value ?: -1,
+                                relatedToSubject = "",  // Will be updated by UI if needed
+                                topicName = task.title,
+                                date = Instant.now().toEpochMilli(),
+                                duration = totalDurationMinutes.toLong()
+                            )
+                        )
+                        
+                        // Mark task as complete
                         taskRepository.upsertTask(
                             task.copy(isComplete = true)
                         )
