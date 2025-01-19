@@ -47,25 +47,25 @@ val onboardingPages = listOf(
     OnboardingPage(
         title = "Smart Study Timer",
         description = "Stay focused with our intelligent Pomodoro timer and track your study sessions",
-        image = R.drawable.app_icon,
+        image = R.drawable.smart_study_timer,
         backgroundColor = Color(0xFF4CAF50)
     ),
     OnboardingPage(
         title = "Track Progress",
         description = "Monitor your study habits with detailed analytics and insights",
-        image = R.drawable.app_icon,
+        image = R.drawable.list_topics,
         backgroundColor = Color(0xFF9C27B0)
     ),
     OnboardingPage(
         title = "Enable Notifications",
         description = "Allow notifications to get timer updates and stay on track with your study sessions",
-        image = R.drawable.app_icon,
+        image = R.drawable.list_notifications,
         backgroundColor = Color(0xFFFF9800)
     ),
     OnboardingPage(
         title = "Stay Mindful",
         description = "Take meditation breaks to maintain mental clarity and reduce stress",
-        image = R.drawable.app_icon,
+        image = R.drawable.rabbit_meditating,
         backgroundColor = Color(0xFF9C27B0)
     )
 )
