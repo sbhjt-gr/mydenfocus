@@ -32,7 +32,7 @@ MyedenFocus is a productivity app designed to enhance academic performance throu
 
 1. Clone the repository
    ```sh
-   git clone https://github.com/your_username_/MyEdenFocus-Kotlin.git
+   git clone https://github.com/sbhjt-gr/myedenfocus-kotlin/
    ```
 2. Open in Android Studio
 3. Sync Gradle files
