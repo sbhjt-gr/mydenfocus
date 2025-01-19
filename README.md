@@ -56,7 +56,7 @@ Contributions are not currently being accepted as this is a personal learning pr
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under a custom license. See `LICENSE` for more information.
 
 ## Contact
 
