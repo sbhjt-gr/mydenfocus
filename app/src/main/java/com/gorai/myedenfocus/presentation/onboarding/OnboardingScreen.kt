@@ -174,9 +174,9 @@ fun OnboardingScreen(
                         ) {
                             Text(
                                 "Skip",
-                                style = MaterialTheme.typography.labelLarge,
+                                style = MaterialTheme.typography.titleMedium,
                                 color = Color.White,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.ExtraBold
                             )
                         }
                         
@@ -196,11 +196,13 @@ fun OnboardingScreen(
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary
-                            )
+                            ),
+                            modifier = Modifier.height(48.dp)
                         ) {
                             Text(
                                 "Next",
-                                fontWeight = FontWeight.Bold
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold
                             )
                         }
                     } else {
@@ -209,12 +211,18 @@ fun OnboardingScreen(
                                 viewModel.onNextClick()
                                 navigator.navigate(DashBoardScreenRouteDestination)
                             },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary
                             )
                         ) {
-                            Text("Get Started")
+                            Text(
+                                "Get Started",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold
+                            )
                         }
                     }
                 }
@@ -278,9 +286,16 @@ fun OnboardingPage(
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         ),
-                        modifier = Modifier.padding(top = 16.dp)
+                        modifier = Modifier
+                            .padding(top = 24.dp)
+                            .height(56.dp)
+                            .fillMaxWidth(0.8f)
                     ) {
-                        Text("Allow Notifications")
+                        Text(
+                            "Allow Notifications",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold
+                        )
                     }
                 }
             }

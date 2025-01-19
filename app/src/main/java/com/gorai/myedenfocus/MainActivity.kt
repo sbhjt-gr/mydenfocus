@@ -73,29 +73,31 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         
         setContent {
-            val isOnboardingCompleted by userPreferencesRepository.isOnboardingCompleted.collectAsStateWithLifecycle(initialValue = false)
+            val isOnboardingCompleted by userPreferencesRepository.isOnboardingCompleted.collectAsStateWithLifecycle(initialValue = null)
             
-            MyedenFocusTheme {
-                val navController = rememberNavController()
-                
-                // Handle notification click navigation
-                LaunchedEffect(intent) {
-                    if (intent?.getBooleanExtra("navigate_to_session", false) == true) {
-                        // Clear the extra to prevent repeated navigation
-                        intent.removeExtra("navigate_to_session")
-                        // Navigate using navController
-                        navController.navigate(SessionScreenRouteDestination.route)
+            if (isOnboardingCompleted != null) {
+                MyedenFocusTheme {
+                    val navController = rememberNavController()
+                    
+                    // Handle notification click navigation
+                    LaunchedEffect(intent) {
+                        if (intent?.getBooleanExtra("navigate_to_session", false) == true) {
+                            // Clear the extra to prevent repeated navigation
+                            intent.removeExtra("navigate_to_session")
+                            // Navigate using navController
+                            navController.navigate(SessionScreenRouteDestination.route)
+                        }
                     }
-                }
 
-                DestinationsNavHost(
-                    navGraph = NavGraphs.root,
-                    startRoute = if (isOnboardingCompleted) NavGraphs.root.startRoute else OnboardingScreenDestination,
-                    dependenciesContainerBuilder = {
-                        dependency(SessionScreenRouteDestination) { timerService }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
+                    DestinationsNavHost(
+                        navGraph = NavGraphs.root,
+                        startRoute = if (isOnboardingCompleted == true) NavGraphs.root.startRoute else OnboardingScreenDestination,
+                        dependenciesContainerBuilder = {
+                            dependency(SessionScreenRouteDestination) { timerService }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
     }
