@@ -1,21 +1,20 @@
-MIT License
-
 Copyright (c) 2024 Subhajit Gorai
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+All rights reserved.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+## Permissions
+- The source code in this repository is provided solely for viewing, educational, and contribution purposes.
+- You are permitted to contribute to this repository by submitting changes (e.g., pull requests) under the terms outlined in the "Contributions" section.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+## Restrictions
+- You may NOT copy, modify, distribute, sublicense, or reuse the code in this repository in any form, for any purpose, without explicit prior written permission from the copyright holder.
+- Commercial use, redistribution, or derivative works of this repository, in whole or in part, are strictly prohibited.
+
+## Contributions
+- By submitting a contribution (e.g., code, documentation, or other materials) to this repository, you agree:
+  - That your contribution is an original work and does not violate any third-party rights.
+  - To transfer all copyright and intellectual property rights of your contribution to the repository owner.
+- Contributions are governed by this agreement and may be modified or redistributed by the repository owner under these terms.
+
+## Disclaimer
+This repository and its code are provided "AS IS," without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, or non-infringement. In no event shall the copyright holder be liable for any claim, damages, or other liability arising from or in connection with the use of this code.
