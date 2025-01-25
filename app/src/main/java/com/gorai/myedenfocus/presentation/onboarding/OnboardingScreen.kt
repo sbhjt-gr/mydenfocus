@@ -29,6 +29,12 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.gorai.myedenfocus.presentation.destinations.DashBoardScreenRouteDestination
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.launch
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.asPaddingValues
 
 data class OnboardingPage(
     val title: String,
@@ -37,38 +43,53 @@ data class OnboardingPage(
     val backgroundColor: Color = Color(0xFF1A1A1A)
 )
 
-val onboardingPages = listOf(
-    OnboardingPage(
-        title = "Welcome to MyedenFocus",
-        description = "Your personal study companion for better focus and productivity",
-        image = R.drawable.app_icon,
-        backgroundColor = Color(0xFF2196F3)
-    ),
-    OnboardingPage(
-        title = "Smart Study Timer",
-        description = "Stay focused with our intelligent Pomodoro timer and track your study sessions",
-        image = R.drawable.smart_study_timer,
-        backgroundColor = Color(0xFF4CAF50)
-    ),
-    OnboardingPage(
-        title = "Track Progress",
-        description = "Monitor your study habits with detailed analytics and insights",
-        image = R.drawable.list_topics,
-        backgroundColor = Color(0xFF9C27B0)
-    ),
-    OnboardingPage(
-        title = "Enable Notifications",
-        description = "Allow notifications to get timer updates and stay on track with your study sessions",
-        image = R.drawable.list_notifications,
-        backgroundColor = Color(0xFFFF9800)
-    ),
-    OnboardingPage(
-        title = "Stay Mindful",
-        description = "Take meditation breaks to maintain mental clarity and reduce stress",
-        image = R.drawable.rabbit_meditating,
-        backgroundColor = Color(0xFF9C27B0)
+@Composable
+fun getOnboardingPages(): List<OnboardingPage> {
+    val context = LocalContext.current
+    val showNotificationPage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) != PackageManager.PERMISSION_GRANTED
+    } else false
+
+    return listOf(
+        OnboardingPage(
+            title = "Welcome to MyedenFocus",
+            description = "Your personal study companion for better focus and productivity",
+            image = R.drawable.app_icon,
+            backgroundColor = Color(0xFF1565C0)
+        ),
+        OnboardingPage(
+            title = "Smart Study Timer",
+            description = "Stay focused with our intelligent Pomodoro timer and track your study sessions",
+            image = R.drawable.smart_study_timer,
+            backgroundColor = Color(0xFF2E7D32)
+        ),
+        OnboardingPage(
+            title = "Track Progress",
+            description = "Monitor your study habits with detailed analytics and insights",
+            image = R.drawable.list_topics,
+            backgroundColor = Color(0xFF6A1B9A)
+        )
+    ) + (if (showNotificationPage) {
+        listOf(
+            OnboardingPage(
+                title = "Enable Notifications",
+                description = "Allow notifications to get timer updates and stay on track with your study sessions",
+                image = R.drawable.list_notifications,
+                backgroundColor = Color(0xFFE65100)
+            )
+        )
+    } else emptyList()) + listOf(
+        OnboardingPage(
+            title = "Stay Mindful",
+            description = "Take meditation breaks to maintain mental clarity and reduce stress",
+            image = R.drawable.rabbit_meditating,
+            backgroundColor = Color(0xFF4A148C)
+        )
     )
-)
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Destination
@@ -78,15 +99,18 @@ fun OnboardingScreen(
     viewModel: OnboardingViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val onboardingPages = getOnboardingPages()
     val pagerState = rememberPagerState { onboardingPages.size }
     val scope = rememberCoroutineScope()
     val systemUiController = rememberSystemUiController()
+    val backgroundColor = MaterialTheme.colorScheme.background
     val shouldNavigateNext by viewModel.shouldNavigateNext.collectAsState()
 
     LaunchedEffect(shouldNavigateNext) {
         if (shouldNavigateNext) {
             if (pagerState.currentPage < onboardingPages.size - 1) {
                 pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                viewModel.resetNavigationFlag()
             } else {
                 navigator.navigate(DashBoardScreenRouteDestination)
             }
@@ -100,10 +124,22 @@ fun OnboardingScreen(
         )
     }
 
+    DisposableEffect(backgroundColor) {
+        onDispose {
+            systemUiController.setStatusBarColor(
+                color = backgroundColor,
+                darkIcons = true
+            )
+        }
+    }
+
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
             viewModel.onPermissionResult(isGranted)
+            scope.launch {
+                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+            }
         }
     )
 
@@ -127,6 +163,7 @@ fun OnboardingScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 32.dp)
+                .padding(WindowInsets.navigationBars.asPaddingValues())
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -240,26 +277,30 @@ fun OnboardingPage(
     Box(
         modifier = modifier
             .background(page.backgroundColor)
-            .padding(24.dp)
+            .fillMaxSize()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 100.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(32.dp)
         ) {
+            Spacer(modifier = Modifier.height(48.dp))
+            
             Image(
                 painter = painterResource(id = page.image),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(200.dp)
+                    .size(180.dp)
                     .scale(1.2f)
             )
             
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = page.title,
@@ -289,7 +330,8 @@ fun OnboardingPage(
                         modifier = Modifier
                             .padding(top = 24.dp)
                             .height(56.dp)
-                            .fillMaxWidth(0.8f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp)
                     ) {
                         Text(
                             "Allow Notifications",
@@ -299,6 +341,8 @@ fun OnboardingPage(
                     }
                 }
             }
+            
+            Spacer(modifier = Modifier.height(72.dp))
         }
     }
 } 

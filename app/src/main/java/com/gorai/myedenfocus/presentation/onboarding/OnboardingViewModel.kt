@@ -31,7 +31,10 @@ class OnboardingViewModel @Inject constructor(
     fun onPermissionResult(granted: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setNotificationPermissionRequested(true)
-            _shouldNavigateNext.value = true
         }
+    }
+
+    fun resetNavigationFlag() {
+        _shouldNavigateNext.value = false
     }
 } 
