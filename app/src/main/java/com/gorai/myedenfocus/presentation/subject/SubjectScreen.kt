@@ -2,11 +2,14 @@ package com.gorai.myedenfocus.presentation.subject
 
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -23,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
@@ -298,34 +302,92 @@ private fun SubjectOverviewSection(
     val weeklyGoalHours = goalHoursFloat * daysPerWeek
     val weeklyStudiedHours = studiedHoursFloat
 
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Speedometer(
-            modifier = Modifier.weight(1f),
-            headingText = "Daily Goal",
-            value = goalHoursFloat,
-            maxValue = 15f,
-            displayText = goalHoursFloat.formatHours()
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            CountCard(
+                modifier = Modifier.weight(1f),
+                title = "Daily Goal",
+                value = goalHoursFloat.formatHours(),
+                maxValue = "15h"
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            CountCard(
+                modifier = Modifier.weight(1f),
+                title = "Today's Progress",
+                value = studiedHoursFloat.formatHours(),
+                maxValue = goalHoursFloat.formatHours()
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            CountCard(
+                modifier = Modifier.weight(1f),
+                title = "Weekly Progress",
+                value = weeklyStudiedHours.formatHours(),
+                maxValue = weeklyGoalHours.formatHours()
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            CountCard(
+                modifier = Modifier.weight(1f),
+                title = "Study Days",
+                value = daysPerWeek.toString(),
+                maxValue = "7"
+            )
+        }
+    }
+}
 
-        Speedometer(
-            modifier = Modifier.weight(1f),
-            headingText = "Today's Hours",
-            value = studiedHoursFloat,
-            maxValue = goalHoursFloat,
-            displayText = studiedHoursFloat.formatHours()
-        )
-
-        Speedometer(
-            modifier = Modifier.weight(1f),
-            headingText = "Weekly Hours",
-            value = weeklyStudiedHours,
-            maxValue = weeklyGoalHours,
-            displayText = "${weeklyStudiedHours.formatHours()}/${weeklyGoalHours.formatHours()}"
-        )
+@Composable
+private fun CountCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    value: String,
+    maxValue: String
+) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "/ $maxValue",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+        }
     }
 }
 

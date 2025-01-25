@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -384,33 +385,92 @@ private fun CountCardsSection(
     val dailyStudiedHoursFloat = dailyStudiedHours.toFloatOrNull() ?: 0f
     val dailyGoalHoursFloat = dailyGoalHours.toFloatOrNull() ?: 0f
 
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.SpaceEvenly
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Speedometer(
-            modifier = Modifier.weight(1f),
-            headingText = "Total Subjects",
-            value = subjectCount.toFloat(),
-            maxValue = 10f,
-            displayText = subjectCount.toString()
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            CountCard(
+                modifier = Modifier.weight(1f),
+                title = "Total Subjects",
+                value = subjectCount.toString(),
+                maxValue = "10"
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            CountCard(
+                modifier = Modifier.weight(1f),
+                title = "Today's Progress",
+                value = dailyStudiedHoursFloat.formatHours(),
+                maxValue = dailyGoalHoursFloat.formatHours()
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            CountCard(
+                modifier = Modifier.weight(1f),
+                title = "Weekly Progress",
+                value = studiedHoursFloat.formatHours(),
+                maxValue = weeklyGoalHours.formatHours()
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            CountCard(
+                modifier = Modifier.weight(1f),
+                title = "Study Days",
+                value = studyDaysPerWeek.toString(),
+                maxValue = "7"
+            )
+        }
+    }
+}
 
-        Speedometer(
-            modifier = Modifier.weight(1f),
-            headingText = "Today's Hours",
-            value = dailyStudiedHoursFloat,
-            maxValue = dailyGoalHoursFloat,
-            displayText = "${dailyStudiedHoursFloat.formatHours()}/${dailyGoalHoursFloat.formatHours()}"
-        )
-
-        Speedometer(
-            modifier = Modifier.weight(1f),
-            headingText = "Weekly Hours",
-            value = studiedHoursFloat,
-            maxValue = weeklyGoalHours,
-            displayText = "${studiedHoursFloat.formatHours()}/${weeklyGoalHours.formatHours()}"
-        )
+@Composable
+private fun CountCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    value: String,
+    maxValue: String
+) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "/ $maxValue",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+        }
     }
 }
 
