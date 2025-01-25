@@ -581,9 +581,7 @@ fun MeditationScreen(
             if (!isTimerRunning) {
                 action = MeditationTimerService.ACTION_START
                 putExtra(MeditationTimerService.EXTRA_TIME, selectedMinutes * 60)
-                // Store the selected duration for later use when completing the session
                 putExtra("selected_duration", selectedMinutes)
-                // Convert display name to file name
                 val musicFileName = when (selectedMusic) {
                     "Wind Chimes Nature" -> "wind_chimes_nature_symphony.mp3"
                     "Soothing Chime" -> "soothing_chime.mp3"
