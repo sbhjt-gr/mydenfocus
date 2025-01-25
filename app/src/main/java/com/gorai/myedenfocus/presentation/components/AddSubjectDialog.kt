@@ -192,122 +192,78 @@ fun AddSubjectDialog(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Hours Selector
+                        // Hours TextField
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "Hours",
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(bottom = 4.dp)
                             )
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .border(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outline,
-                                        RoundedCornerShape(4.dp)
-                                    )
-                                    .padding(4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                IconButton(
-                                    onClick = {
-                                        if (currentHours > 0) {
-                                            val newValue = (currentHours - 1) + (currentMinutes / 60f)
+                            OutlinedTextField(
+                                value = if (currentHours == 0) "" else currentHours.toString(),
+                                onValueChange = { newValue ->
+                                    if (newValue.length <= 2) {
+                                        val newHours = newValue.toIntOrNull() ?: 0
+                                        if (newHours in 0..15) {
+                                            val newValue = newHours + (currentMinutes / 60f)
                                             onDailyGoalHoursChange(newValue.toString())
                                         }
-                                    },
-                                    modifier = Modifier.size(32.dp),
-                                    enabled = currentHours > 0
-                                ) {
-                                    Icon(
-                                        Icons.Default.Remove, 
-                                        "Decrease hours",
-                                        tint = if (currentHours > 0) 
-                                            MaterialTheme.colorScheme.primary 
-                                        else 
-                                            MaterialTheme.colorScheme.outline
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Next
+                                ),
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                    textAlign = TextAlign.Center
+                                ),
+                                placeholder = { 
+                                    Text(
+                                        text = "0",
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 }
-
-                                Text(
-                                    text = "$currentHours",
-                                    modifier = Modifier.width(40.dp),
-                                    textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-
-                                IconButton(
-                                    onClick = {
-                                        if (currentHours < 15) {
-                                            val newValue = (currentHours + 1) + (currentMinutes / 60f)
-                                            onDailyGoalHoursChange(newValue.toString())
-                                        }
-                                    },
-                                    modifier = Modifier.size(32.dp),
-                                    enabled = currentHours < 15
-                                ) {
-                                    Icon(
-                                        Icons.Default.Add, 
-                                        "Increase hours",
-                                        tint = if (currentHours < 15) 
-                                            MaterialTheme.colorScheme.primary 
-                                        else 
-                                            MaterialTheme.colorScheme.outline
-                                    )
-                                }
-                            }
+                            )
                         }
 
-                        // Minutes Selector
+                        // Minutes TextField
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "Minutes",
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(bottom = 4.dp)
                             )
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .border(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outline,
-                                        RoundedCornerShape(4.dp)
+                            OutlinedTextField(
+                                value = if (currentMinutes == 0) "" else currentMinutes.toString(),
+                                onValueChange = { newValue ->
+                                    if (newValue.length <= 2) {
+                                        val newMinutes = newValue.toIntOrNull() ?: 0
+                                        if (newMinutes in 0..59) {
+                                            val newValue = currentHours + (newMinutes / 60f)
+                                            onDailyGoalHoursChange(newValue.toString())
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Done
+                                ),
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                    textAlign = TextAlign.Center
+                                ),
+                                placeholder = { 
+                                    Text(
+                                        text = "0",
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
                                     )
-                                    .padding(4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                IconButton(
-                                    onClick = {
-                                        val newMinutes = if (currentMinutes == 0) 55 else (currentMinutes - 5)
-                                        val newValue = currentHours + (newMinutes / 60f)
-                                        onDailyGoalHoursChange(newValue.toString())
-                                    },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(Icons.Default.Remove, "Decrease minutes")
                                 }
-
-                                Text(
-                                    text = "$currentMinutes",
-                                    modifier = Modifier.width(40.dp),
-                                    textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-
-                                IconButton(
-                                    onClick = {
-                                        val newMinutes = if (currentMinutes == 55) 0 else (currentMinutes + 5)
-                                        val newValue = currentHours + (newMinutes / 60f)
-                                        onDailyGoalHoursChange(newValue.toString())
-                                    },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(Icons.Default.Add, "Increase minutes")
-                                }
-                            }
+                            )
                         }
                     }
 

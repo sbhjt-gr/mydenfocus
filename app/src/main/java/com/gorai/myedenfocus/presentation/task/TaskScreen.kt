@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -468,11 +469,7 @@ private fun DurationSelector(
             // Hours
             TimeUnit(
                 value = hours,
-                onValueChange = { newHours ->
-                    if (newHours in 0..24) {
-                        onHoursChange(newHours)
-                    }
-                },
+                onValueChange = onHoursChange,
                 label = "Hours"
             )
             
@@ -481,23 +478,7 @@ private fun DurationSelector(
             // Minutes
             TimeUnit(
                 value = minutes,
-                onValueChange = { newMinutes ->
-                    when {
-                        newMinutes > 59 -> {
-                            if (hours < 24) {
-                                onHoursChange(hours + 1)
-                                onMinutesChange(0)
-                            }
-                        }
-                        newMinutes < 0 -> {
-                            if (hours > 0) {
-                                onHoursChange(hours - 1)
-                                onMinutesChange(59)
-                            }
-                        }
-                        else -> onMinutesChange(newMinutes)
-                    }
-                },
+                onValueChange = onMinutesChange,
                 label = "Minutes"
             )
         }
@@ -510,48 +491,50 @@ private fun TimeUnit(
     onValueChange: (Int) -> Unit,
     label: String
 ) {
+    var textValue by remember { mutableStateOf(if (value == 0) "" else value.toString().padStart(2, '0')) }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-        ) {
-            Row(
-                modifier = Modifier.padding(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { onValueChange(value - 1) },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Remove,
-                        contentDescription = "Decrease",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+        OutlinedTextField(
+            value = textValue,
+            onValueChange = { newValue ->
+                if (newValue.length <= 2 && newValue.all { it.isDigit() }) {
+                    val newIntValue = newValue.toIntOrNull() ?: 0
+                    when (label) {
+                        "Hours" -> {
+                            if (newIntValue <= 15) {
+                                textValue = newValue
+                                onValueChange(newIntValue)
+                            }
+                        }
+                        "Minutes" -> {
+                            if (newIntValue <= 59) {
+                                textValue = newValue
+                                onValueChange(newIntValue)
+                            }
+                        }
+                    }
                 }
-                
+            },
+            modifier = Modifier.width(80.dp),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = if (label == "Hours") ImeAction.Next else ImeAction.Done
+            ),
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                textAlign = TextAlign.Center
+            ),
+            placeholder = { 
                 Text(
-                    text = value.toString().padStart(2, '0'),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                    text = "00",
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
-                
-                IconButton(
-                    onClick = { onValueChange(value + 1) },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Increase",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
             }
-        }
+        )
         
         Text(
             text = label,
