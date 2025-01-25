@@ -62,11 +62,12 @@ fun SettingsScreen(
             Text(
                 text = "Study Goals",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
             )
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { showDailyGoalDialog = true }
+                onClick = { /* Disabled */ },
+                enabled = false
             ) {
                 Row(
                     modifier = Modifier
@@ -78,18 +79,19 @@ fun SettingsScreen(
                     Column {
                         Text(
                             text = "Daily Study Goal",
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                         )
                         Text(
                             text = "Set your daily study target",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                         )
                     }
                     Text(
                         text = "${state.dailyStudyGoal}h",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
                     )
                 }
             }
