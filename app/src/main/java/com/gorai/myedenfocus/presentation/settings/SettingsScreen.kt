@@ -11,9 +11,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gorai.myedenfocus.domain.model.Theme
 import com.gorai.myedenfocus.util.NavAnimation
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -116,13 +118,21 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = "Choose light or dark theme",
+                            text = when (state.theme) {
+                                Theme.SYSTEM -> "System default"
+                                Theme.LIGHT -> "Light"
+                                Theme.DARK -> "Dark"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
                     Icon(
-                        imageVector = if (state.isDarkMode) Icons.Default.DarkMode else Icons.Default.LightMode,
+                        imageVector = when (state.theme) {
+                            Theme.SYSTEM -> Icons.Default.DarkMode
+                            Theme.LIGHT -> Icons.Default.LightMode
+                            Theme.DARK -> Icons.Default.DarkMode
+                        },
                         contentDescription = "Theme",
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -185,7 +195,7 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = "1.0.0",
+                        text = "${com.gorai.myedenfocus.BuildConfig.VERSION_NAME}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -208,11 +218,11 @@ fun SettingsScreen(
     }
 
     if (showThemeDialog) {
-        ThemeDialog(
-            isDarkMode = state.isDarkMode,
+        ThemeSelectionDialog(
+            currentTheme = state.theme,
             onDismiss = { showThemeDialog = false },
-            onThemeSelect = { isDark ->
-                viewModel.onEvent(SettingsEvent.ToggleTheme(isDark))
+            onThemeSelect = { theme ->
+                viewModel.onEvent(SettingsEvent.SetTheme(theme))
                 showThemeDialog = false
             }
         )
@@ -358,4 +368,91 @@ private fun DailyGoalDialog(
             }
         }
     )
+}
+
+@Composable
+private fun ThemeSelectionDialog(
+    currentTheme: Theme,
+    onDismiss: () -> Unit,
+    onThemeSelect: (Theme) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Choose Theme") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ThemeOption(
+                    text = "System default",
+                    icon = Icons.Default.DarkMode,
+                    selected = currentTheme == Theme.SYSTEM,
+                    onClick = { onThemeSelect(Theme.SYSTEM) }
+                )
+                ThemeOption(
+                    text = "Light",
+                    icon = Icons.Default.LightMode,
+                    selected = currentTheme == Theme.LIGHT,
+                    onClick = { onThemeSelect(Theme.LIGHT) }
+                )
+                ThemeOption(
+                    text = "Dark",
+                    icon = Icons.Default.DarkMode,
+                    selected = currentTheme == Theme.DARK,
+                    onClick = { onThemeSelect(Theme.DARK) }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+@Composable
+private fun ThemeOption(
+    text: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+        color = if (selected) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surface
+        }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (selected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
+            )
+        }
+    }
 }

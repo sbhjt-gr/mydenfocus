@@ -1,7 +1,7 @@
 package com.gorai.myedenfocus.di
 
 import android.content.Context
-import com.gorai.myedenfocus.data.repository.UserPreferencesRepository
+import com.gorai.myedenfocus.data.local.DataStoreProvider
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -12,12 +12,11 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-    
     @Provides
     @Singleton
-    fun provideUserPreferencesRepository(
+    fun provideDataStoreProvider(
         @ApplicationContext context: Context
-    ): UserPreferencesRepository {
-        return UserPreferencesRepository(context)
+    ): DataStoreProvider {
+        return DataStoreProvider(context)
     }
 } 

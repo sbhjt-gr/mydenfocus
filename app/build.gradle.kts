@@ -13,8 +13,8 @@ android {
         applicationId = "com.gorai.myedenfocus"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.0.3"
+        versionCode = 5
+        versionName = "1.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -42,6 +42,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.3"

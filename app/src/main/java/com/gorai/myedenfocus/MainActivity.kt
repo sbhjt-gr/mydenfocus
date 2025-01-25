@@ -18,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.gorai.myedenfocus.data.repository.UserPreferencesRepository
+import com.gorai.myedenfocus.domain.repository.PreferencesRepository
 import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.model.Task
@@ -44,7 +44,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject
-    lateinit var userPreferencesRepository: UserPreferencesRepository
+    lateinit var preferencesRepository: PreferencesRepository
 
     private var isBound by mutableStateOf(false)
     private lateinit var timerService: StudySessionTimerService
@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         
         setContent {
-            val isOnboardingCompleted by userPreferencesRepository.isOnboardingCompleted.collectAsStateWithLifecycle(initialValue = null)
+            val isOnboardingCompleted by preferencesRepository.isOnboardingCompleted.collectAsStateWithLifecycle(initialValue = null)
             
             if (isOnboardingCompleted != null) {
                 MyedenFocusTheme {
