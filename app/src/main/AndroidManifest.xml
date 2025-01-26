@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <application
         android:name=".MyedenFocus"
         android:allowBackup="true"
@@ -48,6 +50,14 @@
             android:name=".service.TaskNotificationService"
             android:enabled="true"
             android:exported="false" />
+        <activity
+            android:name=".presentation.meditation.MeditationCompleteActivity"
+            android:exported="false"
+            android:showOnLockScreen="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.MyedenFocus"
+            android:launchMode="singleTop" />
     </application>
 
 </manifest>

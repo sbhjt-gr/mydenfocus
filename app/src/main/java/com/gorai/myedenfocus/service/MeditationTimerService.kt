@@ -23,6 +23,17 @@ import com.gorai.myedenfocus.MainActivity
 import android.net.Uri
 import androidx.core.net.toUri
 import android.media.MediaPlayer
+import android.graphics.PixelFormat
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.View
+import android.view.WindowManager
+import android.widget.Button
+import android.widget.TextView
+import android.os.CountDownTimer
+import android.provider.Settings
+import android.app.AlarmManager
+import com.gorai.myedenfocus.presentation.meditation.MeditationCompleteActivity
 
 class MeditationTimerService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
@@ -30,17 +41,24 @@ class MeditationTimerService : Service() {
     private var isTimerRunning = false
     private var mediaPlayer: MediaPlayer? = null
     private var selectedDuration = 0
+    private var timer: CountDownTimer? = null
+    private var windowManager: WindowManager? = null
+    private var overlayView: View? = null
+    private var initialTime: Int = 0
+    private var isPaused = false
+    private var remainingTime: Long = 0
     
     companion object {
         const val CHANNEL_ID = "meditation_timer_channel"
         const val NOTIFICATION_ID = 1
         const val ACTION_START = "START"
         const val ACTION_STOP = "STOP"
-        const val EXTRA_TIME = "time_in_seconds"
         const val ACTION_STOP_TIMER = "STOP_TIMER"
         const val ACTION_PAUSE = "PAUSE"
         const val ACTION_RESUME = "RESUME"
         const val ACTION_RESET = "RESET"
+        const val ACTION_SHOW_COMPLETION_DIALOG = "SHOW_COMPLETION_DIALOG"
+        const val EXTRA_TIME = "time_in_seconds"
         
         private val _timerState = MutableStateFlow<Int>(17 * 60)
         val timerState: StateFlow<Int> = _timerState
@@ -100,6 +118,7 @@ class MeditationTimerService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -144,6 +163,7 @@ class MeditationTimerService : Service() {
                 stopTimer()
                 stopSelf()
             }
+            ACTION_SHOW_COMPLETION_DIALOG -> showCompletionDialog()
             "STOP_ALARM" -> {
                 stopAlarmStatic()
             }
@@ -157,6 +177,33 @@ class MeditationTimerService : Service() {
         _timerState.value = initialTime
         _isTimerCompleted.value = false
         startForeground(NOTIFICATION_ID, createNotification(timeLeft))
+        
+        // Set exact alarm for timer completion
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val triggerTime = System.currentTimeMillis() + (initialTime * 1000L)
+        
+        val completionIntent = Intent(this, MeditationTimerService::class.java).apply {
+            action = ACTION_SHOW_COMPLETION_DIALOG
+        }
+        val pendingIntent = PendingIntent.getService(
+            this,
+            0,
+            completionIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && alarmManager.canScheduleExactAlarms()) {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerTime,
+                pendingIntent
+            )
+        } else {
+            alarmManager.setAlarmClock(
+                AlarmManager.AlarmClockInfo(triggerTime, pendingIntent),
+                pendingIntent
+            )
+        }
         
         if (mediaPlayer == null && selectedMusic != "no_music") {
             val musicResId = when (selectedMusic) {
@@ -180,20 +227,6 @@ class MeditationTimerService : Service() {
                 timeLeft--
                 _timerState.value = timeLeft
                 updateNotification(timeLeft)
-                
-                if (timeLeft == 0) {
-                    isTimerRunning = false
-                    _isTimerCompleted.value = true
-                    isServiceRunning = false
-                    
-                    mediaPlayer?.stop()
-                    mediaPlayer?.release()
-                    mediaPlayer = null
-                    isBackgroundMusicPlaying = false
-                    
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    showCompletionNotification()
-                }
             }
         }
     }
@@ -202,6 +235,19 @@ class MeditationTimerService : Service() {
         isTimerRunning = false
         timeLeft = 0
         _timerState.value = 0
+        
+        // Cancel the alarm
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val completionIntent = Intent(this, MeditationTimerService::class.java).apply {
+            action = ACTION_SHOW_COMPLETION_DIALOG
+        }
+        val pendingIntent = PendingIntent.getService(
+            this,
+            0,
+            completionIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
         
         mediaPlayer?.stop()
         mediaPlayer?.release()
@@ -282,89 +328,67 @@ class MeditationTimerService : Service() {
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
-    private fun showCompletionNotification() {
+    private fun showCompletionDialog() {
         try {
-            // Only show completion notification and add session if timer actually completed
-            if (timeLeft == 0 && selectedDuration > 0) {
-                // Create completion notification
-                // No need to manually cancel NOTIFICATION_ID since stopForeground(STOP_FOREGROUND_REMOVE) handles it
-                
-                (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).apply {
-                    // Create and show completion notification with ID 2
-                    val deepLinkIntent = Intent(
-                        Intent.ACTION_VIEW,
-                        "myedenfocus://meditation".toUri(),
-                        this@MeditationTimerService,
-                        MainActivity::class.java
-                    ).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    }
-
-                    val openMeditationPendingIntent = TaskStackBuilder.create(this@MeditationTimerService).run {
-                        addNextIntentWithParentStack(deepLinkIntent)
-                        getPendingIntent(
-                            3,
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                        )
-                    }
-
-                    val stopAlarmIntent = Intent(this@MeditationTimerService, MeditationTimerService::class.java).apply {
-                        action = "STOP_ALARM"
-                    }
-                    val stopAlarmPendingIntent = PendingIntent.getService(
-                        this@MeditationTimerService,
-                        1,
-                        stopAlarmIntent,
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                    )
-
-                    val notification = NotificationCompat.Builder(this@MeditationTimerService, CHANNEL_ID)
-                        .setContentTitle("Meditation Complete")
-                        .setContentText("Great job! You've completed your meditation session.")
-                        .setSmallIcon(R.drawable.ic_launcher_foreground)
-                        .setPriority(NotificationCompat.PRIORITY_HIGH)
-                        .setOngoing(true)
-                        .setContentIntent(openMeditationPendingIntent)
-                        .addAction(
-                            R.drawable.ic_launcher_foreground,
-                            "Stop Alarm",
-                            stopAlarmPendingIntent
-                        )
-                        .build()
-
-                    notify(2, notification)
-                }
-
-                // Play alarm sound
-                serviceScope.launch(Dispatchers.Main) {
-                    try {
-                        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                        currentRingtone = RingtoneManager.getRingtone(applicationContext, alarmUri)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                            currentRingtone?.isLooping = true
-                        }
-                        currentRingtone?.play()
-                        _isAlarmPlaying.value = true
-                    } catch (e: Exception) {
-                        try {
-                            val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                            currentRingtone = RingtoneManager.getRingtone(applicationContext, fallbackUri)
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                                currentRingtone?.isLooping = true
-                            }
-                            currentRingtone?.play()
-                            _isAlarmPlaying.value = true
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-                }
-
-                // Store the actual selected duration
-                val prefs = getSharedPreferences("meditation_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putInt("last_meditation_duration", selectedDuration).apply()
+            // Play alarm sound
+            try {
+                val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                currentRingtone = RingtoneManager.getRingtone(applicationContext, notification)
+                currentRingtone?.play()
+                _isAlarmPlaying.value = true
+            } catch (e: Exception) {
+                android.util.Log.e("MeditationTimer", "Error playing alarm sound", e)
             }
+
+            // Launch the alarm activity
+            val intent = Intent(this, MeditationCompleteActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            startActivity(intent)
+
+            // Create a high-priority notification
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val alarmChannel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel(
+                    "meditation_alarm_channel",
+                    "Meditation Alarm",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    enableLights(true)
+                    enableVibration(true)
+                }
+            } else null
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && alarmChannel != null) {
+                notificationManager.createNotificationChannel(alarmChannel)
+            }
+
+            val alarmIntent = Intent(this, MeditationCompleteActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                alarmIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val notification = NotificationCompat.Builder(this, "meditation_alarm_channel")
+                .setContentTitle("Meditation Complete!")
+                .setContentText("Tap to stop the alarm")
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setFullScreenIntent(pendingIntent, true)
+                .setOngoing(true)
+                .build()
+
+            notificationManager.notify(2, notification)
+
         } catch (e: Exception) {
+            android.util.Log.e("MeditationTimer", "Error showing completion dialog", e)
             e.printStackTrace()
         }
     }

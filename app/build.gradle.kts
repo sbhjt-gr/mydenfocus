@@ -111,4 +111,6 @@ dependencies {
     // System UI Controller
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.32.0")
 
+    implementation("com.google.android.material:material:1.11.0")
+
 }

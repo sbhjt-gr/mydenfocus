@@ -214,8 +214,7 @@ private fun DashboardScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(bottom = 16.dp),
+                .padding(paddingValues),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
@@ -397,7 +396,7 @@ private fun CountCardsSection(
                 modifier = Modifier.weight(1f),
                 title = "Total Subjects",
                 value = subjectCount.toString(),
-                maxValue = "10"
+                maxValue = ""
             )
             Spacer(modifier = Modifier.width(16.dp))
             CountCard(
@@ -462,11 +461,13 @@ private fun CountCard(
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Text(
-                    text = "/ $maxValue",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.outline
-                )
+                if (maxValue.isNotEmpty()) {
+                    Text(
+                        text = "/ $maxValue",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
             }
         }
     }

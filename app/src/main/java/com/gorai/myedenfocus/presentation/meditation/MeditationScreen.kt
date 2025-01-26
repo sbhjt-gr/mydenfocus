@@ -4,9 +4,12 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import android.view.HapticFeedbackConstants
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.RepeatMode
@@ -94,6 +97,11 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import com.gorai.myedenfocus.util.NavigationStyles
+import android.Manifest
+import android.app.AlarmManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 
 private val meditationDurations = listOf(1, 5, 10, 15, 17, 20, 30)
 private val meditationMusic = listOf(
@@ -483,6 +491,7 @@ private fun PulsingStopButton(onClick: () -> Unit) {
         )
     ]
 )
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MeditationScreen(
     navigator: DestinationsNavigator,
@@ -492,36 +501,111 @@ fun MeditationScreen(
     var selectedMusic by remember { mutableStateOf(meditationMusic[0]) }
     var isTimerRunning by rememberSaveable { mutableStateOf(false) }
     var showHeadphoneDialog by remember { mutableStateOf(false) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
+    var permissionMessage by remember { mutableStateOf("") }
     val context = LocalContext.current
     val remainingSeconds = MeditationTimerService.timerState.collectAsState().value
     val isAlarmPlaying = MeditationTimerService.isAlarmPlaying.collectAsState().value
     val isPaused = MeditationTimerService.isPaused.collectAsState().value
     val isTimerCompleted = MeditationTimerService.isTimerCompleted.collectAsState().value
     val timerState by MeditationTimerService.timerState.collectAsState()
-    
-    // Add state for delete confirmation dialog
+
     var sessionToDelete by remember { mutableStateOf<MeditationSession?>(null) }
 
-    // Function to check if headphones are connected
-    fun isHeadphonesConnected(): Boolean {
-        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        
-        // For API 23 and above
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val audioDevices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-            return audioDevices.any { device ->
-                device.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
-                device.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
-                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+    // Define toggleTimer function
+    val handleTimerToggle: () -> Unit = {
+        val serviceIntent = Intent(context, MeditationTimerService::class.java).apply {
+            if (!isTimerRunning) {
+                action = MeditationTimerService.ACTION_START
+                putExtra(MeditationTimerService.EXTRA_TIME, selectedMinutes * 60)
+                putExtra("selected_duration", selectedMinutes)
+                val musicFileName = when (selectedMusic) {
+                    "Wind Chimes Nature" -> "wind_chimes_nature_symphony.mp3"
+                    "Soothing Chime" -> "soothing_chime.mp3"
+                    "Full Brain Drop Down" -> "full_brain_drop_down.mp3"
+                    "Focus on Yourself" -> "focus_on_yourself.mp3"
+                    else -> "no_music"
+                }
+                putExtra("selected_music", musicFileName)
+            } else {
+                action = MeditationTimerService.ACTION_STOP
             }
         }
         
-        // Fallback for older versions
-        @Suppress("DEPRECATION")
-        return audioManager.isWiredHeadsetOn || audioManager.isBluetoothA2dpOn
+        try {
+            if (!isTimerRunning) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.stopService(serviceIntent)
+            }
+            isTimerRunning = !isTimerRunning
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
-    
+
+    // Permission launcher for alarm permission
+    val alarmPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Check overlay permission after alarm permission
+            if (!Settings.canDrawOverlays(context)) {
+                permissionMessage = "Please allow MyedenFocus to display over other apps for the meditation timer."
+                showPermissionDialog = true
+            } else {
+                handleTimerToggle()
+            }
+        } else {
+            permissionMessage = "Alarm permission is required for the meditation timer to work properly."
+            showPermissionDialog = true
+        }
+    }
+
+    // Function to check and request permissions
+    fun checkAndRequestPermissions() {
+        if (!isTimerRunning) {
+            // Check alarm permissions first
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (!alarmManager.canScheduleExactAlarms()) {
+                    // Show permission dialog for alarm permission
+                    permissionMessage = "Please allow MyedenFocus to schedule alarms for the meditation timer."
+                    showPermissionDialog = true
+                    return
+                }
+            }
+
+            // Check overlay permission
+            if (!Settings.canDrawOverlays(context)) {
+                // Show permission dialog for overlay permission
+                permissionMessage = "Please allow MyedenFocus to display over other apps for the meditation timer."
+                showPermissionDialog = true
+                return
+            }
+
+            // Check notification permission for Android 13+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                when {
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED -> {
+                        handleTimerToggle()
+                    }
+                    else -> {
+                        alarmPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
+            } else {
+                handleTimerToggle()
+            }
+        } else {
+            handleTimerToggle()
+        }
+    }
+
     // Handle deep linking in a composable context
     LaunchedEffect(Unit) {
         val activity = context as? Activity
@@ -553,6 +637,16 @@ fun MeditationScreen(
                 
                 // Save meditation completion for today
                 prefs.edit().putString("last_meditation_date", LocalDate.now().toString()).apply()
+
+                // Show overlay dialog for timer completion
+                if (Settings.canDrawOverlays(context)) {
+                    val intent = Intent(context, MeditationTimerService::class.java).apply {
+                        action = MeditationTimerService.ACTION_SHOW_COMPLETION_DIALOG
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    }
+                    context.startService(intent)
+                }
             }
             
             // Reset timer completed flag using the service method
@@ -565,47 +659,6 @@ fun MeditationScreen(
         onDispose {
             // Don't stop service on screen dispose
             // Let it run in background
-        }
-    }
-
-    // Modify toggleTimer to check for headphones only when music is selected
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun toggleTimer() {
-        // Only check for headphones if music is selected and it's not "No Music"
-        if (!isTimerRunning && selectedMusic != "No Music" && selectedMusic != meditationMusic[0] && !isHeadphonesConnected()) {
-            showHeadphoneDialog = true
-            return
-        }
-        
-        val serviceIntent = Intent(context, MeditationTimerService::class.java).apply {
-            if (!isTimerRunning) {
-                action = MeditationTimerService.ACTION_START
-                putExtra(MeditationTimerService.EXTRA_TIME, selectedMinutes * 60)
-                putExtra("selected_duration", selectedMinutes)
-                val musicFileName = when (selectedMusic) {
-                    "Wind Chimes Nature" -> "wind_chimes_nature_symphony.mp3"
-                    "Soothing Chime" -> "soothing_chime.mp3"
-                    "Full Brain Drop Down" -> "full_brain_drop_down.mp3"
-                    "Focus on Yourself" -> "focus_on_yourself.mp3"
-                    else -> "no_music"
-                }
-                putExtra("selected_music", musicFileName)
-            } else {
-                action = MeditationTimerService.ACTION_STOP
-            }
-        }
-        
-        try {
-            if (!isTimerRunning) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent)
-                }
-            } else {
-                context.stopService(serviceIntent)
-            }
-            isTimerRunning = !isTimerRunning
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 
@@ -720,6 +773,41 @@ fun MeditationScreen(
                     }
                 ) {
                     Text("Start Anyway")
+                }
+            }
+        )
+    }
+
+    // Permission dialog
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDialog = false },
+            title = { Text("Permission Required") },
+            text = { Text(permissionMessage) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPermissionDialog = false
+                        if (!Settings.canDrawOverlays(context)) {
+                            // Open overlay settings
+                            val intent = Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:${context.packageName}")
+                            )
+                            context.startActivity(intent)
+                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                            // Open alarm settings
+                            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                            context.startActivity(intent)
+                        }
+                    }
+                ) {
+                    Text("Settings")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDialog = false }) {
+                    Text("Cancel")
                 }
             }
         )
@@ -891,7 +979,7 @@ fun MeditationScreen(
                         }
                     } else {
                         Button(
-                            onClick = { toggleTimer() },
+                            onClick = { checkAndRequestPermissions() },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary
                             ),
