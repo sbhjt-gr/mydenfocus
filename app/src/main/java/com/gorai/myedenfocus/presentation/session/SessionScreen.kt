@@ -362,7 +362,8 @@ private fun SessionScreen(
                     onShowMeditationDialog = { showMeditationDialog = true },
                     durationMinutes = state.selectedDuration,
                     hasMeditatedToday = hasMeditatedToday,
-                    selectedTopicId = state.selectedTopicId
+                    selectedTopicId = state.selectedTopicId,
+                    onEvent = onEvent
                 )
             }
             studySessionsList(
@@ -613,7 +614,8 @@ private fun ButtonSection(
     onShowMeditationDialog: () -> Unit,
     durationMinutes: Int,
     hasMeditatedToday: Boolean,
-    selectedTopicId: Int?
+    selectedTopicId: Int?,
+    onEvent: (SessionEvent) -> Unit
 ) {
     Column(
         modifier = modifier,
@@ -688,7 +690,14 @@ private fun ButtonSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = cancelButtonClick,
+                    onClick = {
+                        // Just cancel the timer without saving session
+                        ServiceHelper.triggerForegroundService(
+                            context = context,
+                            action = ACTION_SERVICE_CANCEL
+                        )
+                        onEvent(SessionEvent.CancelSession)
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp)
@@ -705,7 +714,14 @@ private fun ButtonSection(
                 }
 
                 Button(
-                    onClick = finishButtonClick,
+                    onClick = {
+                        // Save session and mark topic as complete
+                        ServiceHelper.triggerForegroundService(
+                            context = context,
+                            action = ACTION_SERVICE_CANCEL
+                        )
+                        finishButtonClick()
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp)

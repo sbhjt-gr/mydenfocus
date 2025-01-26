@@ -221,6 +221,15 @@ class SessionViewModel @Inject constructor(
                     }
                 }
             }
+            is SessionEvent.CancelSession -> {
+                // Reset states without saving or marking complete
+                _state.update { 
+                    it.copy(
+                        selectedTopicId = null,
+                        selectedDuration = 0
+                    )
+                }
+            }
         }
     }
 

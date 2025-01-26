@@ -78,8 +78,8 @@ fun StudySessionCompleteDialog(onDismiss: () -> Unit = {}) {
                 verticalArrangement = Arrangement.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.rabbit_meditating),
-                    contentDescription = null,
+                    painter = painterResource(id = R.drawable.list_topics),
+                    contentDescription = "Study Complete Icon",
                     modifier = Modifier.size(80.dp)
                 )
 

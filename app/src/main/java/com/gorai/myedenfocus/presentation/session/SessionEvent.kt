@@ -11,7 +11,8 @@ sealed class SessionEvent {
     data class OnDurationSelected(val minutes: Int) : SessionEvent()
     data class InitializeWithTopic(val topicId: Int) : SessionEvent()
     data class CompleteTask(val taskId: Int) : SessionEvent()
-    object DeleteSession : SessionEvent()
     object SaveSession : SessionEvent()
+    object DeleteSession : SessionEvent()
     object CheckSubjectId : SessionEvent()
+    object CancelSession : SessionEvent()
 }
