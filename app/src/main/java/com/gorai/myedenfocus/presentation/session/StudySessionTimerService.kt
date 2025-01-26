@@ -3,17 +3,17 @@ package com.gorai.myedenfocus.presentation.session
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.os.Binder
 import android.os.Build
-import android.os.IBinder
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.NotificationCompat
 import com.gorai.myedenfocus.R
-import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.repository.SessionRepository
 import com.gorai.myedenfocus.domain.repository.TaskRepository
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_CANCEL
@@ -24,12 +24,6 @@ import com.gorai.myedenfocus.util.Constants.NOTIFICATION_CHANNEL_NAME
 import com.gorai.myedenfocus.util.Constants.NOTIFICATION_ID
 import com.gorai.myedenfocus.util.pad
 import dagger.hilt.android.AndroidEntryPoint
-import java.time.Instant
-import java.util.Timer
-import javax.inject.Inject
-import kotlin.concurrent.fixedRateTimer
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,7 +31,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import java.util.Timer
+import javax.inject.Inject
+import kotlin.concurrent.fixedRateTimer
 
 @AndroidEntryPoint
 class StudySessionTimerService : Service() {
@@ -77,15 +73,24 @@ class StudySessionTimerService : Service() {
     var subjectId = mutableStateOf<Int?>(null)
 
     companion object {
+        const val ACTION_STOP_ALARM = "STOP_ALARM"
+        const val ACTION_SHOW_COMPLETION_DIALOG = "SHOW_COMPLETION_DIALOG"
+        
         private val _isAlarmPlaying = MutableStateFlow(false)
         val isAlarmPlaying: StateFlow<Boolean> = _isAlarmPlaying.asStateFlow()
         
         private var currentRingtone: Ringtone? = null
         
         fun stopAlarmStatic() {
-            currentRingtone?.stop()
-            currentRingtone = null
-            _isAlarmPlaying.value = false
+            try {
+                currentRingtone?.stop()
+                currentRingtone?.play() // Force a state change
+                currentRingtone?.stop() // Stop again to ensure it's stopped
+                currentRingtone = null
+                _isAlarmPlaying.value = false
+            } catch (e: Exception) {
+                android.util.Log.e("StudyTimer", "Error stopping alarm sound", e)
+            }
         }
     }
 
@@ -107,6 +112,11 @@ class StudySessionTimerService : Service() {
             ACTION_SERVICE_CANCEL -> {
                 wasManuallyFinished = true
                 stopTimer()
+            }
+            ACTION_SHOW_COMPLETION_DIALOG -> showCompletionDialog()
+            ACTION_STOP_ALARM -> {
+                stopAlarm()
+                stopSelf()
             }
         }
         return START_NOT_STICKY
@@ -196,79 +206,106 @@ class StudySessionTimerService : Service() {
         currentTimerState.value = TimerState.IDLE
         stopForegroundService()
         
-        // Only play alarm and complete task if timer completed naturally and wasn't manually finished
         if (wasTimerCompleted && !wasManuallyFinished) {
-            playAlarm()
-            selectedTopicId?.let { topicId ->
-                // Save session and complete task
-                serviceScope.launch {
-                    try {
-                        sessionRepository.insertSession(
-                            Session(
-                                sessionSubjectId = subjectId.value ?: -1,
-                                relatedToSubject = "",  // This will be updated by the UI if needed
-                                date = Instant.now().toEpochMilli(),
-                                duration = totalDurationMinutes.toLong()
-                            )
-                        )
+            showCompletionDialog()
+        }
+    }
 
-                        taskRepository.getTaskById(topicId)?.let { task ->
-                            taskRepository.upsertTask(
-                                task.copy(isComplete = true)
-                            )
+    private fun showCompletionDialog() {
+        try {
+            // Play alarm sound
+            try {
+                currentRingtone?.stop()
+                currentRingtone = null
+                
+                // Try alarm sound first
+                try {
+                    val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                    currentRingtone = RingtoneManager.getRingtone(applicationContext, alarmUri)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        currentRingtone?.isLooping = true
+                    }
+                    currentRingtone?.play()
+                    _isAlarmPlaying.value = true
+                } catch (e: Exception) {
+                    // Fallback to notification sound if alarm fails
+                    try {
+                        val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                        currentRingtone = RingtoneManager.getRingtone(applicationContext, fallbackUri)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            currentRingtone?.isLooping = true
                         }
+                        currentRingtone?.play()
+                        _isAlarmPlaying.value = true
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        android.util.Log.e("StudyTimer", "Error playing fallback sound", e)
                     }
                 }
-            }
-        }
-    }
-
-    private fun playAlarm() {
-        try {
-            val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            currentRingtone = RingtoneManager.getRingtone(applicationContext, alarmUri)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                currentRingtone?.isLooping = true
-            }
-            currentRingtone?.play()
-            _isAlarmPlaying.value = true
-            
-            // Show completion notification
-            showCompletionNotification()
-        } catch (e: Exception) {
-            try {
-                val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                currentRingtone = RingtoneManager.getRingtone(applicationContext, fallbackUri)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    currentRingtone?.isLooping = true
-                }
-                currentRingtone?.play()
-                _isAlarmPlaying.value = true
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("StudyTimer", "Error playing alarm sound", e)
             }
+
+            // Launch the alarm activity
+            val intent = Intent(this, StudySessionCompleteActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            startActivity(intent)
+
+            // Create a high-priority notification
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val alarmChannel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel(
+                    "study_alarm_channel",
+                    "Study Session Alarm",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    enableLights(true)
+                    enableVibration(true)
+                }
+            } else null
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && alarmChannel != null) {
+                notificationManager.createNotificationChannel(alarmChannel)
+            }
+
+            val alarmIntent = Intent(this, StudySessionCompleteActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                alarmIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val notification = NotificationCompat.Builder(this, "study_alarm_channel")
+                .setContentTitle("Study Session Complete!")
+                .setContentText("Tap to stop the alarm")
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setFullScreenIntent(pendingIntent, true)
+                .setOngoing(true)
+                .build()
+
+            notificationManager.notify(2, notification)
+        } catch (e: Exception) {
+            android.util.Log.e("StudyTimer", "Error showing completion dialog", e)
+            e.printStackTrace()
         }
     }
 
-    private fun showCompletionNotification() {
-        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Study Session Complete")
-            .setContentText("Great job! You've completed your study session.")
-            .setSmallIcon(com.gorai.myedenfocus.R.drawable.ic_launcher_foreground)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setOngoing(true)
-            .build()
-
-        notificationManager.notify(2, notification)
-    }
-
-    fun stopAlarm() {
+    private fun stopAlarm() {
         currentRingtone?.stop()
         currentRingtone = null
         _isAlarmPlaying.value = false
+        
+        // Clear notifications
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(2)
+        notificationManager.cancel(NOTIFICATION_ID)
     }
 
     override fun onDestroy() {

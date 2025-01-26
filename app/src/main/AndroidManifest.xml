@@ -58,6 +58,14 @@
             android:turnScreenOn="true"
             android:theme="@style/Theme.MyedenFocus"
             android:launchMode="singleTop" />
+        <activity
+            android:name=".presentation.session.StudySessionCompleteActivity"
+            android:exported="false"
+            android:showOnLockScreen="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.MyedenFocus"
+            android:launchMode="singleTop" />
     </application>
 
 </manifest>
