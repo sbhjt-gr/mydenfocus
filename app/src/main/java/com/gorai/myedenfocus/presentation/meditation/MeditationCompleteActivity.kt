@@ -2,6 +2,7 @@ package com.gorai.myedenfocus.presentation.meditation
 
 import android.app.KeyguardManager
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -42,7 +43,22 @@ class MeditationCompleteActivity : ComponentActivity() {
         // Make the activity background transparent
         window.setBackgroundDrawableResource(android.R.color.transparent)
         setContent {
-            MeditationCompleteDialog(onDismiss = { finish() })
+            MeditationCompleteDialog(
+                onDismiss = {
+                    // Stop the alarm sound multiple times to ensure it stops
+                    MeditationTimerService.stopAlarmStatic()
+                    MeditationTimerService.stopAlarmStatic() // Try stopping again
+                    
+                    // Then clean up the service
+                    val intent = Intent(this@MeditationCompleteActivity, MeditationTimerService::class.java).apply {
+                        action = MeditationTimerService.ACTION_STOP_ALARM
+                    }
+                    startService(intent)
+                    
+                    // Finally close the activity
+                    finish()
+                }
+            )
         }
     }
 }
@@ -95,10 +111,7 @@ fun MeditationCompleteDialog(onDismiss: () -> Unit = {}) {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = {
-                        MeditationTimerService.stopAlarmStatic()
-                        onDismiss()
-                    },
+                    onClick = onDismiss,
                     modifier = Modifier.wrapContentSize()
                 ) {
                     Text("Stop Alarm")

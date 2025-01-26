@@ -59,6 +59,7 @@ class MeditationTimerService : Service() {
         const val ACTION_RESET = "RESET"
         const val ACTION_SHOW_COMPLETION_DIALOG = "SHOW_COMPLETION_DIALOG"
         const val EXTRA_TIME = "time_in_seconds"
+        const val ACTION_STOP_ALARM = "STOP_ALARM"
         
         private val _timerState = MutableStateFlow<Int>(17 * 60)
         val timerState: StateFlow<Int> = _timerState
@@ -88,9 +89,15 @@ class MeditationTimerService : Service() {
         }
         
         fun stopAlarmStatic() {
-            currentRingtone?.stop()
-            currentRingtone = null
-            _isAlarmPlaying.value = false
+            try {
+                currentRingtone?.stop()
+                currentRingtone?.play() // Force a state change
+                currentRingtone?.stop() // Stop again to ensure it's stopped
+                currentRingtone = null
+                _isAlarmPlaying.value = false
+            } catch (e: Exception) {
+                android.util.Log.e("MeditationTimer", "Error stopping alarm sound", e)
+            }
         }
         
         private fun createPendingIntent(context: Context): PendingIntent {
@@ -164,8 +171,9 @@ class MeditationTimerService : Service() {
                 stopSelf()
             }
             ACTION_SHOW_COMPLETION_DIALOG -> showCompletionDialog()
-            "STOP_ALARM" -> {
-                stopAlarmStatic()
+            ACTION_STOP_ALARM -> {
+                stopAlarm()
+                stopSelf()
             }
         }
         return START_STICKY
@@ -227,6 +235,26 @@ class MeditationTimerService : Service() {
                 timeLeft--
                 _timerState.value = timeLeft
                 updateNotification(timeLeft)
+            }
+            
+            // Stop the timer and save session when it reaches zero
+            if (timeLeft == 0) {
+                isTimerRunning = false
+                
+                // Save meditation session only if not already saved
+                if (!_isTimerCompleted.value) {
+                    _isTimerCompleted.value = true
+                    val prefs = getSharedPreferences("meditation_prefs", Context.MODE_PRIVATE)
+                    prefs.edit()
+                        .putInt("last_meditation_duration", selectedDuration)
+                        .putString("last_meditation_date", java.time.LocalDate.now().toString())
+                        .apply()
+                }
+                
+                mediaPlayer?.stop()
+                mediaPlayer?.release()
+                mediaPlayer = null
+                isBackgroundMusicPlaying = false
             }
         }
     }
@@ -332,6 +360,9 @@ class MeditationTimerService : Service() {
         try {
             // Play alarm sound
             try {
+                currentRingtone?.stop()
+                currentRingtone = null
+                
                 val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 currentRingtone = RingtoneManager.getRingtone(applicationContext, notification)
                 currentRingtone?.play()
@@ -394,12 +425,45 @@ class MeditationTimerService : Service() {
     }
 
     fun stopAlarm() {
+        // Stop all sounds
         currentRingtone?.stop()
         currentRingtone = null
         _isAlarmPlaying.value = false
         
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
+        isBackgroundMusicPlaying = false
+        
+        // Cancel any pending alarms
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val completionIntent = Intent(this, MeditationTimerService::class.java).apply {
+            action = ACTION_SHOW_COMPLETION_DIALOG
+        }
+        val pendingIntent = PendingIntent.getService(
+            this,
+            0,
+            completionIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
+        
+        // Clear notifications
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(2)
+        notificationManager.cancel(NOTIFICATION_ID)
+        
+        // Reset all states
+        isTimerRunning = false
+        timeLeft = 0
+        _timerState.value = 0
+        _isTimerCompleted.value = false
+        _isAlarmPlaying.value = false
+        isServiceRunning = false
+        
+        // Stop service
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     private fun formatTime(seconds: Int): String {
@@ -412,14 +476,29 @@ class MeditationTimerService : Service() {
         super.onDestroy()
         serviceScope.cancel()
         
+        // Clean up all media resources
         mediaPlayer?.stop()
         mediaPlayer?.release()
         mediaPlayer = null
         isBackgroundMusicPlaying = false
         
-        if (!_isTimerCompleted.value) {
-            stopAlarm()
+        // Stop alarm if service is destroyed
+        currentRingtone?.stop()
+        currentRingtone = null
+        _isAlarmPlaying.value = false
+        
+        // Cancel any pending alarms
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val completionIntent = Intent(this, MeditationTimerService::class.java).apply {
+            action = ACTION_SHOW_COMPLETION_DIALOG
         }
+        val pendingIntent = PendingIntent.getService(
+            this,
+            0,
+            completionIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
