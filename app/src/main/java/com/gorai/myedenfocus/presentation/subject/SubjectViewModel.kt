@@ -1,13 +1,11 @@
 package com.gorai.myedenfocus.presentation.subject
 
-import android.util.Log
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.domain.model.Task
 import com.gorai.myedenfocus.domain.repository.SessionRepository
@@ -70,30 +68,50 @@ class SubjectViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    val state: StateFlow<SubjectState> = upcomingTasks
-        .combine(completedTasks) { upcoming, completed -> 
-            _state.value.copy(
-                upcomingTasks = upcoming,
-                completedTasks = completed
-            )
-        }
-        .combine(recentSessions) { state, sessions ->
-            state.copy(recentSessions = sessions)
-        }
-        .combine(totalDuration) { state, duration ->
-            state.copy(studiedHours = duration.toHours())
-        }
-        .combine(allSubjects) { state, subjects ->
-            state.copy(
-                allSubjects = subjects,
-                dailyStudyGoal = "8"
-            )
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = SubjectState(currentSubjectId = navArgs.subjectId)
+    // Create a separate flow for subject details
+    private val subjectDetails = flow {
+        val subject = subjectRepository.getSubjectById(navArgs.subjectId)
+        emit(subject)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = null
+    )
+
+    val state: StateFlow<SubjectState> = combine(
+        subjectDetails,
+        upcomingTasks,
+        completedTasks,
+        recentSessions,
+        totalDuration
+    ) { subject, upcoming, completed, sessions, duration ->
+        Pair(
+            Triple(subject, upcoming, completed),
+            Pair(sessions, duration)
         )
+    }.combine(allSubjects) { (subjectData, sessionsData), subjects ->
+        Triple(subjectData, sessionsData, subjects)
+    }.combine(_state) { (subjectData, sessionsData, subjects), currentState ->
+        val (subject, upcoming, completed) = subjectData
+        val (sessions, duration) = sessionsData
+        
+        currentState.copy(
+            currentSubjectId = subject?.subjectId,
+            subjectName = subject?.name ?: "",
+            goalStudyHours = subject?.goalHours?.toString() ?: "",
+            subjectCardColors = subject?.colors?.map { Color(it) } ?: Subject.subjectCardColors.random(),
+            upcomingTasks = upcoming,
+            completedTasks = completed,
+            recentSessions = sessions,
+            studiedHours = duration.toHours().toString(),
+            allSubjects = subjects,
+            dailyStudyGoal = "8"
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = SubjectState(currentSubjectId = navArgs.subjectId)
+    )
 
     init {
         fetchSubject()
@@ -126,15 +144,27 @@ class SubjectViewModel @Inject constructor(
 
     private fun fetchSubject() {
         viewModelScope.launch {
-            subjectRepository.getSubjectById(navArgs.subjectId)?.let { subject ->
-                _state.update {
-                    it.copy(
-                        subjectName = subject.name,
-                        goalStudyHours = subject.goalHours.toString(),
-                        subjectCardColors = subject.colors.map { Color(it) },
-                        currentSubjectId = subject.subjectId
-                    )
+            try {
+                val subject = withContext(Dispatchers.IO) {
+                    subjectRepository.getSubjectById(navArgs.subjectId)
                 }
+                
+                if (subject == null) {
+                    _snackbarEventFlow.emit(
+                        SnackbarEvent.ShowSnackbar(
+                            "Subject not found",
+                            SnackbarDuration.Long
+                        )
+                    )
+                    _snackbarEventFlow.emit(SnackbarEvent.NavigateUp)
+                }
+            } catch (e: Exception) {
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(
+                        "Error loading subject: ${e.message}",
+                        SnackbarDuration.Long
+                    )
+                )
             }
         }
     }
@@ -200,8 +230,9 @@ class SubjectViewModel @Inject constructor(
 
     private fun updateProgress() {
         val goalStudyHours = state.value.goalStudyHours.toFloatOrNull() ?: 1f
+        val studiedHours = state.value.studiedHours.toFloatOrNull() ?: 0f
         _state.update { 
-            it.copy(progress = (state.value.studiedHours / goalStudyHours).coerceIn(0f, 1f))
+            it.copy(progress = (studiedHours / goalStudyHours).coerceIn(0f, 1f))
         }
     }
 

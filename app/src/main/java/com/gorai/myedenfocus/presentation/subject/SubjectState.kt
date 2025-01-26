@@ -10,7 +10,7 @@ data class SubjectState(
     val subjectName: String = "",
     val goalStudyHours: String = "",
     val dailyStudyGoal: String = "",
-    val studiedHours: Float = 0f,
+    val studiedHours: String = "0",
     val progress: Float = 0f,
     val subjectCardColors: List<Color> = Subject.subjectCardColors.random(),
     val upcomingTasks: List<Task> = emptyList(),

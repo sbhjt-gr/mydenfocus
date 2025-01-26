@@ -2,6 +2,7 @@ package com.gorai.myedenfocus.presentation.subject
 
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gorai.myedenfocus.domain.model.Subject
 import com.gorai.myedenfocus.presentation.components.AddSubjectDialog
 import com.gorai.myedenfocus.presentation.components.DeleteDialog
+import com.gorai.myedenfocus.presentation.components.EditSubjectDialog
 import com.gorai.myedenfocus.presentation.components.Speedometer
 import com.gorai.myedenfocus.presentation.components.TasksList
 import com.gorai.myedenfocus.presentation.components.studySessionsList
@@ -61,6 +63,7 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.material3.CircularProgressIndicator
 
 data class SubjectScreenNavArgs(
     val subjectId: Int
@@ -137,20 +140,19 @@ private fun SubjectScreen(
         onEvent(SubjectEvent.UpdateProgress)
     }
 
-    AddSubjectDialog(
+    EditSubjectDialog(
         isOpen = isEditSubjectDialogOpen,
-        title = "Edit Subject",
+        selectedColors = state.subjectCardColors,
+        onColorChange = { onEvent(SubjectEvent.OnSubjectCardColorChange(it)) },
+        subjectName = state.subjectName,
+        dailyGoalHours = state.goalStudyHours,
+        onSubjectNameChange = { onEvent(SubjectEvent.OnSubjectNameChange(it)) },
+        onDailyGoalHoursChange = { onEvent(SubjectEvent.OnGoalStudyHoursChange(it)) },
         onDismissRequest = { isEditSubjectDialogOpen = false },
         onConfirmButtonClick = {
             onEvent(SubjectEvent.UpdateSubject)
             isEditSubjectDialogOpen = false 
         },
-        subjectName = state.subjectName,
-        dailyGoalHours = state.goalStudyHours,
-        onSubjectNameChange = { onEvent(SubjectEvent.OnSubjectNameChange(it)) },
-        onDailyGoalHoursChange = { onEvent(SubjectEvent.OnGoalStudyHoursChange(it)) },
-        selectedColors = state.subjectCardColors,
-        onColorChange = { onEvent(SubjectEvent.OnSubjectCardColorChange(it)) },
         daysPerWeek = state.subjectDaysPerWeek,
         onDaysPerWeekChange = { onEvent(SubjectEvent.OnSubjectDaysPerWeekChange(it)) }
     )
@@ -209,7 +211,7 @@ private fun SubjectScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(12.dp),
-                    studiedHours = state.studiedHours.toString(),
+                    studiedHours = state.studiedHours,
                     goalHours = state.goalStudyHours,
                     progress = state.progress,
                     daysPerWeek = state.subjectDaysPerWeek
@@ -302,48 +304,34 @@ private fun SubjectOverviewSection(
     val weeklyGoalHours = goalHoursFloat * daysPerWeek
     val weeklyStudiedHours = studiedHoursFloat
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            CountCard(
-                modifier = Modifier.weight(1f),
-                title = "Daily Goal",
-                value = goalHoursFloat.formatHours(),
-                maxValue = "15h"
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            CountCard(
-                modifier = Modifier.weight(1f),
-                title = "Today's Progress",
-                value = studiedHoursFloat.formatHours(),
-                maxValue = goalHoursFloat.formatHours()
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            CountCard(
-                modifier = Modifier.weight(1f),
-                title = "Weekly Progress",
-                value = weeklyStudiedHours.formatHours(),
-                maxValue = weeklyGoalHours.formatHours()
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            CountCard(
-                modifier = Modifier.weight(1f),
-                title = "Study Days",
-                value = daysPerWeek.toString(),
-                maxValue = "7"
-            )
-        }
+        Speedometer(
+            modifier = Modifier.weight(1f),
+            headingText = "Daily Goal",
+            value = goalHoursFloat,
+            maxValue = 15f,
+            displayText = goalHoursFloat.formatHours()
+        )
+
+        Speedometer(
+            modifier = Modifier.weight(1f),
+            headingText = "Today's Hours",
+            value = studiedHoursFloat,
+            maxValue = goalHoursFloat,
+            displayText = studiedHoursFloat.formatHours()
+        )
+
+        Speedometer(
+            modifier = Modifier.weight(1f),
+            headingText = "Weekly Hours",
+            value = weeklyStudiedHours,
+            maxValue = weeklyGoalHours,
+            displayText = "${weeklyStudiedHours.formatHours()}/${weeklyGoalHours.formatHours()}"
+        )
     }
 }
 

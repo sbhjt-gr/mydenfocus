@@ -23,7 +23,6 @@ abstract class AppDatabase: RoomDatabase() {
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                // Add topicName column to Session table with default empty string
                 database.execSQL(
                     "ALTER TABLE Session ADD COLUMN topicName TEXT NOT NULL DEFAULT ''"
                 )
