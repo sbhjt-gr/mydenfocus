@@ -52,6 +52,30 @@ class PreferencesRepository @Inject constructor(
             preferences[PreferencesKeys.DAILY_STUDY_GOAL] ?: "2"
         }
 
+    val notificationsEnabledFlow: Flow<Boolean> = dataStoreProvider.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] ?: false
+        }
+
+    val reminderTimeFlow: Flow<String> = dataStoreProvider.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PreferencesKeys.REMINDER_TIME] ?: "09:00"
+        }
+
     val isOnboardingCompleted: Flow<Boolean> = dataStoreProvider.dataStore.data
         .map { preferences ->
             preferences[PreferencesKeys.ONBOARDING_COMPLETED] ?: false

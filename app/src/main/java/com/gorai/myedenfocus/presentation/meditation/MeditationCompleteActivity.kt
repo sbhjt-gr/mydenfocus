@@ -17,8 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.gorai.myedenfocus.R
 import com.gorai.myedenfocus.service.MeditationTimerService
 
@@ -40,83 +38,70 @@ class MeditationCompleteActivity : ComponentActivity() {
             )
         }
 
-        // Make the activity background transparent
-        window.setBackgroundDrawableResource(android.R.color.transparent)
         setContent {
-            MeditationCompleteDialog(
-                onDismiss = {
-                    // Stop the alarm sound multiple times to ensure it stops
-                    MeditationTimerService.stopAlarmStatic()
-                    MeditationTimerService.stopAlarmStatic() // Try stopping again
-                    
-                    // Then clean up the service
-                    val intent = Intent(this@MeditationCompleteActivity, MeditationTimerService::class.java).apply {
-                        action = MeditationTimerService.ACTION_STOP_ALARM
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                MeditationCompleteContent(
+                    onDismiss = {
+                        MeditationTimerService.stopAlarmStatic()
+                        
+                        // Clean up the service
+                        val intent = Intent(this@MeditationCompleteActivity, MeditationTimerService::class.java).apply {
+                            action = MeditationTimerService.ACTION_STOP_ALARM
+                        }
+                        startService(intent)
+                        
+                        // Close the activity
+                        finish()
                     }
-                    startService(intent)
-                    
-                    // Finally close the activity
-                    finish()
-                }
-            )
+                )
+            }
         }
     }
 }
 
 @Composable
-fun MeditationCompleteDialog(onDismiss: () -> Unit = {}) {
-    Dialog(
-        onDismissRequest = { },
-        properties = DialogProperties(
-            dismissOnBackPress = false,
-            dismissOnClickOutside = false
-        )
+fun MeditationCompleteContent(onDismiss: () -> Unit = {}) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Card(
-            modifier = Modifier
-                .padding(16.dp)
-                .wrapContentSize(),
-            elevation = CardDefaults.cardElevation(8.dp)
+        Image(
+            painter = painterResource(id = R.drawable.rabbit_meditating),
+            contentDescription = null,
+            modifier = Modifier.size(120.dp)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Meditation Complete",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Great job! You've completed your session.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier.wrapContentSize()
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.rabbit_meditating),
-                    contentDescription = null,
-                    modifier = Modifier.size(80.dp)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Meditation Complete",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Great job! You've completed your session.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Button(
-                    onClick = onDismiss,
-                    modifier = Modifier.wrapContentSize()
-                ) {
-                    Text("Stop Alarm")
-                }
-            }
+            Text("Done")
         }
     }
 } 

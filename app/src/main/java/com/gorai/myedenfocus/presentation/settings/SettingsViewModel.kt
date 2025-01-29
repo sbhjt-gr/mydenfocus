@@ -1,18 +1,22 @@
 package com.gorai.myedenfocus.presentation.settings
 
+import android.content.Context
 import androidx.compose.material3.SnackbarDuration
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gorai.myedenfocus.domain.repository.PreferencesRepository
+import com.gorai.myedenfocus.service.DailyStudyReminderService
 import com.gorai.myedenfocus.util.SnackbarEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val preferencesRepository: PreferencesRepository
+    private val preferencesRepository: PreferencesRepository,
+    @ApplicationContext private val context: Context
 ): ViewModel() {
     private val _state = MutableStateFlow(SettingsState())
     val state = _state.asStateFlow()
@@ -32,6 +36,20 @@ class SettingsViewModel @Inject constructor(
             // Collect daily study goal
             preferencesRepository.dailyStudyGoalFlow.collect { goal ->
                 _state.update { it.copy(dailyStudyGoal = goal) }
+            }
+        }
+
+        viewModelScope.launch {
+            // Collect notifications state
+            preferencesRepository.notificationsEnabledFlow.collect { enabled ->
+                _state.update { it.copy(notificationsEnabled = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            // Collect reminder time
+            preferencesRepository.reminderTimeFlow.collect { time ->
+                _state.update { it.copy(reminderTime = time) }
             }
         }
     }
@@ -65,12 +83,36 @@ class SettingsViewModel @Inject constructor(
                     val newState = !state.value.notificationsEnabled
                     preferencesRepository.saveNotificationsEnabled(newState)
                     _state.update { it.copy(notificationsEnabled = newState) }
+                    
+                    if (newState) {
+                        // Schedule notification with current reminder time
+                        val (hour, minute) = state.value.reminderTime.split(":").map { it.toInt() }
+                        DailyStudyReminderService.scheduleReminder(context, hour, minute)
+                        _snackbarEventFlow.emit(
+                            SnackbarEvent.ShowSnackbar("Daily study reminders enabled")
+                        )
+                    } else {
+                        // Cancel scheduled notifications
+                        DailyStudyReminderService.cancelReminder(context)
+                        _snackbarEventFlow.emit(
+                            SnackbarEvent.ShowSnackbar("Daily study reminders disabled")
+                        )
+                    }
                 }
             }
             is SettingsEvent.SetReminderTime -> {
                 viewModelScope.launch {
                     preferencesRepository.saveReminderTime(event.time)
                     _state.update { it.copy(reminderTime = event.time) }
+                    
+                    if (state.value.notificationsEnabled) {
+                        // Reschedule notification with new time
+                        val (hour, minute) = event.time.split(":").map { it.toInt() }
+                        DailyStudyReminderService.scheduleReminder(context, hour, minute)
+                        _snackbarEventFlow.emit(
+                            SnackbarEvent.ShowSnackbar("Reminder time updated")
+                        )
+                    }
                 }
             }
         }

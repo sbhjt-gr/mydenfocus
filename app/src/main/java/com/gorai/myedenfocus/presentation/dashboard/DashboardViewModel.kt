@@ -96,7 +96,6 @@ class DashboardViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            // Load saved daily study goal when ViewModel is created
             preferencesDataStore.dailyStudyGoal.collect { hours ->
                 _state.update { it.copy(dailyStudyGoal = hours) }
             }

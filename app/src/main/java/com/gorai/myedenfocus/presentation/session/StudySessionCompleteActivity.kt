@@ -17,8 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.gorai.myedenfocus.R
 
 class StudySessionCompleteActivity : ComponentActivity() {
@@ -39,77 +37,67 @@ class StudySessionCompleteActivity : ComponentActivity() {
             )
         }
 
-        window.setBackgroundDrawableResource(android.R.color.transparent)
         setContent {
-            StudySessionCompleteDialog(
-                onDismiss = {
-                    // Stop the alarm and finish activity
-                    StudySessionTimerService.stopAlarmStatic()
-                    val intent = Intent(this@StudySessionCompleteActivity, StudySessionTimerService::class.java).apply {
-                        action = StudySessionTimerService.ACTION_STOP_ALARM
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                StudySessionCompleteContent(
+                    onDismiss = {
+                        // Stop the alarm and finish activity
+                        StudySessionTimerService.stopAlarmStatic()
+                        val intent = Intent(this@StudySessionCompleteActivity, StudySessionTimerService::class.java).apply {
+                            action = StudySessionTimerService.ACTION_STOP_ALARM
+                        }
+                        startService(intent)
+                        finish()
                     }
-                    startService(intent)
-                    finish()
-                }
-            )
+                )
+            }
         }
     }
 }
 
 @Composable
-fun StudySessionCompleteDialog(onDismiss: () -> Unit = {}) {
-    Dialog(
-        onDismissRequest = { },
-        properties = DialogProperties(
-            dismissOnBackPress = false,
-            dismissOnClickOutside = false
-        )
+fun StudySessionCompleteContent(onDismiss: () -> Unit = {}) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Card(
-            modifier = Modifier
-                .padding(16.dp)
-                .wrapContentSize(),
-            elevation = CardDefaults.cardElevation(8.dp)
+        Image(
+            painter = painterResource(id = R.drawable.list_topics),
+            contentDescription = "Study Complete Icon",
+            modifier = Modifier.size(120.dp)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Study Session Complete",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Great job! You've completed your study session.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier.wrapContentSize()
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.list_topics),
-                    contentDescription = "Study Complete Icon",
-                    modifier = Modifier.size(80.dp)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Study Session Complete",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Great job! You've completed your study session.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Button(
-                    onClick = onDismiss,
-                    modifier = Modifier.wrapContentSize()
-                ) {
-                    Text("Stop Alarm")
-                }
-            }
+            Text("Done")
         }
     }
 } 

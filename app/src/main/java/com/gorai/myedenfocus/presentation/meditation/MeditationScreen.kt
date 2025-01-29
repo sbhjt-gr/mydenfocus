@@ -551,13 +551,7 @@ fun MeditationScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            // Check overlay permission after alarm permission
-            if (!Settings.canDrawOverlays(context)) {
-                permissionMessage = "Please allow MyedenFocus to display over other apps for the meditation timer."
-                showPermissionDialog = true
-            } else {
-                handleTimerToggle()
-            }
+            handleTimerToggle()
         } else {
             permissionMessage = "Alarm permission is required for the meditation timer to work properly."
             showPermissionDialog = true
@@ -575,14 +569,6 @@ fun MeditationScreen(
                     showPermissionDialog = true
                     return
                 }
-            }
-
-            // Check overlay permission
-            if (!Settings.canDrawOverlays(context)) {
-                // Show permission dialog for overlay permission
-                permissionMessage = "Please allow MyedenFocus to display over other apps for the meditation timer."
-                showPermissionDialog = true
-                return
             }
 
             // Check notification permission for Android 13+
@@ -638,15 +624,12 @@ fun MeditationScreen(
                 // Save meditation completion for today
                 prefs.edit().putString("last_meditation_date", LocalDate.now().toString()).apply()
 
-                // Show overlay dialog for timer completion
-                if (Settings.canDrawOverlays(context)) {
-                    val intent = Intent(context, MeditationTimerService::class.java).apply {
-                        action = MeditationTimerService.ACTION_SHOW_COMPLETION_DIALOG
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    }
-                    context.startService(intent)
+                // Show completion activity
+                val intent = Intent(context, MeditationCompleteActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 }
+                context.startActivity(intent)
             }
             
             // Reset timer completed flag using the service method
@@ -788,14 +771,7 @@ fun MeditationScreen(
                 TextButton(
                     onClick = {
                         showPermissionDialog = false
-                        if (!Settings.canDrawOverlays(context)) {
-                            // Open overlay settings
-                            val intent = Intent(
-                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                Uri.parse("package:${context.packageName}")
-                            )
-                            context.startActivity(intent)
-                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
                             // Open alarm settings
                             val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
                             context.startActivity(intent)

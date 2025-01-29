@@ -58,7 +58,6 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Study Goals Section
             Text(
                 text = "Study Goals",
                 style = MaterialTheme.typography.titleMedium,
@@ -96,7 +95,6 @@ fun SettingsScreen(
                 }
             }
 
-            // Appearance Section
             Text(
                 text = "Appearance",
                 style = MaterialTheme.typography.titleMedium,

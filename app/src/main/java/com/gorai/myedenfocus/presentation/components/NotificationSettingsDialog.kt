@@ -15,8 +15,10 @@ fun NotificationSettingsDialog(
     onDismiss: () -> Unit,
     onTimeSelect: (String) -> Unit
 ) {
-    var selectedHour by remember { mutableStateOf(reminderTime.split(":")[0].toInt()) }
-    var selectedMinute by remember { mutableStateOf(reminderTime.split(":")[1].toInt()) }
+    val timePickerState = rememberTimePickerState(
+        initialHour = reminderTime.split(":")[0].toInt(),
+        initialMinute = reminderTime.split(":")[1].toInt()
+    )
     
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -32,10 +34,7 @@ fun NotificationSettingsDialog(
                 )
                 
                 TimePicker(
-                    state = rememberTimePickerState(
-                        initialHour = selectedHour,
-                        initialMinute = selectedMinute
-                    ),
+                    state = timePickerState,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -43,8 +42,8 @@ fun NotificationSettingsDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val time = LocalTime.of(selectedHour, selectedMinute)
-                    onTimeSelect(time.format(DateTimeFormatter.ofPattern("HH:mm")))
+                    val time = String.format("%02d:%02d", timePickerState.hour, timePickerState.minute)
+                    onTimeSelect(time)
                 }
             ) {
                 Text("Save")
