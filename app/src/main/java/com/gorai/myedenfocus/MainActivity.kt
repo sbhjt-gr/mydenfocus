@@ -1,14 +1,19 @@
 package com.gorai.myedenfocus
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.LaunchedEffect
@@ -16,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.core.app.NotificationCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.gorai.myedenfocus.domain.repository.PreferencesRepository
@@ -25,23 +31,20 @@ import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestina
 import com.gorai.myedenfocus.presentation.navigation.NavigationViewModel
 import com.gorai.myedenfocus.presentation.session.StudySessionTimerService
 import com.gorai.myedenfocus.presentation.theme.MyedenFocusTheme
+import com.gorai.myedenfocus.service.DailyStudyReminderService
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.navigation.dependency
 import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.os.Build
-import androidx.core.app.NotificationCompat
-import com.gorai.myedenfocus.service.DailyStudyReminderService
 import java.util.*
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var preferencesRepository: PreferencesRepository
+
+    private val navigationViewModel: NavigationViewModel by viewModels()
 
     private var isBound by mutableStateOf(false)
     private lateinit var timerService: StudySessionTimerService
@@ -68,25 +71,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        handleAlarmIntent(intent)
         
         setContent {
             val isOnboardingCompleted by preferencesRepository.isOnboardingCompleted.collectAsStateWithLifecycle(initialValue = null)
             
             if (isOnboardingCompleted != null) {
                 MyedenFocusTheme {
-                    val navController = rememberNavController()
-                    
-                    // Handle notification click navigation
-                    LaunchedEffect(intent) {
-                        if (intent?.getBooleanExtra("navigate_to_session", false) == true) {
-                            // Clear the extra to prevent repeated navigation
-                            intent.removeExtra("navigate_to_session")
-                            // Navigate using navController
-                            navController.navigate(SessionScreenRouteDestination.route)
-                        }
-                    }
-
                     DestinationsNavHost(
                         navGraph = NavGraphs.root,
                         startRoute = if (isOnboardingCompleted == true) NavGraphs.root.startRoute else OnboardingScreenDestination,
@@ -95,6 +85,14 @@ class MainActivity : ComponentActivity() {
                         },
                         modifier = Modifier.fillMaxSize()
                     )
+
+                    // Handle notification click navigation
+                    LaunchedEffect(intent) {
+                        if (intent?.action == "OPEN_FROM_NOTIFICATION" || 
+                            intent?.getBooleanExtra("navigate_to_session", false) == true) {
+                            navigationViewModel.navigateTo(SessionScreenRouteDestination.route)
+                        }
+                    }
                 }
             }
         }
@@ -102,12 +100,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        handleAlarmIntent(intent)
+        setIntent(intent)
         // Handle new intents while app is running
-        intent?.getStringExtra("navigation_route")?.let { route ->
-            val viewModel = (this as ComponentActivity).defaultViewModelProviderFactory
-                .create(NavigationViewModel::class.java)
-            viewModel.navigateTo(route)
+        intent?.let { newIntent ->
+            if (newIntent.action == "OPEN_FROM_NOTIFICATION") {
+                navigationViewModel.navigateTo(SessionScreenRouteDestination.route)
+            }
         }
     }
 

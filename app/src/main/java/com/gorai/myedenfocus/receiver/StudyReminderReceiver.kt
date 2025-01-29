@@ -58,29 +58,19 @@ class StudyReminderReceiver : BroadcastReceiver() {
     private fun showNotification(context: Context) {
         createNotificationChannel(context)
 
-        // Create intent for notification click
-        val contentIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        // Create intent for MainActivity
+        val mainIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or 
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("navigate_to_session", true)
+            action = "OPEN_FROM_NOTIFICATION"
         }
 
         val pendingIntent = PendingIntent.getActivity(
             context,
             0,
-            contentIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        // Create full screen intent
-        val fullScreenIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("navigate_to_session", true)
-        }
-
-        val fullScreenPendingIntent = PendingIntent.getActivity(
-            context,
-            1,
-            fullScreenIntent,
+            mainIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -93,8 +83,10 @@ class StudyReminderReceiver : BroadcastReceiver() {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .setFullScreenIntent(fullScreenPendingIntent, true)
+            .setFullScreenIntent(pendingIntent, true)
             .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setTimeoutAfter(300000) // 5 minutes
             .build()
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
