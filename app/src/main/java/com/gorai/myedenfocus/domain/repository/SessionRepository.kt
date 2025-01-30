@@ -8,8 +8,8 @@ interface SessionRepository {
     suspend fun deleteSession(session: Session)
     fun getAllSessions(): Flow<List<Session>>
     fun getRecentFiveSessions(subjectId: Int): Flow<List<Session>>
-    fun getRecentTenSessionsForSubject(sessionId: Int): Flow<List<Session>>
-    fun getTotalSessionsDuration(): Flow<Long>
-    fun getTotalSessionsDurationBySubject(subjectId: Int): Flow<Long>
-    fun getTodaySessionsDuration(): Flow<Long>
+    fun getRecentTenSessionsForSubject(subjectId: Int): Flow<List<Session>>
+    fun getTotalSessionsDuration(): Flow<Float>
+    fun getTotalSessionsDurationBySubject(subjectId: Int): Flow<Float>
+    fun getTodaySessionsDuration(): Flow<Float>
 }

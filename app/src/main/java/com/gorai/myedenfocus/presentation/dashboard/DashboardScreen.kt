@@ -61,12 +61,16 @@ import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestina
 import com.gorai.myedenfocus.presentation.destinations.SettingsScreenDestination
 import com.gorai.myedenfocus.presentation.destinations.SubjectScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
+import com.gorai.myedenfocus.presentation.session.TimerState
 import com.gorai.myedenfocus.presentation.subject.SubjectScreenNavArgs
 import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
+import com.gorai.myedenfocus.util.LocalTimerService
 import com.gorai.myedenfocus.util.NavAnimation
 import com.gorai.myedenfocus.util.SnackbarEvent
 import com.gorai.myedenfocus.util.formatHours
 import com.gorai.myedenfocus.util.formatHoursFromString
+import com.gorai.myedenfocus.util.formatTimeHoursMinutes
+import com.gorai.myedenfocus.util.secondsToHours
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootNavGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -86,6 +90,10 @@ fun DashBoardScreenRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val recentSessions by viewModel.recentSessions.collectAsStateWithLifecycle()
+    val timerService = LocalTimerService.current
+    val elapsedTime by timerService.elapsedTimeFlow.collectAsStateWithLifecycle()
+    val currentTimerState by timerService.currentTimerState
+    val sessionCompleted by timerService.sessionCompleted.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -402,8 +410,8 @@ private fun CountCardsSection(
             CountCard(
                 modifier = Modifier.weight(1f),
                 title = "Today's Progress",
-                value = dailyStudiedHoursFloat.formatHours(),
-                maxValue = dailyGoalHoursFloat.formatHours()
+                value = formatTimeHoursMinutes(dailyStudiedHoursFloat),
+                maxValue = formatTimeHoursMinutes(dailyGoalHoursFloat)
             )
         }
         Row(
@@ -413,8 +421,8 @@ private fun CountCardsSection(
             CountCard(
                 modifier = Modifier.weight(1f),
                 title = "Weekly Progress",
-                value = studiedHoursFloat.formatHours(),
-                maxValue = weeklyGoalHours.formatHours()
+                value = formatTimeHoursMinutes(studiedHoursFloat),
+                maxValue = formatTimeHoursMinutes(weeklyGoalHours)
             )
             Spacer(modifier = Modifier.width(16.dp))
             CountCard(

@@ -80,10 +80,11 @@ class SessionViewModel @Inject constructor(
         val topicId = prefs.getInt("topic_id", -1)
         val subjectId = prefs.getInt("subject_id", -1)
         val durationMinutes = prefs.getInt("duration_minutes", 0)
+        val wasSessionSaved = prefs.getBoolean("session_saved", false)
 
         println("SessionViewModel: Checking timer - completionTime: $completionTime, currentTime: ${System.currentTimeMillis()}")
 
-        if (completionTime > 0 && topicId != -1) {
+        if (completionTime > 0 && topicId != -1 && !wasSessionSaved) {
             val currentTime = System.currentTimeMillis()
 
             // If current time is past completion time
@@ -103,6 +104,9 @@ class SessionViewModel @Inject constructor(
                                     duration = durationMinutes.toLong()
                                 )
                             )
+
+                            // Mark that session was saved
+                            prefs.edit().putBoolean("session_saved", true).apply()
 
                             // Show completion message
                             _snackbarEventFlow.emit(
@@ -126,7 +130,7 @@ class SessionViewModel @Inject constructor(
                 println("SessionViewModel: Timer not yet completed")
             }
         } else {
-            println("SessionViewModel: No pending timer found")
+            println("SessionViewModel: No pending timer found or session already saved")
         }
     }
 
@@ -161,25 +165,31 @@ class SessionViewModel @Inject constructor(
             is SessionEvent.SaveSession -> {
                 viewModelScope.launch {
                     try {
-                        state.value.selectedTopicId?.let { topicId ->
-                            taskRepository.getTaskById(topicId)?.let { task ->
-                                sessionRepository.insertSession(
-                                    session = Session(
-                                        sessionSubjectId = state.value.subjectId ?: -1,
-                                        relatedToSubject = state.value.relatedToSubject ?: "",
-                                        topicName = task.title,
-                                        date = Instant.now().toEpochMilli(),
-                                        duration = state.value.selectedDuration.toLong()
+                        // Check if session was already saved by timer service
+                        val prefs = context.getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
+                        val wasSessionSaved = prefs.getBoolean("session_saved", false)
+                        
+                        if (!wasSessionSaved) {
+                            state.value.selectedTopicId?.let { topicId ->
+                                taskRepository.getTaskById(topicId)?.let { task ->
+                                    sessionRepository.insertSession(
+                                        session = Session(
+                                            sessionSubjectId = state.value.subjectId ?: -1,
+                                            relatedToSubject = state.value.relatedToSubject ?: "",
+                                            topicName = task.title,
+                                            date = Instant.now().toEpochMilli(),
+                                            duration = state.value.selectedDuration.toLong()
+                                        )
                                     )
-                                )
 
-                                taskRepository.upsertTask(
-                                    task.copy(isComplete = true)
-                                )
+                                    taskRepository.upsertTask(
+                                        task.copy(isComplete = true)
+                                    )
 
-                                _snackbarEventFlow.emit(
-                                    SnackbarEvent.ShowSnackbar(message = "Session saved and topic marked as complete")
-                                )
+                                    _snackbarEventFlow.emit(
+                                        SnackbarEvent.ShowSnackbar(message = "Session saved and topic marked as complete")
+                                    )
+                                }
                             }
                         }
                     } catch (e: Exception) {

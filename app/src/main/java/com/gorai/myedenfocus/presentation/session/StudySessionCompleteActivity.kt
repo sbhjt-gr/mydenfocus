@@ -18,11 +18,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gorai.myedenfocus.R
+import dagger.hilt.android.AndroidEntryPoint
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import com.gorai.myedenfocus.MainActivity
 
+@AndroidEntryPoint
 class StudySessionCompleteActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Set window flags to show over lock screen
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
@@ -37,22 +45,47 @@ class StudySessionCompleteActivity : ComponentActivity() {
             )
         }
 
+        // Additional flags to ensure activity shows in background
+        window.addFlags(
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+            WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR or
+            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
+            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+        )
+
         setContent {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
+            val isDarkTheme = isSystemInDarkTheme()
+            MaterialTheme(
+                colorScheme = if (isDarkTheme) darkColorScheme() else lightColorScheme()
             ) {
-                StudySessionCompleteContent(
-                    onDismiss = {
-                        // Stop the alarm and finish activity
-                        StudySessionTimerService.stopAlarmStatic()
-                        val intent = Intent(this@StudySessionCompleteActivity, StudySessionTimerService::class.java).apply {
-                            action = StudySessionTimerService.ACTION_STOP_ALARM
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    StudySessionCompleteContent(
+                        onDismiss = {
+                            // Stop the alarm and finish activity
+                            StudySessionTimerService.stopAlarmStatic()
+                            val intent = Intent(this@StudySessionCompleteActivity, StudySessionTimerService::class.java).apply {
+                                action = StudySessionTimerService.ACTION_STOP_ALARM
+                            }
+                            startService(intent)
+                            
+                            // Launch MainActivity with clear flags
+                            val mainIntent = Intent(this@StudySessionCompleteActivity, MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            startActivity(mainIntent)
+                            
+                            // Finish this activity
+                            finish()
                         }
-                        startService(intent)
-                        finish()
-                    }
-                )
+                    )
+                }
             }
         }
     }

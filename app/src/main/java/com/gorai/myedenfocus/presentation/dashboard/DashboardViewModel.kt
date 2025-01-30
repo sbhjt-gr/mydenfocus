@@ -13,6 +13,7 @@ import com.gorai.myedenfocus.domain.repository.TaskRepository
 import com.gorai.myedenfocus.util.SnackbarEvent
 import com.gorai.myedenfocus.util.toHours
 import com.gorai.myedenfocus.data.local.PreferencesDataStore
+import com.gorai.myedenfocus.util.minutesToHours
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,14 +53,14 @@ class DashboardViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = 0L
+            initialValue = 0f
         )
         
     private val todaySessionDuration = sessionRepository.getTodaySessionsDuration()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = 0L
+            initialValue = 0f
         )
 
     val state: StateFlow<DashboardState> = combine(
@@ -72,8 +73,8 @@ class DashboardViewModel @Inject constructor(
         state.copy(
             totalSubjectCount = count,
             subjects = subjectList,
-            totalStudiedHours = totalDuration.toHours().toString(),
-            dailyStudiedHours = todayDuration.toHours().toString(),
+            totalStudiedHours = totalDuration.toString(),
+            dailyStudiedHours = todayDuration.toString(),
             dailyStudyGoal = state.dailyStudyGoal
         )
     }.stateIn(
@@ -240,6 +241,18 @@ class DashboardViewModel @Inject constructor(
                     )
                 )
             }
+        }
+    }
+
+    fun updateStudiedHours(additionalHours: Float) {
+        _state.update { currentState ->
+            val currentDailyHours = currentState.dailyStudiedHours.toFloatOrNull() ?: 0f
+            val currentTotalHours = currentState.totalStudiedHours.toFloatOrNull() ?: 0f
+            
+            currentState.copy(
+                dailyStudiedHours = (currentDailyHours + additionalHours).toString(),
+                totalStudiedHours = (currentTotalHours + additionalHours).toString()
+            )
         }
     }
 }

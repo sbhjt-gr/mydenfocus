@@ -19,11 +19,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gorai.myedenfocus.R
 import com.gorai.myedenfocus.service.MeditationTimerService
+import dagger.hilt.android.AndroidEntryPoint
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import com.gorai.myedenfocus.MainActivity
 
+@AndroidEntryPoint
 class MeditationCompleteActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Set window flags to show over lock screen
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
@@ -38,25 +46,48 @@ class MeditationCompleteActivity : ComponentActivity() {
             )
         }
 
+        // Additional flags to ensure activity shows in background
+        window.addFlags(
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+            WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR or
+            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
+            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+        )
+
         setContent {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
+            val isDarkTheme = isSystemInDarkTheme()
+            MaterialTheme(
+                colorScheme = if (isDarkTheme) darkColorScheme() else lightColorScheme()
             ) {
-                MeditationCompleteContent(
-                    onDismiss = {
-                        MeditationTimerService.stopAlarmStatic()
-                        
-                        // Clean up the service
-                        val intent = Intent(this@MeditationCompleteActivity, MeditationTimerService::class.java).apply {
-                            action = MeditationTimerService.ACTION_STOP_ALARM
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    MeditationCompleteContent(
+                        onDismiss = {
+                            MeditationTimerService.stopAlarmStatic()
+                            
+                            // Clean up the service
+                            val intent = Intent(this@MeditationCompleteActivity, MeditationTimerService::class.java).apply {
+                                action = MeditationTimerService.ACTION_STOP_ALARM
+                            }
+                            startService(intent)
+                            
+                            // Launch MainActivity with clear flags
+                            val mainIntent = Intent(this@MeditationCompleteActivity, MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            startActivity(mainIntent)
+                            
+                            // Close the activity
+                            finish()
                         }
-                        startService(intent)
-                        
-                        // Close the activity
-                        finish()
-                    }
-                )
+                    )
+                }
             }
         }
     }

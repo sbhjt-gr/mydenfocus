@@ -7,10 +7,13 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.MediaPlayer
+import android.media.AudioAttributes
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.os.Binder
 import android.os.Build
+import android.os.PowerManager
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.NotificationCompat
 import com.gorai.myedenfocus.R
@@ -34,43 +37,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.util.Timer
 import javax.inject.Inject
 import kotlin.concurrent.fixedRateTimer
+import kotlinx.coroutines.launch
+import android.util.Log
+import com.gorai.myedenfocus.domain.model.Session
 
 @AndroidEntryPoint
 class StudySessionTimerService : Service() {
-
-    @Inject
-    lateinit var notificationManager: NotificationManager
-
-    @Inject
-    lateinit var notificationBuilder: NotificationCompat.Builder
-
-    @Inject
-    lateinit var sessionRepository: SessionRepository
-
-    @Inject
-    lateinit var taskRepository: TaskRepository
-
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-    private val binder = StudySessionTimerBinder()
-
-    private var timer: Timer? = null
-    private var totalDurationMinutes: Int = 0
-    private var elapsedSeconds: Int = 0
-    private var wasManuallyFinished = false
-    private var selectedTopicId: Int? = null
-
-    var duration: Int = 0
-        private set
-    var seconds = mutableStateOf("00")
-        private set
-    var minutes = mutableStateOf("00")
-        private set
-    var hours = mutableStateOf("00")
-        private set
-    var currentTimerState = mutableStateOf(TimerState.IDLE)
-        private set
-    var subjectId = mutableStateOf<Int?>(null)
 
     companion object {
         const val ACTION_STOP_ALARM = "STOP_ALARM"
@@ -84,15 +56,56 @@ class StudySessionTimerService : Service() {
         fun stopAlarmStatic() {
             try {
                 currentRingtone?.stop()
-                currentRingtone?.play() // Force a state change
-                currentRingtone?.stop() // Stop again to ensure it's stopped
                 currentRingtone = null
                 _isAlarmPlaying.value = false
             } catch (e: Exception) {
-                android.util.Log.e("StudyTimer", "Error stopping alarm sound", e)
+                Log.e("StudyTimer", "Error stopping alarm sound", e)
             }
         }
     }
+
+    @Inject
+    lateinit var notificationManager: NotificationManager
+
+    @Inject
+    lateinit var notificationBuilder: NotificationCompat.Builder
+
+    @Inject
+    lateinit var sessionRepository: SessionRepository
+
+    @Inject
+    lateinit var taskRepository: TaskRepository
+
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    private val binder = StudySessionTimerBinder()
+
+    private var timer: Timer? = null
+    private var totalDurationMinutes: Int = 0
+    private var elapsedSeconds: Int = 0
+    private var wasManuallyFinished = false
+    private var selectedTopicId: Int? = null
+    private var lastSavedMinute: Int = -1
+
+    var duration: Int = 0
+        private set
+    var seconds = mutableStateOf("00")
+        private set
+    var minutes = mutableStateOf("00")
+        private set
+    var hours = mutableStateOf("00")
+        private set
+    var currentTimerState = mutableStateOf(TimerState.IDLE)
+        private set
+    var subjectId = mutableStateOf<Int?>(null)
+
+    private val _elapsedTimeFlow = MutableStateFlow(0)
+    val elapsedTimeFlow: StateFlow<Int> = _elapsedTimeFlow.asStateFlow()
+
+    private val _sessionCompleted = MutableStateFlow(false)
+    val sessionCompleted: StateFlow<Boolean> = _sessionCompleted.asStateFlow()
+
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onBind(p0: Intent?) = binder
 
@@ -104,7 +117,11 @@ class StudySessionTimerService : Service() {
                     totalDurationMinutes = minutes
                     elapsedSeconds = 0  // Reset elapsed seconds
                     wasManuallyFinished = false
+                    _sessionCompleted.value = false
                     selectedTopicId = intent.getIntExtra("TOPIC_ID", -1).let { if (it == -1) null else it }
+                    // Get subject ID from intent
+                    subjectId.value = intent.getIntExtra("SUBJECT_ID", -1).let { if (it == -1) null else it }
+                    Log.d("StudyTimer", "Starting timer with subjectId: ${subjectId.value}")
                     startTimer()
                 }
             }
@@ -161,16 +178,30 @@ class StudySessionTimerService : Service() {
     private fun startTimer() {
         currentTimerState.value = TimerState.STARTED
         startForegroundService()
+        lastSavedMinute = -1
 
         timer?.cancel()
         timer = fixedRateTimer(initialDelay = 0L, period = 1000L) {
+            elapsedSeconds++
+            duration = elapsedSeconds
+            _elapsedTimeFlow.value = elapsedSeconds
+
+            // Calculate current minute
+            val currentMinute = elapsedSeconds / 60
+
+            // Save session when we enter a new minute
+            if (currentMinute > lastSavedMinute) {
+                lastSavedMinute = currentMinute
+                serviceScope.launch(Dispatchers.IO) {
+                    saveSession(elapsedSeconds)
+                }
+            }
+
+            // Check if timer should stop
             if (elapsedSeconds >= totalDurationMinutes * 60) {
                 stopTimer()
                 return@fixedRateTimer
             }
-
-            elapsedSeconds++
-            duration = elapsedSeconds
 
             val remainingSeconds = (totalDurationMinutes * 60) - elapsedSeconds
             val h = remainingSeconds / 3600
@@ -193,56 +224,108 @@ class StudySessionTimerService : Service() {
 
     private fun stopTimer() {
         val wasTimerCompleted = elapsedSeconds >= totalDurationMinutes * 60
+        val finalElapsedTime = elapsedSeconds
         
         timer?.cancel()
         timer = null
+        
+        if (finalElapsedTime > 0) {
+            serviceScope.launch(Dispatchers.IO) {
+                saveSession(finalElapsedTime)
+                if (wasTimerCompleted && !wasManuallyFinished) {
+                    _sessionCompleted.value = true
+                    showCompletionDialog()
+                    // Don't stop the service here, let it run until alarm is dismissed
+                } else if (wasManuallyFinished) {
+                    _sessionCompleted.value = true
+                    stopForegroundService() // Only stop service if manually finished
+                }
+            }
+        } else {
+            stopForegroundService()
+        }
+
+        lastSavedMinute = -1
         elapsedSeconds = 0
         totalDurationMinutes = 0
-        
         hours.value = "00"
         minutes.value = "00"
         seconds.value = "00"
-        
         currentTimerState.value = TimerState.IDLE
-        stopForegroundService()
-        
-        if (wasTimerCompleted && !wasManuallyFinished) {
-            showCompletionDialog()
+        _elapsedTimeFlow.value = 0
+    }
+
+    private fun saveSession(duration: Int) {
+        try {
+            Log.d("StudyTimer", "Saving session with duration: $duration, subjectId: ${subjectId.value}")
+            val currentTime = System.currentTimeMillis()
+            val sessionDuration = (duration / 60).toLong() // Convert seconds to minutes
+            
+            if (subjectId.value == null) {
+                Log.e("StudyTimer", "Cannot save session: No subject ID")
+                return
+            }
+
+            serviceScope.launch(Dispatchers.IO) {
+                try {
+                    selectedTopicId?.let { topicId ->
+                        taskRepository.getTaskById(topicId)?.let { task ->
+                            sessionRepository.insertSession(
+                                Session(
+                                    sessionSubjectId = subjectId.value!!,
+                                    relatedToSubject = task.title,
+                                    topicName = task.title,
+                                    date = currentTime,
+                                    duration = sessionDuration
+                                )
+                            )
+                            Log.d("StudyTimer", "Session saved successfully with topic")
+                        }
+                    } ?: run {
+                        sessionRepository.insertSession(
+                            Session(
+                                sessionSubjectId = subjectId.value!!,
+                                relatedToSubject = "",
+                                topicName = "",
+                                date = currentTime,
+                                duration = sessionDuration
+                            )
+                        )
+                        Log.d("StudyTimer", "Session saved successfully without topic")
+                    }
+                } catch (e: Exception) {
+                    Log.e("StudyTimer", "Error saving session", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("StudyTimer", "Error in saveSession", e)
         }
     }
 
     private fun showCompletionDialog() {
         try {
+            // Acquire wake lock to keep CPU running
+            if (wakeLock == null) {
+                val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+                wakeLock = powerManager.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP or PowerManager.ON_AFTER_RELEASE,
+                    "MyedenFocus::AlarmWakeLock"
+                ).apply {
+                    acquire(10*60*1000L /*10 minutes*/)
+                }
+            }
+
             // Play alarm sound
             try {
                 currentRingtone?.stop()
                 currentRingtone = null
                 
-                // Try alarm sound first
-                try {
-                    val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                    currentRingtone = RingtoneManager.getRingtone(applicationContext, alarmUri)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        currentRingtone?.isLooping = true
-                    }
-                    currentRingtone?.play()
-                    _isAlarmPlaying.value = true
-                } catch (e: Exception) {
-                    // Fallback to notification sound if alarm fails
-                    try {
-                        val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                        currentRingtone = RingtoneManager.getRingtone(applicationContext, fallbackUri)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                            currentRingtone?.isLooping = true
-                        }
-                        currentRingtone?.play()
-                        _isAlarmPlaying.value = true
-                    } catch (e: Exception) {
-                        android.util.Log.e("StudyTimer", "Error playing fallback sound", e)
-                    }
-                }
+                val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                currentRingtone = RingtoneManager.getRingtone(applicationContext, notification)
+                currentRingtone?.play()
+                _isAlarmPlaying.value = true
             } catch (e: Exception) {
-                android.util.Log.e("StudyTimer", "Error playing alarm sound", e)
+                Log.e("StudyTimer", "Error playing alarm sound", e)
             }
 
             // Launch the alarm activity
@@ -291,21 +374,43 @@ class StudySessionTimerService : Service() {
                 .build()
 
             notificationManager.notify(2, notification)
+
         } catch (e: Exception) {
-            android.util.Log.e("StudyTimer", "Error showing completion dialog", e)
+            Log.e("StudyTimer", "Error showing completion dialog", e)
             e.printStackTrace()
         }
     }
 
-    private fun stopAlarm() {
-        currentRingtone?.stop()
-        currentRingtone = null
-        _isAlarmPlaying.value = false
-        
-        // Clear notifications
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.cancel(2)
-        notificationManager.cancel(NOTIFICATION_ID)
+    fun stopAlarm() {
+        try {
+            currentRingtone?.stop()
+            currentRingtone = null
+            _isAlarmPlaying.value = false
+            
+            // Release wake lock
+            wakeLock?.let {
+                if (it.isHeld) {
+                    it.release()
+                }
+            }
+            wakeLock = null
+            
+            // Stop foreground service and remove notification
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                stopForeground(true)
+            }
+            
+            // Clear any remaining notifications
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancel(2)
+            notificationManager.cancel(NOTIFICATION_ID)
+            
+            stopSelf()
+        } catch (e: Exception) {
+            Log.e("StudyTimer", "Error stopping alarm", e)
+        }
     }
 
     override fun onDestroy() {
@@ -327,6 +432,10 @@ class StudySessionTimerService : Service() {
 
     inner class StudySessionTimerBinder : Binder() {
         fun getService(): StudySessionTimerService = this@StudySessionTimerService
+    }
+
+    fun resetSessionCompleted() {
+        _sessionCompleted.value = false
     }
 }
 enum class TimerState {

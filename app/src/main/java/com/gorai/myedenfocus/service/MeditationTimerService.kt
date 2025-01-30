@@ -358,13 +358,31 @@ class MeditationTimerService : Service() {
 
     private fun showCompletionDialog() {
         try {
+            // First, disable DND
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && notificationManager.isNotificationPolicyAccessGranted) {
+                notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
+            }
+
             // Play alarm sound
             try {
                 currentRingtone?.stop()
                 currentRingtone = null
                 
-                val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                currentRingtone = RingtoneManager.getRingtone(applicationContext, notification)
+                // Create audio attributes that bypass DND (as fallback)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    val audioAttributes = android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+
+                    val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                    currentRingtone = RingtoneManager.getRingtone(applicationContext, notification)
+                    currentRingtone?.audioAttributes = audioAttributes
+                } else {
+                    val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                    currentRingtone = RingtoneManager.getRingtone(applicationContext, notification)
+                }
                 currentRingtone?.play()
                 _isAlarmPlaying.value = true
             } catch (e: Exception) {
@@ -380,7 +398,6 @@ class MeditationTimerService : Service() {
             startActivity(intent)
 
             // Create a high-priority notification
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val alarmChannel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 NotificationChannel(
                     "meditation_alarm_channel",
@@ -389,6 +406,8 @@ class MeditationTimerService : Service() {
                 ).apply {
                     enableLights(true)
                     enableVibration(true)
+                    setBypassDnd(true)
+                    lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
                 }
             } else null
 
@@ -410,11 +429,13 @@ class MeditationTimerService : Service() {
                 .setContentTitle("Meditation Complete!")
                 .setContentText("Tap to stop the alarm")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setFullScreenIntent(pendingIntent, true)
                 .setOngoing(true)
                 .build()
+
+            notification.flags = notification.flags or NotificationCompat.FLAG_INSISTENT
 
             notificationManager.notify(2, notification)
 
@@ -475,19 +496,16 @@ class MeditationTimerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
-        
-        // Clean up all media resources
+
         mediaPlayer?.stop()
         mediaPlayer?.release()
         mediaPlayer = null
         isBackgroundMusicPlaying = false
-        
-        // Stop alarm if service is destroyed
+
         currentRingtone?.stop()
         currentRingtone = null
         _isAlarmPlaying.value = false
-        
-        // Cancel any pending alarms
+
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val completionIntent = Intent(this, MeditationTimerService::class.java).apply {
             action = ACTION_SHOW_COMPLETION_DIALOG
@@ -503,7 +521,5 @@ class MeditationTimerService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        // Don't stop service when app is removed from recent tasks
-        // Let it continue running in background
     }
 } 

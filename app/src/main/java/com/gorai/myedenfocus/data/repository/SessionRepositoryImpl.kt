@@ -35,15 +35,15 @@ class SessionRepositoryImpl @Inject constructor(
         return sessionDao.getRecentTenSessionsForSubject(subjectId)
     }
 
-    override fun getTotalSessionsDuration(): Flow<Long> {
-        return sessionDao.getTotalSessionsDuration()
+    override fun getTotalSessionsDuration(): Flow<Float> {
+        return sessionDao.getTotalSessionsDuration().map { it.toFloat() / 60.0f }
     }
 
-    override fun getTotalSessionsDurationBySubject(subjectId: Int): Flow<Long> {
-        return sessionDao.getTotalSessionsDurationBySubject(subjectId)
+    override fun getTotalSessionsDurationBySubject(subjectId: Int): Flow<Float> {
+        return sessionDao.getTotalSessionsDurationBySubject(subjectId).map { it.toFloat() / 60.0f }
     }
 
-    override fun getTodaySessionsDuration(): Flow<Long> {
+    override fun getTodaySessionsDuration(): Flow<Float> {
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
@@ -52,7 +52,8 @@ class SessionRepositoryImpl @Inject constructor(
 
         return sessionDao.getAllSessions().map { sessions ->
             sessions.filter { it.date >= startOfDay }
-                   .sumOf { it.duration }
+                   .sumOf { it.duration.toDouble() }
+                   .toFloat() / 60.0f
         }
     }
 }

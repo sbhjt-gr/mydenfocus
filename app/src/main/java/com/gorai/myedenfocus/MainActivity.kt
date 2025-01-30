@@ -37,6 +37,8 @@ import com.ramcosta.composedestinations.navigation.dependency
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.*
 import javax.inject.Inject
+import androidx.compose.runtime.CompositionLocalProvider
+import com.gorai.myedenfocus.util.LocalTimerService
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -77,20 +79,22 @@ class MainActivity : ComponentActivity() {
             
             if (isOnboardingCompleted != null) {
                 MyedenFocusTheme {
-                    DestinationsNavHost(
-                        navGraph = NavGraphs.root,
-                        startRoute = if (isOnboardingCompleted == true) NavGraphs.root.startRoute else OnboardingScreenDestination,
-                        dependenciesContainerBuilder = {
-                            dependency(SessionScreenRouteDestination) { timerService }
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    CompositionLocalProvider(LocalTimerService provides timerService) {
+                        DestinationsNavHost(
+                            navGraph = NavGraphs.root,
+                            startRoute = if (isOnboardingCompleted == true) NavGraphs.root.startRoute else OnboardingScreenDestination,
+                            dependenciesContainerBuilder = {
+                                dependency(SessionScreenRouteDestination) { timerService }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
 
-                    // Handle notification click navigation
-                    LaunchedEffect(intent) {
-                        if (intent?.action == "OPEN_FROM_NOTIFICATION" || 
-                            intent?.getBooleanExtra("navigate_to_session", false) == true) {
-                            navigationViewModel.navigateTo(SessionScreenRouteDestination.route)
+                        // Handle notification click navigation
+                        LaunchedEffect(intent) {
+                            if (intent?.action == "OPEN_FROM_NOTIFICATION" || 
+                                intent?.getBooleanExtra("navigate_to_session", false) == true) {
+                                navigationViewModel.navigateTo(SessionScreenRouteDestination.route)
+                            }
                         }
                     }
                 }

@@ -13,7 +13,7 @@ import com.gorai.myedenfocus.domain.repository.SubjectRepository
 import com.gorai.myedenfocus.domain.repository.TaskRepository
 import com.gorai.myedenfocus.presentation.navArgs
 import com.gorai.myedenfocus.util.SnackbarEvent
-import com.gorai.myedenfocus.util.toHours
+import com.gorai.myedenfocus.util.minutesToHours
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -33,35 +33,53 @@ class SubjectViewModel @Inject constructor(
     private val _snackbarEventFlow = MutableSharedFlow<SnackbarEvent>()
     val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
 
-    private val upcomingTasks = taskRepository.getUpcomingTasksForSubject(navArgs.subjectId)
+    // Add a trigger to refresh data
+    private val _refreshTrigger = MutableStateFlow(0)
+
+    private val upcomingTasks = combine(
+        taskRepository.getUpcomingTasksForSubject(navArgs.subjectId),
+        _refreshTrigger
+    ) { tasks, _ -> tasks }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-    private val completedTasks = taskRepository.getCompletedTasksForSubject(navArgs.subjectId)
+    private val completedTasks = combine(
+        taskRepository.getCompletedTasksForSubject(navArgs.subjectId),
+        _refreshTrigger
+    ) { tasks, _ -> tasks }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-    private val recentSessions = sessionRepository.getRecentTenSessionsForSubject(navArgs.subjectId)
+    private val recentSessions = combine(
+        sessionRepository.getRecentTenSessionsForSubject(navArgs.subjectId),
+        _refreshTrigger
+    ) { sessions, _ -> sessions }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-    private val totalDuration = sessionRepository.getTotalSessionsDurationBySubject(navArgs.subjectId)
+    private val totalDuration = combine(
+        sessionRepository.getTotalSessionsDurationBySubject(navArgs.subjectId),
+        _refreshTrigger
+    ) { duration, _ -> duration }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = 0L
+            initialValue = 0f
         )
 
-    private val allSubjects = subjectRepository.getAllSubjects()
+    private val allSubjects = combine(
+        subjectRepository.getAllSubjects(),
+        _refreshTrigger
+    ) { subjects, _ -> subjects }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -69,14 +87,18 @@ class SubjectViewModel @Inject constructor(
         )
 
     // Create a separate flow for subject details
-    private val subjectDetails = flow {
-        val subject = subjectRepository.getSubjectById(navArgs.subjectId)
-        emit(subject)
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = null
-    )
+    private val subjectDetails = combine(
+        flow {
+            val subject = subjectRepository.getSubjectById(navArgs.subjectId)
+            emit(subject)
+        },
+        _refreshTrigger
+    ) { subject, _ -> subject }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
     val state: StateFlow<SubjectState> = combine(
         subjectDetails,
@@ -103,7 +125,7 @@ class SubjectViewModel @Inject constructor(
             upcomingTasks = upcoming,
             completedTasks = completed,
             recentSessions = sessions,
-            studiedHours = duration.toHours().toString(),
+            studiedHours = String.format("%.1f", duration),
             allSubjects = subjects,
             dailyStudyGoal = "8"
         )
@@ -258,6 +280,23 @@ class SubjectViewModel @Inject constructor(
                     )
                 )
             }
+        }
+    }
+
+    fun updateStudiedHours(additionalHours: Float) {
+        _state.update { currentState ->
+            val currentStudiedHours = currentState.studiedHours.toFloatOrNull() ?: 0f
+            currentState.copy(
+                studiedHours = (currentStudiedHours + additionalHours).toString()
+            )
+        }
+        updateProgress()  // Update the progress after updating hours
+    }
+
+    // Function to trigger refresh
+    fun refreshData() {
+        viewModelScope.launch {
+            _refreshTrigger.value = _refreshTrigger.value + 1
         }
     }
 }

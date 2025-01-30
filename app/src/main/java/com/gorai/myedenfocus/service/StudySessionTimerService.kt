@@ -146,16 +146,21 @@ class StudySessionTimerService : Service() {
             selectedTopicId?.let { topicId ->
                 try {
                     taskRepository.getTaskById(topicId)?.let { task ->
-                        // Save session
+                        // Save session with actual elapsed time
+                        val actualDurationMinutes = elapsedTimeSeconds / 60
                         sessionRepository.insertSession(
                             Session(
                                 sessionSubjectId = subjectId.value ?: -1,
-                                relatedToSubject = "",  // Will be updated by UI if needed
+                                relatedToSubject = "",
                                 topicName = task.title,
                                 date = Instant.now().toEpochMilli(),
-                                duration = totalDurationMinutes.toLong()
+                                duration = actualDurationMinutes.toLong()
                             )
                         )
+                        
+                        // Mark that session was saved
+                        val prefs = getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
+                        prefs.edit().putBoolean("session_saved", true).apply()
                         
                         // Mark task as complete
                         taskRepository.upsertTask(
@@ -218,8 +223,12 @@ class StudySessionTimerService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // Only save if timer completed and session wasn't already saved
         serviceScope.launch {
-            if (elapsedTimeSeconds >= totalTimeSeconds) {
+            val prefs = getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
+            val wasSessionSaved = prefs.getBoolean("session_saved", false)
+            
+            if (elapsedTimeSeconds >= totalTimeSeconds && !wasSessionSaved) {
                 completeTimer()
             }
         }

@@ -15,6 +15,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,12 +31,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowCircleRight
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
@@ -199,7 +203,9 @@ private fun SessionScreen(
                     ServiceHelper.triggerForegroundService(
                         context = context,
                         action = ACTION_SERVICE_START,
-                        duration = state.selectedDuration
+                        duration = state.selectedDuration,
+                        topicId = state.selectedTopicId,
+                        subjectId = state.subjectId
                     )
                 }
             }
@@ -229,17 +235,14 @@ private fun SessionScreen(
         }
     }
 
-    // Add this LaunchedEffect to handle timer completion
     LaunchedEffect(currentTimerState) {
         if (currentTimerState == TimerState.IDLE && state.selectedTopicId != null) {
-            // Check if timer was actually completed (not just cancelled)
             val duration = timerService.duration.toLong()
-            if (duration > 0) {  // Timer reached completion
+            if (duration > 0) {
                 ServiceHelper.triggerForegroundService(
                     context = context,
                     action = ACTION_SERVICE_CANCEL
                 )
-                onEvent(SessionEvent.SaveSession)
                 onEvent(SessionEvent.CompleteTask(state.selectedTopicId))
             }
         }
@@ -290,6 +293,62 @@ private fun SessionScreen(
                 .padding(paddingValues),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (!hasMeditatedToday) {
+                item {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .clickable { navigator.navigate(MeditationScreenDestination) }
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "You Haven't Meditated Today",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            }
+                            
+                            Text(
+                                text = "Take 15 minutes to meditate before studying. Research shows meditation improves focus & concentration, reduces stress & anxiety and enhances memory retention.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Tap to meditate",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ArrowCircleRight,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .padding(start = 4.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             item {
                 TimerSection(
                     modifier = Modifier
@@ -359,11 +418,12 @@ private fun SessionScreen(
                     timerState = currentTimerState,
                     seconds = seconds,
                     context = context,
-                    onShowMeditationDialog = { showMeditationDialog = true },
                     durationMinutes = state.selectedDuration,
                     hasMeditatedToday = hasMeditatedToday,
                     selectedTopicId = state.selectedTopicId,
-                    onEvent = onEvent
+                    subjectId = state.subjectId,
+                    onEvent = onEvent,
+                    navigator = navigator
                 )
             }
             studySessionsList(
@@ -605,56 +665,44 @@ private fun RelatedToSubjectSection(
 
 @Composable
 private fun ButtonSection(
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
     cancelButtonClick: () -> Unit,
     finishButtonClick: () -> Unit,
     timerState: TimerState,
     seconds: String,
     context: Context,
-    onShowMeditationDialog: () -> Unit,
     durationMinutes: Int,
     hasMeditatedToday: Boolean,
     selectedTopicId: Int?,
-    onEvent: (SessionEvent) -> Unit
+    subjectId: Int?,
+    onEvent: (SessionEvent) -> Unit,
+    navigator: DestinationsNavigator
 ) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Button(
-            onClick = { 
-                when (timerState) {
-                    TimerState.STARTED -> {
-                        ServiceHelper.triggerForegroundService(
-                            context = context,
-                            action = ACTION_SERVICE_STOP
-                        )
-                    }
-                    TimerState.STOPPED -> {
-                        ServiceHelper.triggerForegroundService(
-                            context = context,
-                            action = ACTION_SERVICE_START,
-                            duration = durationMinutes
-                        )
-                    }
-                    TimerState.IDLE -> {
-                        if (!hasMeditatedToday) {
-                            onShowMeditationDialog()
-                        } else {
-                            ServiceHelper.triggerForegroundService(
-                                context = context,
-                                action = ACTION_SERVICE_START,
-                                duration = durationMinutes,
-                                topicId = selectedTopicId
-                            )
-                        }
-                    }
+            onClick = {
+                if (timerState == TimerState.STARTED) {
+                    ServiceHelper.triggerForegroundService(
+                        context = context,
+                        action = ACTION_SERVICE_STOP
+                    )
+                } else {
+                    ServiceHelper.triggerForegroundService(
+                        context = context,
+                        action = ACTION_SERVICE_START,
+                        duration = durationMinutes,
+                        topicId = selectedTopicId,
+                        subjectId = subjectId
+                    )
                 }
             },
-            enabled = selectedTopicId != null && durationMinutes > 0,
+            enabled = selectedTopicId != null && durationMinutes > 0 && subjectId != null,
             colors = ButtonDefaults.buttonColors(
                 containerColor = when (timerState) {
-                    TimerState.STARTED -> Red
+                    TimerState.STARTED -> MaterialTheme.colorScheme.secondary
                     else -> MaterialTheme.colorScheme.primary
                 }
             ),
@@ -669,8 +717,7 @@ private fun ButtonSection(
                 },
                 contentDescription = when (timerState) {
                     TimerState.STARTED -> "Pause Timer"
-                    TimerState.STOPPED -> "Resume Timer"
-                    TimerState.IDLE -> "Start Timer"
+                    else -> "Start Timer"
                 }
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -678,7 +725,7 @@ private fun ButtonSection(
                 text = when (timerState) {
                     TimerState.STARTED -> "Pause"
                     TimerState.STOPPED -> "Resume"
-                    TimerState.IDLE -> "Start"
+                    else -> "Start"
                 },
                 style = MaterialTheme.typography.titleMedium
             )
@@ -691,19 +738,18 @@ private fun ButtonSection(
             ) {
                 Button(
                     onClick = {
-                        // Just cancel the timer without saving session
-                        ServiceHelper.triggerForegroundService(
-                            context = context,
-                            action = ACTION_SERVICE_CANCEL
-                        )
+                        cancelButtonClick()
                         onEvent(SessionEvent.CancelSession)
                     },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Red
+                    ),
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Cancel,
+                        imageVector = Icons.Default.Close,
                         contentDescription = "Cancel Timer"
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -715,19 +761,17 @@ private fun ButtonSection(
 
                 Button(
                     onClick = {
-                        // Save session and mark topic as complete
-                        ServiceHelper.triggerForegroundService(
-                            context = context,
-                            action = ACTION_SERVICE_CANCEL
-                        )
                         finishButtonClick()
                     },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.CheckCircle,
+                        imageVector = Icons.Default.Done,
                         contentDescription = "Finish Timer"
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -901,5 +945,26 @@ private fun PulsingStopButton(onClick: () -> Unit) {
                 textAlign = TextAlign.Center
             )
         }
+    }
+}
+
+@Composable
+private fun BulletPoint(text: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(4.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    shape = CircleShape
+                )
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }

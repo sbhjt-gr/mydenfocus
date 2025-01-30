@@ -26,7 +26,6 @@ class StudyReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Log.d(TAG, "Received broadcast: ${intent.action}")
 
-        // Acquire wake lock to ensure device stays awake while processing
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
         val wakeLock = powerManager.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,

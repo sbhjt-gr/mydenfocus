@@ -64,6 +64,10 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.material3.CircularProgressIndicator
+import com.gorai.myedenfocus.util.LocalTimerService
+import com.gorai.myedenfocus.presentation.session.TimerState
+import com.gorai.myedenfocus.util.formatTimeHoursMinutes
+import com.gorai.myedenfocus.util.secondsToHours
 
 data class SubjectScreenNavArgs(
     val subjectId: Int
@@ -79,6 +83,24 @@ fun SubjectScreenRoute(
 ) {
     val viewModel: SubjectViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val timerService = LocalTimerService.current
+    val elapsedTime by timerService.elapsedTimeFlow.collectAsStateWithLifecycle()
+    val currentTimerState by timerService.currentTimerState
+    val sessionCompleted by timerService.sessionCompleted.collectAsStateWithLifecycle()
+
+    LaunchedEffect(sessionCompleted) {
+        Log.d("SubjectScreen", "Session completed state changed: $sessionCompleted")
+        if (sessionCompleted) {
+            Log.d("SubjectScreen", "Session completed, refreshing data")
+            viewModel.refreshData()
+            timerService.resetSessionCompleted()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        Log.d("SubjectScreen", "Initial load, refreshing data")
+        viewModel.refreshData()
+    }
 
     SubjectScreen(
         state = state,
@@ -314,23 +336,23 @@ private fun SubjectOverviewSection(
             headingText = "Daily Goal",
             value = goalHoursFloat,
             maxValue = 15f,
-            displayText = goalHoursFloat.formatHours()
+            displayText = formatTimeHoursMinutes(goalHoursFloat)
         )
 
         Speedometer(
             modifier = Modifier.weight(1f),
-            headingText = "Today's Hours",
+            headingText = "Today's Progress",
             value = studiedHoursFloat,
             maxValue = goalHoursFloat,
-            displayText = studiedHoursFloat.formatHours()
+            displayText = formatTimeHoursMinutes(studiedHoursFloat)
         )
 
         Speedometer(
             modifier = Modifier.weight(1f),
-            headingText = "Weekly Hours",
+            headingText = "Progress This Week",
             value = weeklyStudiedHours,
             maxValue = weeklyGoalHours,
-            displayText = "${weeklyStudiedHours.formatHours()}/${weeklyGoalHours.formatHours()}"
+            displayText = formatTimeHoursMinutes(weeklyStudiedHours)
         )
     }
 }

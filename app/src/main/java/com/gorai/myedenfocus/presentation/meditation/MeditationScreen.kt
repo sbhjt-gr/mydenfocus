@@ -502,6 +502,7 @@ fun MeditationScreen(
     var isTimerRunning by rememberSaveable { mutableStateOf(false) }
     var showHeadphoneDialog by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var showDndPermissionDialog by remember { mutableStateOf(false) }
     var permissionMessage by remember { mutableStateOf("") }
     val context = LocalContext.current
     val remainingSeconds = MeditationTimerService.timerState.collectAsState().value
@@ -561,10 +562,15 @@ fun MeditationScreen(
     // Function to check and request permissions
     fun checkAndRequestPermissions() {
         if (!isTimerRunning) {
-            // Check alarm permissions first
+            // Check DND permission first
+            if (!viewModel.checkDndPermission(context)) {
+                showDndPermissionDialog = true
+                return
+            }
+
+            // Check alarm permissions
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (!alarmManager.canScheduleExactAlarms()) {
-                    // Show permission dialog for alarm permission
                     permissionMessage = "Please allow MyedenFocus to schedule alarms for the meditation timer."
                     showPermissionDialog = true
                     return
@@ -787,6 +793,49 @@ fun MeditationScreen(
                 }
             }
         )
+    }
+
+    // Add DND permission dialog
+    if (showDndPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showDndPermissionDialog = false },
+            title = {
+                Text(
+                    text = "Permission Required",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = {
+                Text(
+                    text = "To ensure a distraction-free meditation session, please allow MyedenFocus to manage Do Not Disturb settings.",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDndPermissionDialog = false
+                        viewModel.openDndSettings(context)
+                    }
+                ) {
+                    Text("Settings")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDndPermissionDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Handle DND when timer starts/stops
+    LaunchedEffect(isTimerRunning) {
+        if (isTimerRunning) {
+            viewModel.enableDnd(context)
+        } else {
+            viewModel.disableDnd(context)
+        }
     }
 
     LaunchedEffect(timerState) {
