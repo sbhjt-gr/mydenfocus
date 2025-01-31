@@ -202,17 +202,6 @@ class StudySessionTimerService : Service() {
             duration = elapsedSeconds
             _elapsedTimeFlow.value = elapsedSeconds
 
-            // Calculate current minute
-            val currentMinute = elapsedSeconds / 60
-
-            // Save session when we enter a new minute
-            if (currentMinute > lastSavedMinute) {
-                lastSavedMinute = currentMinute
-                serviceScope.launch(Dispatchers.IO) {
-                    saveSession(elapsedSeconds)
-                }
-            }
-
             // Check if timer should stop
             if (elapsedSeconds >= totalDurationMinutes * 60) {
                 stopTimer()
@@ -245,8 +234,12 @@ class StudySessionTimerService : Service() {
         timer?.cancel()
         timer = null
         
+        // Disable DND first before any other actions
+        disableDnd()
+
         if (finalElapsedTime > 0) {
             serviceScope.launch(Dispatchers.IO) {
+                // Only save session when timer completes or is manually stopped
                 saveSession(finalElapsedTime)
                 if (wasTimerCompleted && !wasManuallyFinished) {
                     _sessionCompleted.value = true
@@ -320,6 +313,9 @@ class StudySessionTimerService : Service() {
 
     private fun showCompletionDialog() {
         try {
+            // Ensure DND is disabled first
+            disableDnd()
+
             // Acquire wake lock to keep CPU running
             if (wakeLock == null) {
                 val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -394,6 +390,8 @@ class StudySessionTimerService : Service() {
         } catch (e: Exception) {
             Log.e("StudyTimer", "Error showing completion dialog", e)
             e.printStackTrace()
+            // Make sure DND is disabled even if there's an error
+            disableDnd()
         }
     }
 
@@ -475,8 +473,26 @@ class StudySessionTimerService : Service() {
     }
 
     private fun disableDnd() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && notificationManager.isNotificationPolicyAccessGranted) {
-            notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && notificationManager.isNotificationPolicyAccessGranted) {
+                // First reset notification policy to default
+                notificationManager.notificationPolicy = NotificationManager.Policy(
+                    NotificationManager.Policy.PRIORITY_CATEGORY_ALARMS or
+                    NotificationManager.Policy.PRIORITY_CATEGORY_CALLS or
+                    NotificationManager.Policy.PRIORITY_CATEGORY_EVENTS or
+                    NotificationManager.Policy.PRIORITY_CATEGORY_MESSAGES or
+                    NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA or
+                    NotificationManager.Policy.PRIORITY_CATEGORY_REMINDERS or
+                    NotificationManager.Policy.PRIORITY_CATEGORY_REPEAT_CALLERS or
+                    NotificationManager.Policy.PRIORITY_CATEGORY_SYSTEM,
+                    NotificationManager.Policy.PRIORITY_SENDERS_ANY,
+                    NotificationManager.Policy.PRIORITY_SENDERS_ANY
+                )
+                // Then disable DND
+                notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
+            }
+        } catch (e: Exception) {
+            Log.e("StudyTimer", "Error disabling DND", e)
         }
     }
 }

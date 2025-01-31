@@ -14,12 +14,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -79,22 +82,29 @@ class MainActivity : ComponentActivity() {
             
             if (isOnboardingCompleted != null) {
                 MyedenFocusTheme {
-                    CompositionLocalProvider(LocalTimerService provides timerService) {
-                        DestinationsNavHost(
-                            navGraph = NavGraphs.root,
-                            startRoute = if (isOnboardingCompleted == true) NavGraphs.root.startRoute else OnboardingScreenDestination,
-                            dependenciesContainerBuilder = {
-                                dependency(SessionScreenRouteDestination) { timerService }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
+                    if (isBound) {
+                        CompositionLocalProvider(LocalTimerService provides timerService) {
+                            DestinationsNavHost(
+                                navGraph = NavGraphs.root,
+                                startRoute = if (isOnboardingCompleted == true) NavGraphs.root.startRoute else OnboardingScreenDestination,
+                                dependenciesContainerBuilder = {
+                                    dependency(SessionScreenRouteDestination) { timerService }
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
 
-                        // Handle notification click navigation
-                        LaunchedEffect(intent) {
-                            if (intent?.action == "OPEN_FROM_NOTIFICATION" || 
-                                intent?.getBooleanExtra("navigate_to_session", false) == true) {
-                                navigationViewModel.navigateTo(SessionScreenRouteDestination.route)
+                            // Handle notification click navigation
+                            LaunchedEffect(intent) {
+                                if (intent?.action == "OPEN_FROM_NOTIFICATION" || 
+                                    intent?.getBooleanExtra("navigate_to_session", false) == true) {
+                                    navigationViewModel.navigateTo(SessionScreenRouteDestination.route)
+                                }
                             }
+                        }
+                    } else {
+                        // Show loading state or placeholder while service is binding
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
                         }
                     }
                 }

@@ -137,6 +137,7 @@ class SubjectViewModel @Inject constructor(
 
     init {
         fetchSubject()
+        updateProgress()
     }
 
     fun onEvent(event: SubjectEvent) {
@@ -149,6 +150,7 @@ class SubjectViewModel @Inject constructor(
             }
             is SubjectEvent.OnGoalStudyHoursChange -> {
                 _state.update { it.copy(goalStudyHours = event.hours) }
+                updateProgress()
             }
             is SubjectEvent.OnSubjectCardColorChange -> {
                 _state.update { it.copy(subjectCardColors = event.colors) }

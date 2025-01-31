@@ -89,17 +89,25 @@ fun SubjectScreenRoute(
     val sessionCompleted by timerService.sessionCompleted.collectAsStateWithLifecycle()
 
     LaunchedEffect(sessionCompleted) {
-        Log.d("SubjectScreen", "Session completed state changed: $sessionCompleted")
         if (sessionCompleted) {
-            Log.d("SubjectScreen", "Session completed, refreshing data")
             viewModel.refreshData()
             timerService.resetSessionCompleted()
         }
     }
 
-    LaunchedEffect(Unit) {
-        Log.d("SubjectScreen", "Initial load, refreshing data")
-        viewModel.refreshData()
+    LaunchedEffect(currentTimerState) {
+        if (currentTimerState == TimerState.IDLE) {
+            viewModel.refreshData()
+        }
+    }
+
+    LaunchedEffect(currentTimerState) {
+        if (currentTimerState == TimerState.STARTED) {
+            while (true) {
+                kotlinx.coroutines.delay(60000)
+                viewModel.refreshData()
+            }
+        }
     }
 
     SubjectScreen(

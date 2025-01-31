@@ -32,6 +32,7 @@ class SessionViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SessionState())
+    private val _refreshTrigger = MutableStateFlow(0)
     
     private val subjects = subjectRepository.getAllSubjects()
         .stateIn(
@@ -141,105 +142,36 @@ class SessionViewModel @Inject constructor(
     fun onEvent(event: SessionEvent) {
         when(event) {
             is SessionEvent.OnTopicSelect -> {
-                _state.update { 
-                    it.copy(
-                        selectedTopicId = event.task?.taskId,
-                        selectedDuration = event.task?.taskDuration ?: 0
-                    )
+                _state.update { it.copy(selectedTopicId = event.task?.taskId) }
+                event.task?.let { task ->
+                    _state.update { it.copy(selectedDuration = task.taskDuration) }
                 }
             }
             is SessionEvent.OnRelatedSubjectChange -> {
-                _state.update {
-                    it.copy(
-                        subjectId = event.subject.subjectId,
-                        relatedToSubject = event.subject.name
-                    )
-                }
+                _state.update { it.copy(
+                    relatedToSubject = event.subject.name,
+                    subjectId = event.subject.subjectId
+                ) }
             }
-            is SessionEvent.DeleteSession -> deleteSession()
             is SessionEvent.OnDeleteSessionButtonClick -> {
-                _state.update {
-                    it.copy(session = event.session)
-                }
+                _state.update { it.copy(session = event.session) }
             }
-            is SessionEvent.SaveSession -> {
-                viewModelScope.launch {
-                    try {
-                        // Check if session was already saved by timer service
-                        val prefs = context.getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
-                        val wasSessionSaved = prefs.getBoolean("session_saved", false)
-                        
-                        if (!wasSessionSaved) {
-                            state.value.selectedTopicId?.let { topicId ->
-                                taskRepository.getTaskById(topicId)?.let { task ->
-                                    sessionRepository.insertSession(
-                                        session = Session(
-                                            sessionSubjectId = state.value.subjectId ?: -1,
-                                            relatedToSubject = state.value.relatedToSubject ?: "",
-                                            topicName = task.title,
-                                            date = Instant.now().toEpochMilli(),
-                                            duration = state.value.selectedDuration.toLong()
-                                        )
-                                    )
-
-                                    taskRepository.upsertTask(
-                                        task.copy(isComplete = true)
-                                    )
-
-                                    _snackbarEventFlow.emit(
-                                        SnackbarEvent.ShowSnackbar(message = "Session saved and topic marked as complete")
-                                    )
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        _snackbarEventFlow.emit(
-                            SnackbarEvent.ShowSnackbar(
-                                "Couldn't save session",
-                                SnackbarDuration.Long
-                            )
-                        )
-                    }
-                }
-            }
+            SessionEvent.DeleteSession -> deleteSession()
+            SessionEvent.SaveSession -> saveSession()
+            SessionEvent.CancelSession -> cancelSession()
+            is SessionEvent.CompleteTask -> completeTask(event.taskId)
+            is SessionEvent.InitializeWithTopic -> initializeWithTopic(event.topicId)
+            SessionEvent.RefreshScreen -> refreshData()
+            SessionEvent.CheckSubjectId -> notifyToUpdateSubject()
             is SessionEvent.OnDurationSelected -> {
                 _state.update { it.copy(selectedDuration = event.minutes) }
             }
-            is SessionEvent.CheckSubjectId -> notifyToUpdateSubject()
-            is SessionEvent.InitializeWithTopic -> {
-                viewModelScope.launch {
-                    taskRepository.getTaskById(event.topicId)?.let { task ->
-                        subjectRepository.getSubjectById(task.taskSubjectId)?.let { subject ->
-                            _state.update { 
-                                it.copy(
-                                    selectedTopicId = task.taskId,
-                                    subjectId = subject.subjectId,
-                                    relatedToSubject = subject.name,
-                                    selectedDuration = task.taskDuration
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            is SessionEvent.CompleteTask -> {
-                viewModelScope.launch {
-                    taskRepository.getTaskById(event.taskId)?.let { task ->
-                        taskRepository.upsertTask(
-                            task.copy(isComplete = true)
-                        )
-                    }
-                }
-            }
-            is SessionEvent.CancelSession -> {
-                // Reset states without saving or marking complete
-                _state.update { 
-                    it.copy(
-                        selectedTopicId = null,
-                        selectedDuration = 0
-                    )
-                }
-            }
+        }
+    }
+
+    private fun refreshData() {
+        viewModelScope.launch {
+            _refreshTrigger.value = _refreshTrigger.value + 1
         }
     }
 
@@ -273,6 +205,84 @@ class SessionViewModel @Inject constructor(
                         duration = SnackbarDuration.Long
                     )
                 )
+            }
+        }
+    }
+
+    private fun saveSession() {
+        viewModelScope.launch {
+            try {
+                // Check if session was already saved by timer service
+                val prefs = context.getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
+                val wasSessionSaved = prefs.getBoolean("session_saved", false)
+                
+                if (!wasSessionSaved) {
+                    state.value.selectedTopicId?.let { topicId ->
+                        taskRepository.getTaskById(topicId)?.let { task ->
+                            sessionRepository.insertSession(
+                                session = Session(
+                                    sessionSubjectId = state.value.subjectId ?: -1,
+                                    relatedToSubject = state.value.relatedToSubject ?: "",
+                                    topicName = task.title,
+                                    date = Instant.now().toEpochMilli(),
+                                    duration = state.value.selectedDuration.toLong()
+                                )
+                            )
+
+                            taskRepository.upsertTask(
+                                task.copy(isComplete = true)
+                            )
+
+                            _snackbarEventFlow.emit(
+                                SnackbarEvent.ShowSnackbar(message = "Session saved and topic marked as complete")
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _snackbarEventFlow.emit(
+                    SnackbarEvent.ShowSnackbar(
+                        "Couldn't save session",
+                        SnackbarDuration.Long
+                    )
+                )
+            }
+        }
+    }
+
+    private fun cancelSession() {
+        // Reset states without saving or marking complete
+        _state.update { 
+            it.copy(
+                selectedTopicId = null,
+                selectedDuration = 0
+            )
+        }
+    }
+
+    private fun completeTask(taskId: Int) {
+        viewModelScope.launch {
+            taskRepository.getTaskById(taskId)?.let { task ->
+                taskRepository.upsertTask(
+                    task.copy(isComplete = true)
+                )
+            }
+        }
+    }
+
+    private fun initializeWithTopic(topicId: Int) {
+        viewModelScope.launch {
+            taskRepository.getTaskById(topicId)?.let { task ->
+                subjectRepository.getSubjectById(task.taskSubjectId)?.let { subject ->
+                    _state.update { 
+                        it.copy(
+                            selectedTopicId = task.taskId,
+                            subjectId = subject.subjectId,
+                            relatedToSubject = subject.name,
+                            selectedDuration = task.taskDuration
+                        )
+                    }
+                }
             }
         }
     }

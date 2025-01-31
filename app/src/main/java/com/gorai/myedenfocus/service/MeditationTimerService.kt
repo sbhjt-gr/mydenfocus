@@ -364,7 +364,7 @@ class MeditationTimerService : Service() {
                 notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
             }
 
-            // Play alarm sound
+            // Play alarm sound once
             try {
                 currentRingtone?.stop()
                 currentRingtone = null
@@ -375,16 +375,18 @@ class MeditationTimerService : Service() {
                         .setUsage(android.media.AudioAttributes.USAGE_ALARM)
                         .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
-
+                    
                     val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                     currentRingtone = RingtoneManager.getRingtone(applicationContext, notification)
                     currentRingtone?.audioAttributes = audioAttributes
+                    currentRingtone?.play()
+                    _isAlarmPlaying.value = true
                 } else {
                     val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                     currentRingtone = RingtoneManager.getRingtone(applicationContext, notification)
+                    currentRingtone?.play()
+                    _isAlarmPlaying.value = true
                 }
-                currentRingtone?.play()
-                _isAlarmPlaying.value = true
             } catch (e: Exception) {
                 android.util.Log.e("MeditationTimer", "Error playing alarm sound", e)
             }
@@ -434,8 +436,6 @@ class MeditationTimerService : Service() {
                 .setFullScreenIntent(pendingIntent, true)
                 .setOngoing(true)
                 .build()
-
-            notification.flags = notification.flags or NotificationCompat.FLAG_INSISTENT
 
             notificationManager.notify(2, notification)
 

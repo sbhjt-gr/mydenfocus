@@ -98,7 +98,7 @@ fun DashBoardScreenRoute(
     Scaffold(
         topBar = {
             CommonTopBar(
-                onSettingsClick = { 
+                onSettingsClick = {
                     navigator.navigate(SettingsScreenDestination())
                 }
             )

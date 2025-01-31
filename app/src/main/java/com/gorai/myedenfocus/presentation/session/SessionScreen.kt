@@ -107,6 +107,7 @@ import java.time.LocalDate
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlinx.coroutines.delay
 
 data class SessionScreenNavArgs(
     val preSelectedTopicId: Int? = null,
@@ -209,6 +210,33 @@ private fun SessionScreen(
     var showPermissionDialog by remember { mutableStateOf(false) }
     var permissionMessage by remember { mutableStateOf("") }
     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    // Track DND permission state
+    var hasDndPermission by remember { 
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                notificationManager.isNotificationPolicyAccessGranted
+            } else true
+        )
+    }
+
+    // Check permission state changes
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1000) // Check every second
+            val currentPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                notificationManager.isNotificationPolicyAccessGranted
+            } else true
+            
+            if (currentPermission != hasDndPermission) {
+                hasDndPermission = currentPermission
+                if (currentPermission) {
+                    // Permission was just granted, refresh the screen
+                    onEvent(SessionEvent.RefreshScreen)
+                }
+            }
+        }
+    }
 
     // Function to check DND permission
     fun checkDndPermission(): Boolean {
