@@ -1,10 +1,16 @@
 package com.gorai.myedenfocus.presentation.session
 
+import android.Manifest
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -208,8 +214,38 @@ private fun SessionScreen(
     val isAlarmPlaying by StudySessionTimerService.isAlarmPlaying.collectAsState()
 
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var showNotificationPermissionDialog by remember { mutableStateOf(false) }
     var permissionMessage by remember { mutableStateOf("") }
     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    // Function to check DND permission
+    fun checkDndPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            notificationManager.isNotificationPolicyAccessGranted
+        } else true
+    }
+
+    // Permission launcher for notification permission
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            if (!checkDndPermission()) {
+                showPermissionDialog = true
+            } else {
+                ServiceHelper.triggerForegroundService(
+                    context = context,
+                    action = ACTION_SERVICE_START,
+                    duration = state.selectedDuration,
+                    topicId = state.selectedTopicId,
+                    subjectId = state.subjectId
+                )
+            }
+        } else {
+            permissionMessage = "Notification permission is required for the study session timer to work properly."
+            showNotificationPermissionDialog = true
+        }
+    }
 
     // Track DND permission state
     var hasDndPermission by remember { 
@@ -238,18 +274,50 @@ private fun SessionScreen(
         }
     }
 
-    // Function to check DND permission
-    fun checkDndPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            notificationManager.isNotificationPolicyAccessGranted
-        } else true
-    }
-
     // Function to open DND settings
     fun openDndSettings() {
         val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
+    }
+
+    // Function to check and request permissions
+    fun checkAndRequestPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    if (!checkDndPermission()) {
+                        showPermissionDialog = true
+                    } else {
+                        ServiceHelper.triggerForegroundService(
+                            context = context,
+                            action = ACTION_SERVICE_START,
+                            duration = state.selectedDuration,
+                            topicId = state.selectedTopicId,
+                            subjectId = state.subjectId
+                        )
+                    }
+                }
+                else -> {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        } else {
+            if (!checkDndPermission()) {
+                showPermissionDialog = true
+            } else {
+                ServiceHelper.triggerForegroundService(
+                    context = context,
+                    action = ACTION_SERVICE_START,
+                    duration = state.selectedDuration,
+                    topicId = state.selectedTopicId,
+                    subjectId = state.subjectId
+                )
+            }
+        }
     }
 
     if (showMeditationDialog) {
@@ -275,29 +343,27 @@ private fun SessionScreen(
         )
     }
 
-    // Add DND permission dialog
-    if (showPermissionDialog) {
+    // Add notification permission dialog
+    if (showNotificationPermissionDialog) {
         AlertDialog(
-            onDismissRequest = { showPermissionDialog = false },
+            onDismissRequest = { showNotificationPermissionDialog = false },
             title = { Text("Permission Required") },
-            text = { 
-                Text(
-                    text = "To ensure a distraction-free study session, please allow MyedenFocus to manage Do Not Disturb settings.",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            },
+            text = { Text(permissionMessage) },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showPermissionDialog = false
-                        openDndSettings()
+                        showNotificationPermissionDialog = false
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
+                        context.startActivity(intent)
                     }
                 ) {
                     Text("Settings")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showPermissionDialog = false }) {
+                TextButton(onClick = { showNotificationPermissionDialog = false }) {
                     Text("Cancel")
                 }
             }
@@ -517,17 +583,7 @@ private fun SessionScreen(
                     onEvent = onEvent,
                     navigator = navigator,
                     onStartClick = {
-                        if (!checkDndPermission()) {
-                            showPermissionDialog = true
-                            return@ButtonSection
-                        }
-                        ServiceHelper.triggerForegroundService(
-                            context = context,
-                            action = ACTION_SERVICE_START,
-                            duration = state.selectedDuration,
-                            topicId = state.selectedTopicId,
-                            subjectId = state.subjectId
-                        )
+                        checkAndRequestPermissions()
                     }
                 )
             }

@@ -123,7 +123,7 @@ private fun StudySessionCard(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "${session.relatedToSubject} - ${session.topicName}",
+                    text = "${session.topicName}",
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.titleMedium,

@@ -42,6 +42,8 @@ import java.util.*
 import javax.inject.Inject
 import androidx.compose.runtime.CompositionLocalProvider
 import com.gorai.myedenfocus.util.LocalTimerService
+import androidx.compose.runtime.saveable.rememberSaveable
+import android.content.pm.ActivityInfo
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -65,6 +67,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private var currentRoute: String? = null
+
     override fun onStart() {
         super.onStart()
         Intent(this, StudySessionTimerService::class.java).also { intent ->
@@ -76,15 +80,18 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         
         setContent {
             val isOnboardingCompleted by preferencesRepository.isOnboardingCompleted.collectAsStateWithLifecycle(initialValue = null)
+            val navController = rememberNavController()
             
             if (isOnboardingCompleted != null) {
                 MyedenFocusTheme {
                     if (isBound) {
                         CompositionLocalProvider(LocalTimerService provides timerService) {
                             DestinationsNavHost(
+                                navController = navController,
                                 navGraph = NavGraphs.root,
                                 startRoute = if (isOnboardingCompleted == true) NavGraphs.root.startRoute else OnboardingScreenDestination,
                                 dependenciesContainerBuilder = {
@@ -92,6 +99,21 @@ class MainActivity : ComponentActivity() {
                                 },
                                 modifier = Modifier.fillMaxSize()
                             )
+
+                            LaunchedEffect(navController) {
+                                navController.currentBackStackEntryFlow.collect { entry ->
+                                    currentRoute = entry.destination.route
+                                }
+                            }
+
+                            // Handle saved state
+                            LaunchedEffect(Unit) {
+                                savedInstanceState?.getString("LAST_ROUTE")?.let { lastRoute ->
+                                    if (lastRoute != navController.currentDestination?.route) {
+                                        navController.navigate(lastRoute)
+                                    }
+                                }
+                            }
 
                             // Handle notification click navigation
                             LaunchedEffect(intent) {
@@ -127,6 +149,13 @@ class MainActivity : ComponentActivity() {
         super.onStop()
         unbindService(connection)
         isBound = false
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        currentRoute?.let { route ->
+            outState.putString("LAST_ROUTE", route)
+        }
     }
 
     private fun handleAlarmIntent(intent: Intent?) {
