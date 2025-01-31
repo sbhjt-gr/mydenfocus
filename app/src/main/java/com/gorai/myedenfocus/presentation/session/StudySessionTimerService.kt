@@ -98,6 +98,8 @@ class StudySessionTimerService : Service() {
     var currentTimerState = mutableStateOf(TimerState.IDLE)
         private set
     var subjectId = mutableStateOf<Int?>(null)
+    var topicId = mutableStateOf<Int?>(null)
+        private set
 
     private val _elapsedTimeFlow = MutableStateFlow(0)
     val elapsedTimeFlow: StateFlow<Int> = _elapsedTimeFlow.asStateFlow()
@@ -106,6 +108,10 @@ class StudySessionTimerService : Service() {
     val sessionCompleted: StateFlow<Boolean> = _sessionCompleted.asStateFlow()
 
     private var wakeLock: PowerManager.WakeLock? = null
+
+    override fun onCreate() {
+        super.onCreate()
+    }
 
     override fun onBind(p0: Intent?) = binder
 
@@ -119,18 +125,28 @@ class StudySessionTimerService : Service() {
                     wasManuallyFinished = false
                     _sessionCompleted.value = false
                     selectedTopicId = intent.getIntExtra("TOPIC_ID", -1).let { if (it == -1) null else it }
+                    topicId.value = selectedTopicId
                     // Get subject ID from intent
                     subjectId.value = intent.getIntExtra("SUBJECT_ID", -1).let { if (it == -1) null else it }
-                    Log.d("StudyTimer", "Starting timer with subjectId: ${subjectId.value}")
+                    Log.d("StudyTimer", "Starting timer with subjectId: ${subjectId.value}, topicId: ${topicId.value}")
+                    enableDnd()  // Enable DND when starting timer
                     startTimer()
                 }
             }
-            ACTION_SERVICE_STOP -> pauseTimer()
+            ACTION_SERVICE_STOP -> {
+                pauseTimer()
+                disableDnd()  // Disable DND when stopping timer
+            }
             ACTION_SERVICE_CANCEL -> {
                 wasManuallyFinished = true
+                topicId.value = null
                 stopTimer()
+                disableDnd()  // Disable DND when canceling timer
             }
-            ACTION_SHOW_COMPLETION_DIALOG -> showCompletionDialog()
+            ACTION_SHOW_COMPLETION_DIALOG -> {
+                disableDnd()  // Disable DND before showing completion dialog
+                showCompletionDialog()
+            }
             ACTION_STOP_ALARM -> {
                 stopAlarm()
                 stopSelf()
@@ -436,6 +452,32 @@ class StudySessionTimerService : Service() {
 
     fun resetSessionCompleted() {
         _sessionCompleted.value = false
+    }
+
+    private fun enableDnd() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && notificationManager.isNotificationPolicyAccessGranted) {
+            // Block all interruptions for maximum focus
+            notificationManager.notificationPolicy = NotificationManager.Policy(
+                0,  // No priority categories - blocks all sounds
+                0,  // No priority senders
+                0,  // No repeat callers
+                NotificationManager.Policy.SUPPRESSED_EFFECT_SCREEN_ON or
+                NotificationManager.Policy.SUPPRESSED_EFFECT_SCREEN_OFF or
+                NotificationManager.Policy.SUPPRESSED_EFFECT_PEEK or
+                NotificationManager.Policy.SUPPRESSED_EFFECT_STATUS_BAR or
+                NotificationManager.Policy.SUPPRESSED_EFFECT_BADGE or
+                NotificationManager.Policy.SUPPRESSED_EFFECT_AMBIENT or
+                NotificationManager.Policy.SUPPRESSED_EFFECT_NOTIFICATION_LIST  // Suppress all visual effects
+            )
+            // Set to total silence mode
+            notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
+        }
+    }
+
+    private fun disableDnd() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && notificationManager.isNotificationPolicyAccessGranted) {
+            notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
+        }
     }
 }
 enum class TimerState {
