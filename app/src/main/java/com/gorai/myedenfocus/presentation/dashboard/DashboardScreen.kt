@@ -94,8 +94,30 @@ fun DashBoardScreenRoute(
     val elapsedTime by timerService.elapsedTimeFlow.collectAsStateWithLifecycle()
     val currentTimerState by timerService.currentTimerState
     val sessionCompleted by timerService.sessionCompleted.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(key1 = true) {
+        viewModel.snackbarEventFlow.collectLatest { event ->
+            when(event) {
+                is SnackbarEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message,
+                        duration = event.duration
+                    )
+                }
+                SnackbarEvent.NavigateUp -> {}
+            }
+        }
+    }
+
+    LaunchedEffect(timerService) {
+        timerService?.let { service ->
+            viewModel.collectTimerUpdates(service)
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             CommonTopBar(
                 onSettingsClick = {
@@ -116,7 +138,8 @@ fun DashBoardScreenRoute(
             onTaskCardClick = { taskId ->
                 navigator.navigate(TaskScreenRouteDestination(TaskScreenNavArgs(taskId = taskId, subjectId = null)))
             },
-            navigator = navigator
+            navigator = navigator,
+            snackbarHostState = snackbarHostState
         )
     }
 }
@@ -130,26 +153,12 @@ private fun DashboardScreen(
     snackbarEvent: SharedFlow<SnackbarEvent>,
     onSubjectCardClick: (Int) -> Unit,
     onTaskCardClick: (Int?) -> Unit,
-    navigator: DestinationsNavigator
+    navigator: DestinationsNavigator,
+    snackbarHostState: SnackbarHostState
 ) {
     var showDailyGoalDialog by remember { mutableStateOf(false) }
     var showAddSubjectDialog by remember { mutableStateOf(false) }
     var isDeleteSubjectDialogOpen by rememberSaveable { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(key1 = true) {
-        snackbarEvent.collectLatest { event ->
-            when(event) {
-                is SnackbarEvent.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(
-                        message = event.message,
-                        duration = event.duration
-                    )
-                }
-                SnackbarEvent.NavigateUp -> {}
-            }
-        }
-    }
 
     // Show daily goal dialog
     if (showDailyGoalDialog) {
@@ -316,7 +325,7 @@ private fun DashboardScreen(
             item {
                 TasksList(
                     sectionTitle = "Incomplete Topics",
-                    emptyListText = "No topics are listed\nPress + button to add new topics",
+                    emptyListText = "No topics are listed",
                     tasks = tasks,
                     onTaskCardClick = onTaskCardClick,
                     onStartSession = { task ->
@@ -485,7 +494,7 @@ private fun CountCard(
 private fun SubjectCardSection(
     modifier: Modifier,
     subjectList: List<Subject>,
-    emptyListText: String = "No subjects yet.\n Press + button to add new subjects\n",
+    emptyListText: String = "No subjects have been added",
     onAddIconClicked: () -> Unit,
     onSubjectCardClick: (Int) -> Unit
 ) {
@@ -522,7 +531,7 @@ private fun SubjectCardSection(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "No Subjects",
+                    text = "No subjects have been added",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center

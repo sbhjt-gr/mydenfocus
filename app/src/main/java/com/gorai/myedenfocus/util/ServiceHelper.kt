@@ -62,14 +62,14 @@ object ServiceHelper {
         context: Context,
         action: String,
         duration: Int = 0,
-        topicId: Int? = null,
-        subjectId: Int? = null
+        topicId: Int = -1,
+        subjectId: Int = -1
     ) {
         Intent(context, StudySessionTimerService::class.java).apply {
             this.action = action
             putExtra("DURATION", duration)
-            topicId?.let { putExtra("TOPIC_ID", it) }
-            subjectId?.let { putExtra("SUBJECT_ID", it) }
+            putExtra("TOPIC_ID", topicId)
+            putExtra("SUBJECT_ID", subjectId)
             context.startService(this)
         }
     }

@@ -81,6 +81,10 @@ fun AddSubjectDialog(
     var subjectNameError by rememberSaveable { mutableStateOf<String?>(null) }
     var goalHoursError by rememberSaveable { mutableStateOf<String?>(null) }
     var showColorPicker by rememberSaveable { mutableStateOf(false) }
+    var hoursText by rememberSaveable { mutableStateOf(if (dailyGoalHours.toFloatOrNull()?.toInt() ?: 0 > 0) 
+        (dailyGoalHours.toFloatOrNull()?.toInt() ?: 0).toString() else "") }
+    var minutesText by rememberSaveable { mutableStateOf(if (((dailyGoalHours.toFloatOrNull() ?: 0f) % 1 * 60).toInt() > 0)
+        ((dailyGoalHours.toFloatOrNull() ?: 0f) % 1 * 60).toInt().toString() else "") }
     
     val currentHours = dailyGoalHours.toFloatOrNull()?.toInt() ?: 0
     val currentMinutes = ((dailyGoalHours.toFloatOrNull() ?: 0f) % 1 * 60).toInt()
@@ -173,37 +177,43 @@ fun AddSubjectDialog(
                 ) {
                     // Hours
                     OutlinedTextField(
-                        value = if (currentHours == 0) "" else currentHours.toString(),
+                        value = hoursText,
                         onValueChange = { newValue ->
-                            if (newValue.length <= 2) {
-                                val newHours = newValue.toIntOrNull() ?: 0
-                                if (newHours in 0..15) {
-                                    onDailyGoalHoursChange("${newHours + (currentMinutes / 60f)}")
-                                }
+                            if (newValue.isEmpty() || (newValue.matches(Regex("^\\d{0,1}$")) && newValue.toIntOrNull() ?: 0 <= 7)) {
+                                hoursText = newValue
+                                val hours = newValue.toIntOrNull() ?: 0
+                                val minutes = minutesText.toIntOrNull() ?: 0
+                                onDailyGoalHoursChange("${hours + (minutes / 60f)}")
                             }
                         },
                         modifier = Modifier.weight(1f),
                         label = { Text("Hours") },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
                         textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center)
                     )
                     
                     // Minutes
                     OutlinedTextField(
-                        value = if (currentMinutes == 0) "" else currentMinutes.toString(),
+                        value = minutesText,
                         onValueChange = { newValue ->
-                            if (newValue.length <= 2) {
-                                val newMinutes = newValue.toIntOrNull() ?: 0
-                                if (newMinutes in 0..59) {
-                                    onDailyGoalHoursChange("${currentHours + (newMinutes / 60f)}")
-                                }
+                            if (newValue.isEmpty() || (newValue.matches(Regex("^\\d{0,2}$")) && (newValue.toIntOrNull() ?: 0) <= 59)) {
+                                minutesText = newValue
+                                val hours = hoursText.toIntOrNull() ?: 0
+                                val minutes = newValue.toIntOrNull() ?: 0
+                                onDailyGoalHoursChange("${hours + (minutes / 60f)}")
                             }
                         },
                         modifier = Modifier.weight(1f),
                         label = { Text("Minutes") },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        ),
                         textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center)
                     )
                 }

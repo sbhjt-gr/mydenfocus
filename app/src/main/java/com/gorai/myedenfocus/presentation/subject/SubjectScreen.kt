@@ -68,6 +68,7 @@ import com.gorai.myedenfocus.util.LocalTimerService
 import com.gorai.myedenfocus.presentation.session.TimerState
 import com.gorai.myedenfocus.util.formatTimeHoursMinutes
 import com.gorai.myedenfocus.util.secondsToHours
+import kotlinx.coroutines.delay
 
 data class SubjectScreenNavArgs(
     val subjectId: Int
@@ -88,6 +89,19 @@ fun SubjectScreenRoute(
     val currentTimerState by timerService.currentTimerState
     val sessionCompleted by timerService.sessionCompleted.collectAsStateWithLifecycle()
 
+    // Initial load
+    LaunchedEffect(Unit) {
+        viewModel.refreshData()
+    }
+
+    // Update counts in real-time when timer is running
+    LaunchedEffect(elapsedTime, currentTimerState) {
+        if (currentTimerState == TimerState.STARTED && timerService.subjectId.value == state.currentSubjectId) {
+            viewModel.updateElapsedTime(elapsedTime)
+        }
+    }
+
+    // Handle session completion
     LaunchedEffect(sessionCompleted) {
         if (sessionCompleted) {
             viewModel.refreshData()
@@ -95,18 +109,9 @@ fun SubjectScreenRoute(
         }
     }
 
-    LaunchedEffect(currentTimerState) {
-        if (currentTimerState == TimerState.IDLE) {
-            viewModel.refreshData()
-        }
-    }
-
-    LaunchedEffect(currentTimerState) {
-        if (currentTimerState == TimerState.STARTED) {
-            while (true) {
-                kotlinx.coroutines.delay(60000)
-                viewModel.refreshData()
-            }
+    LaunchedEffect(timerService) {
+        timerService?.let { service ->
+            viewModel.collectTimerUpdates(service)
         }
     }
 
@@ -237,6 +242,13 @@ private fun SubjectScreen(
                 .padding(paddingValue)
         ) {
             item {
+                CountsCard(
+                    studiedHours = state.studiedHours,
+                    goalStudyHours = state.goalStudyHours,
+                    progress = state.progress
+                )
+            }
+            item {
                 SubjectOverviewSection(
                     modifier = Modifier
                         .fillMaxSize()
@@ -274,7 +286,7 @@ private fun SubjectScreen(
             }
             item { Spacer(modifier = Modifier.height(20.dp)) }
             studySessionsList(
-                sectionTitle = "Recent Study Sessions (${state.recentSessions.size})",
+                sectionTitle = "Study Sessions (${state.recentSessions.size})",
                 emptyListText = "No study sessions\nStart a study session to begin recording your progress",
                 sessions = state.recentSessions,
                 onDeleteIconClick = {
@@ -405,6 +417,59 @@ private fun CountCard(
                     color = MaterialTheme.colorScheme.outline
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun CountsCard(
+    studiedHours: String,
+    goalStudyHours: String,
+    progress: Float,
+    modifier: Modifier = Modifier
+) {
+    val studiedHoursFloat = studiedHours.toFloatOrNull() ?: 0f
+    val goalHoursFloat = goalStudyHours.toFloatOrNull() ?: 1f
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    text = "Time Studied",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = formatTimeHoursMinutes(studiedHoursFloat),
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Text(
+                    text = "Goal: ${formatTimeHoursMinutes(goalHoursFloat)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Speedometer(
+                modifier = Modifier,
+                headingText = "Progress",
+                value = studiedHoursFloat,
+                maxValue = goalHoursFloat,
+                displayText = formatTimeHoursMinutes(studiedHoursFloat)
+            )
         }
     }
 }

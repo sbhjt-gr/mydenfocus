@@ -142,12 +142,26 @@ fun SessionScreenRoute(
     val context = LocalContext.current
     val currentTopicId by timerService.topicId
     val currentTimerState by timerService.currentTimerState
+    val sessionCompleted by timerService.sessionCompleted.collectAsStateWithLifecycle()
+    
+    LaunchedEffect(sessionCompleted) {
+        if (sessionCompleted) {
+            viewModel.onEvent(SessionEvent.RefreshScreen)
+            timerService.resetSessionCompleted()
+            // Navigate back to refresh subject screen
+            navigator.navigateUp()
+        }
+    }
     
     LaunchedEffect(preSelectedTopicId, preSelectedSubjectId) {
         if (preSelectedTopicId != null) {
             viewModel.onEvent(SessionEvent.InitializeWithTopic(preSelectedTopicId))
             viewModel.getTaskById(preSelectedTopicId)?.let { task ->
                 timerService.setDuration(task.taskDuration)
+                // Also initialize subject from task
+                state.subjects.find { it.subjectId == task.taskSubjectId }?.let { subject ->
+                    viewModel.onEvent(SessionEvent.OnRelatedSubjectChange(subject))
+                }
             }
         }
     }
@@ -159,6 +173,10 @@ fun SessionScreenRoute(
                 viewModel.onEvent(SessionEvent.InitializeWithTopic(runningTopicId))
                 viewModel.getTaskById(runningTopicId)?.let { task ->
                     timerService.setDuration(task.taskDuration)
+                    // Also initialize subject from task
+                    state.subjects.find { it.subjectId == task.taskSubjectId }?.let { subject ->
+                        viewModel.onEvent(SessionEvent.OnRelatedSubjectChange(subject))
+                    }
                 }
             }
         }
@@ -233,13 +251,17 @@ private fun SessionScreen(
             if (!checkDndPermission()) {
                 showPermissionDialog = true
             } else {
-                ServiceHelper.triggerForegroundService(
-                    context = context,
-                    action = ACTION_SERVICE_START,
-                    duration = state.selectedDuration,
-                    topicId = state.selectedTopicId,
-                    subjectId = state.subjectId
-                )
+                state.selectedTopicId?.let {
+                    state.subjectId?.let { it1 ->
+                        ServiceHelper.triggerForegroundService(
+                            context = context,
+                            action = ACTION_SERVICE_START,
+                            duration = state.selectedDuration,
+                            topicId = it,
+                            subjectId = it1
+                        )
+                    }
+                }
             }
         } else {
             permissionMessage = "Notification permission is required for the study session timer to work properly."
@@ -283,39 +305,33 @@ private fun SessionScreen(
 
     // Function to check and request permissions
     fun checkAndRequestPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when {
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    if (!checkDndPermission()) {
-                        showPermissionDialog = true
-                    } else {
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && 
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED -> {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            !checkDndPermission() -> {
+                showPermissionDialog = true
+            }
+            else -> {
+                if (state.selectedDuration > 0 && state.subjectId != null) {
+                    state.selectedTopicId?.let {
                         ServiceHelper.triggerForegroundService(
                             context = context,
                             action = ACTION_SERVICE_START,
                             duration = state.selectedDuration,
-                            topicId = state.selectedTopicId,
+                            topicId = it,
                             subjectId = state.subjectId
                         )
                     }
+                } else {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Please select a subject and duration first")
+                    }
                 }
-                else -> {
-                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-        } else {
-            if (!checkDndPermission()) {
-                showPermissionDialog = true
-            } else {
-                ServiceHelper.triggerForegroundService(
-                    context = context,
-                    action = ACTION_SERVICE_START,
-                    duration = state.selectedDuration,
-                    topicId = state.selectedTopicId,
-                    subjectId = state.subjectId
-                )
             }
         }
     }
@@ -331,35 +347,57 @@ private fun SessionScreen(
                 showMeditationDialog = false
                 // Start timer when skipping meditation
                 if (state.selectedDuration > 0) {
-                    ServiceHelper.triggerForegroundService(
-                        context = context,
-                        action = ACTION_SERVICE_START,
-                        duration = state.selectedDuration,
-                        topicId = state.selectedTopicId,
-                        subjectId = state.subjectId
-                    )
+                    state.selectedTopicId?.let {
+                        state.subjectId?.let { it1 ->
+                            ServiceHelper.triggerForegroundService(
+                                context = context,
+                                action = ACTION_SERVICE_START,
+                                duration = state.selectedDuration,
+                                topicId = it,
+                                subjectId = it1
+                            )
+                        }
+                    }
                 }
             }
         )
     }
 
-    // Add notification permission dialog
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDialog = false },
+            title = { Text("Permission Required") },
+            text = { Text("Do Not Disturb permission is required for the study timer to work properly. Please grant the permission in Settings.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPermissionDialog = false
+                    openDndSettings()
+                }) {
+                    Text("Open Settings")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     if (showNotificationPermissionDialog) {
         AlertDialog(
             onDismissRequest = { showNotificationPermissionDialog = false },
             title = { Text("Permission Required") },
             text = { Text(permissionMessage) },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        showNotificationPermissionDialog = false
-                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = Uri.fromParts("package", context.packageName, null)
-                        }
-                        context.startActivity(intent)
+                TextButton(onClick = {
+                    showNotificationPermissionDialog = false
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
                     }
-                ) {
-                    Text("Settings")
+                    context.startActivity(intent)
+                }) {
+                    Text("Open Settings")
                 }
             },
             dismissButton = {
@@ -571,7 +609,10 @@ private fun SessionScreen(
                             context = context,
                             action = ACTION_SERVICE_CANCEL
                         )
-                        onEvent(SessionEvent.SaveSession)
+                        // Add task completion event
+                        state.selectedTopicId?.let { topicId ->
+                            onEvent(SessionEvent.CompleteTask(topicId))
+                        }
                     },
                     timerState = currentTimerState,
                     seconds = seconds,
@@ -844,6 +885,8 @@ private fun ButtonSection(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        val isStartEnabled = selectedTopicId != null && durationMinutes > 0 && subjectId != null
+        
         Button(
             onClick = {
                 if (timerState == TimerState.STARTED) {
@@ -855,7 +898,7 @@ private fun ButtonSection(
                     onStartClick()
                 }
             },
-            enabled = selectedTopicId != null && durationMinutes > 0 && subjectId != null,
+            enabled = isStartEnabled,
             colors = ButtonDefaults.buttonColors(
                 containerColor = when (timerState) {
                     TimerState.STARTED -> MaterialTheme.colorScheme.secondary
@@ -887,55 +930,41 @@ private fun ButtonSection(
             )
         }
 
-        if (timerState != TimerState.IDLE) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = {
-                        cancelButtonClick()
-                        onEvent(SessionEvent.CancelSession)
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Red
-                    ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Cancel Timer"
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Cancel",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
+        if (!isStartEnabled && timerState == TimerState.IDLE) {
+            Text(
+                text = when {
+                    subjectId == null -> "Please select a subject"
+                    selectedTopicId == null -> "Please select a topic"
+                    durationMinutes <= 0 -> "Please set a duration"
+                    else -> ""
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
 
-                Button(
-                    onClick = {
-                        finishButtonClick()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Done,
-                        contentDescription = "Finish Timer"
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Finish",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
+        if (timerState != TimerState.IDLE) {
+            Button(
+                onClick = {
+                    finishButtonClick()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Done,
+                    contentDescription = "Finish Timer"
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Finish",
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
         }
     }

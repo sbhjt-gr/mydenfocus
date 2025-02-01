@@ -82,57 +82,54 @@ class SessionViewModel @Inject constructor(
         val subjectId = prefs.getInt("subject_id", -1)
         val durationMinutes = prefs.getInt("duration_minutes", 0)
         val wasSessionSaved = prefs.getBoolean("session_saved", false)
+        val currentTime = System.currentTimeMillis()
 
-        println("SessionViewModel: Checking timer - completionTime: $completionTime, currentTime: ${System.currentTimeMillis()}")
-
-        if (completionTime > 0 && topicId != -1 && !wasSessionSaved) {
-            val currentTime = System.currentTimeMillis()
-
-            // If current time is past completion time
-            if (currentTime >= completionTime) {
-                println("SessionViewModel: Timer should have completed, marking topic as complete")
-                try {
-                    // Get task and subject info
-                    taskRepository.getTaskById(topicId)?.let { task ->
-                        subjectRepository.getSubjectById(subjectId)?.let { subject ->
-                            // Save session with proper subject and topic names
-                            sessionRepository.insertSession(
-                                Session(
-                                    sessionSubjectId = subjectId,
-                                    relatedToSubject = subject.name,
-                                    topicName = task.title,
-                                    date = Instant.now().toEpochMilli(),
-                                    duration = durationMinutes.toLong()
-                                )
-                            )
-
-                            // Mark that session was saved
-                            prefs.edit().putBoolean("session_saved", true).apply()
-
-                            // Show completion message
-                            _snackbarEventFlow.emit(
-                                SnackbarEvent.ShowSnackbar(
-                                    message = "Previous study session completed. Topic marked as complete.",
-                                    duration = SnackbarDuration.Long
-                                )
-                            )
-                            println("SessionViewModel: Timer completion processed successfully")
-                        }
-                    }
-                } catch (e: Exception) {
-                    println("SessionViewModel: Error processing timer completion: ${e.message}")
-                    e.printStackTrace()
-                }
-                
-                // Clear timer state after completion
-                prefs.edit().clear().apply()
-                println("SessionViewModel: Timer state cleared")
-            } else {
-                println("SessionViewModel: Timer not yet completed")
-            }
-        } else {
-            println("SessionViewModel: No pending timer found or session already saved")
+        // Clear any stale preferences that are too old (more than 24 hours)
+        if (completionTime > 0 && currentTime - completionTime > 24 * 60 * 60 * 1000) {
+            prefs.edit().clear().apply()
+            return
         }
+
+        // Only proceed if we have valid data and session wasn't already saved
+        if (completionTime > 0 && topicId != -1 && !wasSessionSaved && currentTime >= completionTime) {
+            // Load topic and subject details
+            taskRepository.getTaskById(topicId)?.let { task ->
+                subjectRepository.getSubjectById(subjectId)?.let { subject ->
+                    _state.update { it.copy(
+                        selectedTopicId = task.taskId,
+                        selectedSubjectId = subject.subjectId,
+                        subjectId = subject.subjectId,
+                        relatedToSubject = subject.name,
+                        selectedDuration = task.taskDuration
+                    )}
+
+                    try {
+                        // Save session with proper subject and topic names
+                        sessionRepository.insertSession(
+                            Session(
+                                sessionSubjectId = subjectId,
+                                relatedToSubject = subject.name,
+                                topicName = task.title,
+                                startTime = completionTime - (durationMinutes * 60 * 1000),
+                                endTime = completionTime,
+                                duration = durationMinutes.toLong(),
+                                plannedDuration = durationMinutes.toLong(),
+                                wasCompleted = true
+                            )
+                        )
+
+                        // Mark that session was saved
+                        prefs.edit().putBoolean("session_saved", true).apply()
+                    } catch (e: Exception) {
+                        println("SessionViewModel: Error processing timer completion: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+            }
+        }
+        
+        // Always clear preferences after checking
+        prefs.edit().clear().apply()
     }
 
     suspend fun getTaskById(taskId: Int): Task? {
@@ -142,16 +139,21 @@ class SessionViewModel @Inject constructor(
     fun onEvent(event: SessionEvent) {
         when(event) {
             is SessionEvent.OnTopicSelect -> {
-                _state.update { it.copy(selectedTopicId = event.task?.taskId) }
-                event.task?.let { task ->
-                    _state.update { it.copy(selectedDuration = task.taskDuration) }
+                viewModelScope.launch {
+                    _state.update { it.copy(selectedTopicId = event.task?.taskId) }
+                    event.task?.let { task ->
+                        _state.update { it.copy(
+                            selectedDuration = task.taskDuration,
+                            subjectId = task.taskSubjectId
+                        )}
+                    }
                 }
             }
             is SessionEvent.OnRelatedSubjectChange -> {
                 _state.update { it.copy(
                     relatedToSubject = event.subject.name,
                     subjectId = event.subject.subjectId
-                ) }
+                )}
             }
             is SessionEvent.OnDeleteSessionButtonClick -> {
                 _state.update { it.copy(session = event.session) }
@@ -160,7 +162,22 @@ class SessionViewModel @Inject constructor(
             SessionEvent.SaveSession -> saveSession()
             SessionEvent.CancelSession -> cancelSession()
             is SessionEvent.CompleteTask -> completeTask(event.taskId)
-            is SessionEvent.InitializeWithTopic -> initializeWithTopic(event.topicId)
+            is SessionEvent.InitializeWithTopic -> {
+                viewModelScope.launch {
+                    taskRepository.getTaskById(event.topicId)?.let { task ->
+                        subjectRepository.getSubjectById(task.taskSubjectId)?.let { subject ->
+                            _state.update { 
+                                it.copy(
+                                    selectedTopicId = task.taskId,
+                                    subjectId = task.taskSubjectId,
+                                    selectedDuration = task.taskDuration,
+                                    relatedToSubject = subject.name
+                                )
+                            }
+                        }
+                    }
+                }
+            }
             SessionEvent.RefreshScreen -> refreshData()
             SessionEvent.CheckSubjectId -> notifyToUpdateSubject()
             is SessionEvent.OnDurationSelected -> {
@@ -215,8 +232,10 @@ class SessionViewModel @Inject constructor(
                 // Check if session was already saved by timer service
                 val prefs = context.getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
                 val wasSessionSaved = prefs.getBoolean("session_saved", false)
+                val completionTime = prefs.getLong("completion_time", 0)
                 
-                if (!wasSessionSaved) {
+                // Only save if there was no timer running (manual save) or if timer exists but session wasn't saved
+                if (completionTime == 0L || !wasSessionSaved) {
                     state.value.selectedTopicId?.let { topicId ->
                         taskRepository.getTaskById(topicId)?.let { task ->
                             sessionRepository.insertSession(
@@ -224,14 +243,22 @@ class SessionViewModel @Inject constructor(
                                     sessionSubjectId = state.value.subjectId ?: -1,
                                     relatedToSubject = state.value.relatedToSubject ?: "",
                                     topicName = task.title,
-                                    date = Instant.now().toEpochMilli(),
-                                    duration = state.value.selectedDuration.toLong()
+                                    startTime = System.currentTimeMillis() - (state.value.selectedDuration * 60 * 1000),
+                                    endTime = System.currentTimeMillis(),
+                                    duration = state.value.selectedDuration.toLong(),
+                                    plannedDuration = state.value.selectedDuration.toLong(),
+                                    wasCompleted = true
                                 )
                             )
 
                             taskRepository.upsertTask(
                                 task.copy(isComplete = true)
                             )
+
+                            // Mark session as saved in preferences if timer exists
+                            if (completionTime > 0) {
+                                prefs.edit().putBoolean("session_saved", true).apply()
+                            }
 
                             _snackbarEventFlow.emit(
                                 SnackbarEvent.ShowSnackbar(message = "Session saved and topic marked as complete")
@@ -266,23 +293,6 @@ class SessionViewModel @Inject constructor(
                 taskRepository.upsertTask(
                     task.copy(isComplete = true)
                 )
-            }
-        }
-    }
-
-    private fun initializeWithTopic(topicId: Int) {
-        viewModelScope.launch {
-            taskRepository.getTaskById(topicId)?.let { task ->
-                subjectRepository.getSubjectById(task.taskSubjectId)?.let { subject ->
-                    _state.update { 
-                        it.copy(
-                            selectedTopicId = task.taskId,
-                            subjectId = subject.subjectId,
-                            relatedToSubject = subject.name,
-                            selectedDuration = task.taskDuration
-                        )
-                    }
-                }
             }
         }
     }

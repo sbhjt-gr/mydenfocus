@@ -35,11 +35,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.Timer
+import java.util.TimerTask
 import javax.inject.Inject
-import kotlin.concurrent.fixedRateTimer
 import kotlinx.coroutines.launch
 import android.util.Log
 import com.gorai.myedenfocus.domain.model.Session
+import com.gorai.myedenfocus.domain.model.Task
 
 @AndroidEntryPoint
 class StudySessionTimerService : Service() {
@@ -100,12 +101,14 @@ class StudySessionTimerService : Service() {
     var subjectId = mutableStateOf<Int?>(null)
     var topicId = mutableStateOf<Int?>(null)
         private set
+    var selectedTopic = mutableStateOf<Task?>(null)
+        private set
 
     private val _elapsedTimeFlow = MutableStateFlow(0)
     val elapsedTimeFlow: StateFlow<Int> = _elapsedTimeFlow.asStateFlow()
 
     private val _sessionCompleted = MutableStateFlow(false)
-    val sessionCompleted: StateFlow<Boolean> = _sessionCompleted.asStateFlow()
+    val sessionCompleted = _sessionCompleted.asStateFlow()
 
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -121,27 +124,30 @@ class StudySessionTimerService : Service() {
                 val minutes = intent.getIntExtra("DURATION", 0)
                 if (minutes > 0) {
                     totalDurationMinutes = minutes
-                    elapsedSeconds = 0  // Reset elapsed seconds
-                    wasManuallyFinished = false
-                    _sessionCompleted.value = false
                     selectedTopicId = intent.getIntExtra("TOPIC_ID", -1).let { if (it == -1) null else it }
                     topicId.value = selectedTopicId
-                    // Get subject ID from intent
                     subjectId.value = intent.getIntExtra("SUBJECT_ID", -1).let { if (it == -1) null else it }
-                    Log.d("StudyTimer", "Starting timer with subjectId: ${subjectId.value}, topicId: ${topicId.value}")
-                    enableDnd()  // Enable DND when starting timer
+                    
+                    // Load topic details
+                    serviceScope.launch(Dispatchers.IO) {
+                        selectedTopicId?.let { id ->
+                            taskRepository.getTaskById(id)?.let { task ->
+                                selectedTopic.value = task
+                            }
+                        }
+                    }
+                    
+                    enableDnd()
                     startTimer()
                 }
             }
             ACTION_SERVICE_STOP -> {
                 pauseTimer()
-                disableDnd()  // Disable DND when stopping timer
+                disableDnd()
             }
             ACTION_SERVICE_CANCEL -> {
-                wasManuallyFinished = true
-                topicId.value = null
-                stopTimer()
-                disableDnd()  // Disable DND when canceling timer
+                stopTimer(completed = false)
+                disableDnd()
             }
             ACTION_SHOW_COMPLETION_DIALOG -> {
                 disableDnd()  // Disable DND before showing completion dialog
@@ -194,31 +200,44 @@ class StudySessionTimerService : Service() {
     private fun startTimer() {
         currentTimerState.value = TimerState.STARTED
         startForegroundService()
-        lastSavedMinute = -1
+        elapsedSeconds = 0
+        _elapsedTimeFlow.value = 0
+        _sessionCompleted.value = false
+        wasManuallyFinished = false
+
+        // Save topic and subject IDs to preferences
+        val prefs = applicationContext.getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
+        prefs.edit().apply {
+            putInt("topic_id", selectedTopicId ?: -1)
+            putInt("subject_id", subjectId.value ?: -1)
+            putInt("duration_minutes", totalDurationMinutes)
+            putLong("completion_time", System.currentTimeMillis() + (totalDurationMinutes * 60 * 1000))
+            putBoolean("session_saved", false)
+            apply()
+        }
 
         timer?.cancel()
-        timer = fixedRateTimer(initialDelay = 0L, period = 1000L) {
-            elapsedSeconds++
-            duration = elapsedSeconds
-            _elapsedTimeFlow.value = elapsedSeconds
-
-            // Check if timer should stop
-            if (elapsedSeconds >= totalDurationMinutes * 60) {
-                stopTimer()
-                return@fixedRateTimer
+        timer = Timer()
+        timer?.scheduleAtFixedRate(object : TimerTask() {
+            override fun run() {
+                elapsedSeconds++
+                _elapsedTimeFlow.value = elapsedSeconds
+                
+                // Calculate remaining time
+                val remainingSeconds = (totalDurationMinutes * 60) - elapsedSeconds
+                hours.value = String.format("%02d", remainingSeconds / 3600)
+                minutes.value = String.format("%02d", (remainingSeconds % 3600) / 60)
+                seconds.value = String.format("%02d", remainingSeconds % 60)
+                
+                // Update notification
+                updateNotification(hours.value, minutes.value, seconds.value)
+                
+                // Check if timer should complete
+                if (elapsedSeconds >= totalDurationMinutes * 60) {
+                    stopTimer(completed = true)
+                }
             }
-
-            val remainingSeconds = (totalDurationMinutes * 60) - elapsedSeconds
-            val h = remainingSeconds / 3600
-            val m = (remainingSeconds % 3600) / 60
-            val s = remainingSeconds % 60
-
-            hours.value = h.pad()
-            minutes.value = m.pad()
-            seconds.value = s.pad()
-
-            updateNotification(hours.value, minutes.value, seconds.value)
-        }
+        }, 0, 1000)
     }
 
     private fun pauseTimer() {
@@ -227,87 +246,116 @@ class StudySessionTimerService : Service() {
         currentTimerState.value = TimerState.STOPPED
     }
 
-    private fun stopTimer() {
-        val wasTimerCompleted = elapsedSeconds >= totalDurationMinutes * 60
-        val finalElapsedTime = elapsedSeconds
-        
+    private fun stopTimer(completed: Boolean = false) {
         timer?.cancel()
         timer = null
         
-        // Disable DND first before any other actions
-        disableDnd()
+        val finalElapsedTime = elapsedSeconds
+        wasManuallyFinished = !completed
 
-        if (finalElapsedTime > 0) {
-            serviceScope.launch(Dispatchers.IO) {
-                // Only save session when timer completes or is manually stopped
-                saveSession(finalElapsedTime)
-                if (wasTimerCompleted && !wasManuallyFinished) {
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                // Save the final session
+                if (finalElapsedTime > 0 && subjectId.value != null) {
+                    val sessionDuration = (finalElapsedTime / 60).toLong() // Convert to minutes
+                    val session = Session(
+                        sessionSubjectId = subjectId.value!!,
+                        relatedToSubject = selectedTopicId?.let { topicId ->
+                            taskRepository.getTaskById(topicId)?.title
+                        } ?: "",
+                        topicName = selectedTopicId?.let { topicId ->
+                            taskRepository.getTaskById(topicId)?.title
+                        } ?: "",
+                        startTime = System.currentTimeMillis() - (finalElapsedTime * 1000),
+                        endTime = System.currentTimeMillis(),
+                        duration = sessionDuration,
+                        plannedDuration = totalDurationMinutes.toLong(),
+                        wasCompleted = completed
+                    )
+                    sessionRepository.insertSession(session)
+                }
+
+                if (completed && selectedTopicId != null) {
+                    // Mark task as complete if timer finished naturally
+                    selectedTopicId?.let { topicId ->
+                        taskRepository.getTaskById(topicId)?.let { task ->
+                            taskRepository.upsertTask(task.copy(isComplete = true))
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("StudyTimer", "Error in stopTimer", e)
+            } finally {
+                // Reset states
+                currentTimerState.value = TimerState.IDLE
+                hours.value = "00"
+                minutes.value = "00"
+                seconds.value = "00"
+                _elapsedTimeFlow.value = 0
+                elapsedSeconds = 0
+                
+                // Set completion state and show dialog
+                if (completed) {
                     _sessionCompleted.value = true
                     showCompletionDialog()
-                    // Don't stop the service here, let it run until alarm is dismissed
-                } else if (wasManuallyFinished) {
-                    _sessionCompleted.value = true
-                    stopForegroundService() // Only stop service if manually finished
+                } else {
+                    stopForegroundService()
                 }
             }
-        } else {
-            stopForegroundService()
         }
-
-        lastSavedMinute = -1
-        elapsedSeconds = 0
-        totalDurationMinutes = 0
-        hours.value = "00"
-        minutes.value = "00"
-        seconds.value = "00"
-        currentTimerState.value = TimerState.IDLE
-        _elapsedTimeFlow.value = 0
     }
 
-    private fun saveSession(duration: Int) {
+    private suspend fun saveSession(duration: Int) {
         try {
-            Log.d("StudyTimer", "Saving session with duration: $duration, subjectId: ${subjectId.value}")
+            Log.d("StudyTimer", "Saving session with duration: $duration seconds")
             val currentTime = System.currentTimeMillis()
-            val sessionDuration = (duration / 60).toLong() // Convert seconds to minutes
+            // Calculate exact minutes, rounding up only if more than 30 seconds
+            val sessionDuration = if (duration % 60 >= 30) {
+                (duration / 60) + 1L
+            } else {
+                (duration / 60).toLong()
+            }
             
             if (subjectId.value == null) {
                 Log.e("StudyTimer", "Cannot save session: No subject ID")
                 return
             }
 
-            serviceScope.launch(Dispatchers.IO) {
-                try {
-                    selectedTopicId?.let { topicId ->
-                        taskRepository.getTaskById(topicId)?.let { task ->
-                            sessionRepository.insertSession(
-                                Session(
-                                    sessionSubjectId = subjectId.value!!,
-                                    relatedToSubject = task.title,
-                                    topicName = task.title,
-                                    date = currentTime,
-                                    duration = sessionDuration
-                                )
-                            )
-                            Log.d("StudyTimer", "Session saved successfully with topic")
-                        }
-                    } ?: run {
-                        sessionRepository.insertSession(
-                            Session(
-                                sessionSubjectId = subjectId.value!!,
-                                relatedToSubject = "",
-                                topicName = "",
-                                date = currentTime,
-                                duration = sessionDuration
-                            )
+            selectedTopicId?.let { topicId ->
+                taskRepository.getTaskById(topicId)?.let { task ->
+                    Log.d("StudyTimer", "Saving session with duration: $sessionDuration minutes")
+                    sessionRepository.insertSession(
+                        Session(
+                            sessionSubjectId = subjectId.value!!,
+                            relatedToSubject = task.title,
+                            topicName = task.title,
+                            startTime = currentTime - (duration * 1000),
+                            endTime = currentTime,
+                            duration = sessionDuration,
+                            plannedDuration = totalDurationMinutes.toLong(),
+                            wasCompleted = true
                         )
-                        Log.d("StudyTimer", "Session saved successfully without topic")
-                    }
-                } catch (e: Exception) {
-                    Log.e("StudyTimer", "Error saving session", e)
+                    )
+                    Log.d("StudyTimer", "Session saved successfully with topic")
                 }
+            } ?: run {
+                sessionRepository.insertSession(
+                    Session(
+                        sessionSubjectId = subjectId.value!!,
+                        relatedToSubject = "",
+                        topicName = "",
+                        startTime = currentTime - (duration * 1000),
+                        endTime = currentTime,
+                        duration = sessionDuration,
+                        plannedDuration = totalDurationMinutes.toLong(),
+                        wasCompleted = true
+                    )
+                )
+                Log.d("StudyTimer", "Session saved successfully without topic")
             }
         } catch (e: Exception) {
             Log.e("StudyTimer", "Error in saveSession", e)
+            throw e
         }
     }
 
@@ -494,6 +542,11 @@ class StudySessionTimerService : Service() {
         } catch (e: Exception) {
             Log.e("StudyTimer", "Error disabling DND", e)
         }
+    }
+
+    private fun handleSessionCompletion() {
+        _sessionCompleted.value = true
+        // ... existing code ...
     }
 }
 enum class TimerState {

@@ -12,6 +12,7 @@ import com.gorai.myedenfocus.domain.repository.SessionRepository
 import com.gorai.myedenfocus.domain.repository.SubjectRepository
 import com.gorai.myedenfocus.domain.repository.TaskRepository
 import com.gorai.myedenfocus.presentation.navArgs
+import com.gorai.myedenfocus.presentation.session.StudySessionTimerService
 import com.gorai.myedenfocus.util.SnackbarEvent
 import com.gorai.myedenfocus.util.minutesToHours
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -68,8 +69,9 @@ class SubjectViewModel @Inject constructor(
 
     private val totalDuration = combine(
         sessionRepository.getTotalSessionsDurationBySubject(navArgs.subjectId),
-        _refreshTrigger
-    ) { duration, _ -> duration }
+        _refreshTrigger,
+        recentSessions
+    ) { duration, _, _ -> duration }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -181,7 +183,23 @@ class SubjectViewModel @Inject constructor(
                         )
                     )
                     _snackbarEventFlow.emit(SnackbarEvent.NavigateUp)
+                    return@launch
                 }
+
+                // Get total duration for this subject
+                sessionRepository.getTotalSessionsDurationBySubject(subject.subjectId ?: 0)
+                    .collect { totalDuration ->
+                        _state.update { currentState ->
+                            currentState.copy(
+                                currentSubjectId = subject.subjectId,
+                                subjectName = subject.name,
+                                studiedHours = String.format("%.1f", totalDuration),
+                                goalStudyHours = subject.goalHours.toString(),
+                                subjectCardColors = subject.colors.map { Color(it) }
+                            )
+                        }
+                        updateProgress()
+                    }
             } catch (e: Exception) {
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
@@ -286,19 +304,54 @@ class SubjectViewModel @Inject constructor(
     }
 
     fun updateStudiedHours(additionalHours: Float) {
-        _state.update { currentState ->
-            val currentStudiedHours = currentState.studiedHours.toFloatOrNull() ?: 0f
-            currentState.copy(
-                studiedHours = (currentStudiedHours + additionalHours).toString()
-            )
+        viewModelScope.launch {
+            val currentStudiedHours = state.value.studiedHours.toFloatOrNull() ?: 0f
+            val newStudiedHours = currentStudiedHours + additionalHours
+            
+            _state.update { currentState ->
+                currentState.copy(
+                    studiedHours = String.format("%.1f", newStudiedHours)
+                )
+            }
+            updateProgress()
         }
-        updateProgress()  // Update the progress after updating hours
+    }
+
+    // Function to update progress based on elapsed seconds
+    fun updateElapsedTime(elapsedSeconds: Int) {
+        viewModelScope.launch {
+            val elapsedHours = elapsedSeconds / 3600f
+            _state.update { currentState ->
+                val baseHours = currentState.studiedHours.toFloatOrNull() ?: 0f
+                currentState.copy(
+                    studiedHours = String.format("%.1f", baseHours + elapsedHours)
+                )
+            }
+            updateProgress()
+        }
     }
 
     // Function to trigger refresh
     fun refreshData() {
         viewModelScope.launch {
-            _refreshTrigger.value = _refreshTrigger.value + 1
+            _refreshTrigger.value += 1
+        }
+    }
+
+    fun collectTimerUpdates(timerService: StudySessionTimerService) {
+        viewModelScope.launch {
+            timerService.elapsedTimeFlow.collect { elapsedSeconds ->
+                if (elapsedSeconds > 0) {
+                    val elapsedHours = elapsedSeconds / 3600f
+                    _state.update { currentState ->
+                        val studiedHours = currentState.studiedHours.toFloatOrNull() ?: 0f
+                        currentState.copy(
+                            studiedHours = String.format("%.1f", studiedHours + elapsedHours)
+                        )
+                    }
+                    updateProgress()
+                }
+            }
         }
     }
 }

@@ -124,7 +124,7 @@ fun OnboardingScreen(
         )
     }
 
-    DisposableEffect(backgroundColor) {
+    DisposableEffect(Unit) {
         onDispose {
             systemUiController.setStatusBarColor(
                 color = backgroundColor,

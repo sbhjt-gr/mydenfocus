@@ -13,8 +13,8 @@ android {
         applicationId = "com.gorai.myedenfocus"
         minSdk = 26
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.0.5"
+        versionCode = 6
+        versionName = "1.0.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -90,6 +90,9 @@ dependencies {
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
+
+    // Gson
+    implementation("com.google.code.gson:gson:2.10.1")
 
     //Dagger-Hilt
     implementation("com.google.dagger:hilt-android:2.48")

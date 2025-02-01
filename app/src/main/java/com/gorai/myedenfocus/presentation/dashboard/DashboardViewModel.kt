@@ -13,6 +13,7 @@ import com.gorai.myedenfocus.domain.repository.TaskRepository
 import com.gorai.myedenfocus.util.SnackbarEvent
 import com.gorai.myedenfocus.util.toHours
 import com.gorai.myedenfocus.data.local.PreferencesDataStore
+import com.gorai.myedenfocus.presentation.session.StudySessionTimerService
 import com.gorai.myedenfocus.util.minutesToHours
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -94,6 +95,8 @@ class DashboardViewModel @Inject constructor(
     )
     private val _snackbarEventFlow = MutableSharedFlow<SnackbarEvent>()
     val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
+
+    private var isSavingSubject = false
 
     init {
         viewModelScope.launch {
@@ -190,19 +193,14 @@ class DashboardViewModel @Inject constructor(
                         goalStudyHours = "",
                         subjectCardColors = Subject.subjectCardColors.random()
                     )
-                    }
+                }
+            } catch (e: Exception) {
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
-                        "Subject saved successfully"
+                        "Couldn't save subject. ${e.message}",
+                        SnackbarDuration.Long
                     )
                 )
-                } catch (e: Exception) {
-                    _snackbarEventFlow.emit(
-                        SnackbarEvent.ShowSnackbar(
-                            "Couldn't save subject. ${e.message}",
-                            SnackbarDuration.Long
-                        )
-                    )
             }
         }
     }
@@ -253,6 +251,24 @@ class DashboardViewModel @Inject constructor(
                 dailyStudiedHours = (currentDailyHours + additionalHours).toString(),
                 totalStudiedHours = (currentTotalHours + additionalHours).toString()
             )
+        }
+    }
+
+    fun collectTimerUpdates(timerService: StudySessionTimerService) {
+        viewModelScope.launch {
+            timerService.elapsedTimeFlow.collect { elapsedSeconds ->
+                if (elapsedSeconds > 0) {
+                    val elapsedHours = elapsedSeconds / 3600f
+                    _state.update { currentState ->
+                        val dailyHours = currentState.dailyStudiedHours.toFloatOrNull() ?: 0f
+                        val totalHours = currentState.totalStudiedHours.toFloatOrNull() ?: 0f
+                        currentState.copy(
+                            dailyStudiedHours = String.format("%.1f", dailyHours + elapsedHours),
+                            totalStudiedHours = String.format("%.1f", totalHours + elapsedHours)
+                        )
+                    }
+                }
+            }
         }
     }
 }

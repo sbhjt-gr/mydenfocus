@@ -61,6 +61,8 @@ class StudySessionTimerService : Service() {
                 ACTION_SERVICE_START -> {
                     val durationMinutes = it.getIntExtra("DURATION", 0)
                     selectedTopicId = it.getIntExtra("TOPIC_ID", -1).let { id -> if (id == -1) null else id }
+                    subjectId.value = it.getIntExtra("SUBJECT_ID", -1).let { id -> if (id == -1) null else id }
+                    
                     if (durationMinutes > 0) {
                         totalTimeSeconds = durationMinutes * 60
                         totalDurationMinutes = durationMinutes
@@ -76,9 +78,9 @@ class StudySessionTimerService : Service() {
                 }
                 ACTION_SERVICE_STOP -> pauseTimer()
                 ACTION_SERVICE_CANCEL -> {
-                    wasManuallyFinished = true
+                    wasManuallyFinished = true  // Changed to true since user manually finished
                     clearTimerState()
-                    stopTimer()
+                    stopTimer(shouldMarkComplete = true)
                 }
             }
         }
@@ -143,36 +145,8 @@ class StudySessionTimerService : Service() {
     private suspend fun completeTimer() {
         if (!wasManuallyFinished) {
             playAlarm()
-            selectedTopicId?.let { topicId ->
-                try {
-                    taskRepository.getTaskById(topicId)?.let { task ->
-                        // Save session with actual elapsed time
-                        val actualDurationMinutes = elapsedTimeSeconds / 60
-                        sessionRepository.insertSession(
-                            Session(
-                                sessionSubjectId = subjectId.value ?: -1,
-                                relatedToSubject = "",
-                                topicName = task.title,
-                                date = Instant.now().toEpochMilli(),
-                                duration = actualDurationMinutes.toLong()
-                            )
-                        )
-                        
-                        // Mark that session was saved
-                        val prefs = getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
-                        prefs.edit().putBoolean("session_saved", true).apply()
-                        
-                        // Mark task as complete
-                        taskRepository.upsertTask(
-                            task.copy(isComplete = true)
-                        )
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
         }
-        stopTimer()
+        stopTimer(shouldMarkComplete = true)  // Always mark complete when timer finishes
     }
 
     private fun updateTimeDisplay() {
@@ -200,16 +174,62 @@ class StudySessionTimerService : Service() {
     }
 
     @RequiresApi(Build.VERSION_CODES.N)
-    private fun stopTimer() {
+    private fun stopTimer(shouldMarkComplete: Boolean = false) {
         timerJob?.cancel()
         timerJob = null
-        elapsedTimeSeconds = 0
         
+        println("StudySessionTimerService: stopTimer called with shouldMarkComplete=$shouldMarkComplete")
+        println("StudySessionTimerService: elapsedTimeSeconds=$elapsedTimeSeconds")
+        println("StudySessionTimerService: selectedTopicId=$selectedTopicId")
+        println("StudySessionTimerService: subjectId=${subjectId.value}")
+        
+        // Only save session if there's elapsed time
+        if (elapsedTimeSeconds > 0) {
+            serviceScope.launch(Dispatchers.IO) {
+                try {
+                    val prefs = getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
+                    
+                    selectedTopicId?.let { topicId ->
+                        taskRepository.getTaskById(topicId)?.let { task ->
+                            // Save session with actual elapsed time
+                            val actualDurationMinutes = elapsedTimeSeconds / 60
+                            println("StudySessionTimerService: Saving session with duration=$actualDurationMinutes minutes")
+                            
+                            sessionRepository.insertSession(
+                                Session(
+                                    sessionSubjectId = subjectId.value ?: -1,
+                                    relatedToSubject = "",
+                                    topicName = task.title,
+                                    startTime = startTime,
+                                    endTime = System.currentTimeMillis(),
+                                    duration = actualDurationMinutes.toLong(),
+                                    plannedDuration = totalDurationMinutes.toLong(),
+                                    wasCompleted = shouldMarkComplete
+                                )
+                            )
+                            
+                            // Mark task as complete if timer completed or finish was clicked
+                            if (shouldMarkComplete) {
+                                println("StudySessionTimerService: Marking task as complete")
+                                taskRepository.upsertTask(
+                                    task.copy(isComplete = true)
+                                )
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("StudySessionTimerService: Error in stopTimer - ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+        }
+        
+        elapsedTimeSeconds = 0
         hours.value = "00"
         minutes.value = "00"
         seconds.value = "00"
-        
         currentTimerState.value = TimerState.IDLE
+        
         stopForeground(Service.STOP_FOREGROUND_REMOVE)
         stopSelf()
         
@@ -223,15 +243,7 @@ class StudySessionTimerService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Only save if timer completed and session wasn't already saved
-        serviceScope.launch {
-            val prefs = getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
-            val wasSessionSaved = prefs.getBoolean("session_saved", false)
-            
-            if (elapsedTimeSeconds >= totalTimeSeconds && !wasSessionSaved) {
-                completeTimer()
-            }
-        }
+        // No need to save session here as it's already handled in stopTimer or completeTimer
         timerJob?.cancel()
     }
 
