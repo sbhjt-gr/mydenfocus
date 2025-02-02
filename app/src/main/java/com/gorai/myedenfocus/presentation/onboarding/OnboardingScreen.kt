@@ -57,7 +57,7 @@ fun getOnboardingPages(): List<OnboardingPage> {
         OnboardingPage(
             title = "Welcome to MyedenFocus",
             description = "Your personal study companion for better focus and productivity",
-            image = R.drawable.app_icon,
+            image = R.drawable.logo,
             backgroundColor = Color(0xFF1565C0)
         ),
         OnboardingPage(

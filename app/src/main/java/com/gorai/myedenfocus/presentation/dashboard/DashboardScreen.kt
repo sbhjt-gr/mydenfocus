@@ -369,7 +369,7 @@ private fun DashboardScreenTopBar(
                         .size(32.dp)
                 ) {
                     Image(
-                        painter = painterResource(id = com.gorai.myedenfocus.R.drawable.app_icon),
+                        painter = painterResource(id = com.gorai.myedenfocus.R.drawable.logo),
                         contentDescription = "App Icon",
                         modifier = Modifier.fillMaxSize()
                     )

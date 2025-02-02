@@ -29,7 +29,7 @@ fun CommonTopBar(
                         .size(32.dp)
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.app_icon),
+                        painter = painterResource(id = R.drawable.logo),
                         contentDescription = "App Icon",
                         modifier = Modifier.fillMaxSize()
                     )
