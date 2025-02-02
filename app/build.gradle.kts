@@ -79,7 +79,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0-alpha02")
-
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.32.0")
     //compose destination
     val destinationVersion = "1.9.52"
     implementation("io.github.raamcosta.compose-destinations:core:$destinationVersion")

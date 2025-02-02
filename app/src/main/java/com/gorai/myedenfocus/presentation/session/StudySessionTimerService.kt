@@ -84,9 +84,12 @@ class StudySessionTimerService : Service() {
     private var timer: Timer? = null
     private var totalDurationMinutes: Int = 0
     private var elapsedSeconds: Int = 0
+    private var remainingSeconds: Int = 0
     private var wasManuallyFinished = false
     private var selectedTopicId: Int? = null
     private var lastSavedMinute: Int = -1
+    private var startTime: Long = 0
+    private var pausedTime: Long = 0
 
     var duration: Int = 0
         private set
@@ -198,12 +201,21 @@ class StudySessionTimerService : Service() {
     }
 
     private fun startTimer() {
+        if (currentTimerState.value == TimerState.STOPPED) {
+            // Resume from paused state
+            startTime = System.currentTimeMillis() - (elapsedSeconds * 1000L)
+        } else {
+            // Fresh start
+            startTime = System.currentTimeMillis()
+            elapsedSeconds = 0
+            remainingSeconds = totalDurationMinutes * 60
+            _elapsedTimeFlow.value = 0
+            _sessionCompleted.value = false
+            wasManuallyFinished = false
+        }
+        
         currentTimerState.value = TimerState.STARTED
         startForegroundService()
-        elapsedSeconds = 0
-        _elapsedTimeFlow.value = 0
-        _sessionCompleted.value = false
-        wasManuallyFinished = false
 
         // Save topic and subject IDs to preferences
         val prefs = applicationContext.getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
@@ -211,7 +223,8 @@ class StudySessionTimerService : Service() {
             putInt("topic_id", selectedTopicId ?: -1)
             putInt("subject_id", subjectId.value ?: -1)
             putInt("duration_minutes", totalDurationMinutes)
-            putLong("completion_time", System.currentTimeMillis() + (totalDurationMinutes * 60 * 1000))
+            putLong("start_time", startTime)
+            putInt("elapsed_seconds", elapsedSeconds)
             putBoolean("session_saved", false)
             apply()
         }
@@ -220,21 +233,24 @@ class StudySessionTimerService : Service() {
         timer = Timer()
         timer?.scheduleAtFixedRate(object : TimerTask() {
             override fun run() {
-                elapsedSeconds++
-                _elapsedTimeFlow.value = elapsedSeconds
-                
-                // Calculate remaining time
-                val remainingSeconds = (totalDurationMinutes * 60) - elapsedSeconds
-                hours.value = String.format("%02d", remainingSeconds / 3600)
-                minutes.value = String.format("%02d", (remainingSeconds % 3600) / 60)
-                seconds.value = String.format("%02d", remainingSeconds % 60)
-                
-                // Update notification
-                updateNotification(hours.value, minutes.value, seconds.value)
-                
-                // Check if timer should complete
-                if (elapsedSeconds >= totalDurationMinutes * 60) {
-                    stopTimer(completed = true)
+                if (currentTimerState.value == TimerState.STARTED) {
+                    val currentTime = System.currentTimeMillis()
+                    elapsedSeconds = ((currentTime - startTime) / 1000).toInt()
+                    remainingSeconds = (totalDurationMinutes * 60) - elapsedSeconds
+                    _elapsedTimeFlow.value = elapsedSeconds
+                    
+                    // Calculate remaining time
+                    hours.value = String.format("%02d", remainingSeconds / 3600)
+                    minutes.value = String.format("%02d", (remainingSeconds % 3600) / 60)
+                    seconds.value = String.format("%02d", remainingSeconds % 60)
+                    
+                    // Update notification
+                    updateNotification(hours.value, minutes.value, seconds.value)
+                    
+                    // Check if timer should complete
+                    if (remainingSeconds <= 0) {
+                        stopTimer(completed = true)
+                    }
                 }
             }
         }, 0, 1000)
@@ -243,6 +259,18 @@ class StudySessionTimerService : Service() {
     private fun pauseTimer() {
         timer?.cancel()
         timer = null
+        pausedTime = System.currentTimeMillis()
+        remainingSeconds = (totalDurationMinutes * 60) - elapsedSeconds
+        
+        // Save paused state
+        val prefs = applicationContext.getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
+        prefs.edit().apply {
+            putLong("paused_time", pausedTime)
+            putInt("remaining_seconds", remainingSeconds)
+            putInt("elapsed_seconds", elapsedSeconds)
+            apply()
+        }
+        
         currentTimerState.value = TimerState.STOPPED
     }
 
@@ -266,7 +294,7 @@ class StudySessionTimerService : Service() {
                         topicName = selectedTopicId?.let { topicId ->
                             taskRepository.getTaskById(topicId)?.title
                         } ?: "",
-                        startTime = System.currentTimeMillis() - (finalElapsedTime * 1000),
+                        startTime = startTime,
                         endTime = System.currentTimeMillis(),
                         duration = sessionDuration,
                         plannedDuration = totalDurationMinutes.toLong(),
@@ -293,6 +321,13 @@ class StudySessionTimerService : Service() {
                 seconds.value = "00"
                 _elapsedTimeFlow.value = 0
                 elapsedSeconds = 0
+                remainingSeconds = 0
+                startTime = 0
+                pausedTime = 0
+                
+                // Clear preferences
+                val prefs = applicationContext.getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
+                prefs.edit().clear().apply()
                 
                 // Set completion state and show dialog
                 if (completed) {
