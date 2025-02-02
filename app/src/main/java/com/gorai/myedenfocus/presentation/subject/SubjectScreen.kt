@@ -272,7 +272,7 @@ private fun SubjectScreen(
                 TasksList(
                     sectionTitle = "Completed Topics",
                     emptyListText = "No completed topics\nClick on the start button to complete topics",
-                    tasks = state.completedTasks,
+                    tasks = state.completedTasks.sortedByDescending { it.completedAt ?: 0L },
                     onTaskCardClick = onTaskCardClick,
                     onStartSession = null
                 )

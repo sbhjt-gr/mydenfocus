@@ -291,7 +291,10 @@ class SessionViewModel @Inject constructor(
         viewModelScope.launch {
             taskRepository.getTaskById(taskId)?.let { task ->
                 taskRepository.upsertTask(
-                    task.copy(isComplete = true)
+                    task.copy(
+                        isComplete = true,
+                        completedAt = System.currentTimeMillis()
+                    )
                 )
             }
         }

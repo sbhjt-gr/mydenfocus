@@ -14,5 +14,6 @@ data class Task(
     val relatedToSubject: String,
     val isComplete: Boolean = false,
     val taskSubjectId: Int,
-    val taskDuration: Int = 0
+    val taskDuration: Int = 0,
+    val completedAt: Long? = null
 )

@@ -11,7 +11,7 @@ import com.gorai.myedenfocus.domain.model.Task
 
 @Database(
     entities = [Subject::class, Task::class, Session::class],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(ColorListConverter::class, Converters::class)
@@ -84,6 +84,12 @@ abstract class AppDatabase: RoomDatabase() {
 
                 database.execSQL("DROP TABLE Session")
                 database.execSQL("ALTER TABLE session_new RENAME TO Session")
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE Task ADD COLUMN completedAt INTEGER")
             }
         }
     }

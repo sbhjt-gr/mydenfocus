@@ -96,7 +96,8 @@ class TaskViewModel @Inject constructor(
                             taskRepository.getTaskById(taskId)?.let { existingTask ->
                                 // Create updated task with toggled completion
                                 val updatedTask = existingTask.copy(
-                                    isComplete = !existingTask.isComplete
+                                    isComplete = !existingTask.isComplete,
+                                    completedAt = if (!existingTask.isComplete) System.currentTimeMillis() else null
                                 )
                                 // Save to database
                                 taskRepository.upsertTask(updatedTask)

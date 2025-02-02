@@ -885,7 +885,12 @@ private fun ButtonSection(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        val isStartEnabled = selectedTopicId != null && durationMinutes > 0 && subjectId != null
+        val isStartEnabled = remember(selectedTopicId, subjectId, durationMinutes, timerState) {
+            selectedTopicId != null && 
+            subjectId != null && 
+            durationMinutes > 0 && 
+            timerState != TimerState.STARTED
+        }
         
         Button(
             onClick = {
@@ -894,16 +899,22 @@ private fun ButtonSection(
                         context = context,
                         action = ACTION_SERVICE_STOP
                     )
-                } else {
+                } else if (selectedTopicId != null && subjectId != null) {
                     onStartClick()
                 }
             },
-            enabled = isStartEnabled,
+            enabled = when (timerState) {
+                TimerState.STARTED -> true
+                TimerState.STOPPED -> selectedTopicId != null && subjectId != null
+                TimerState.IDLE -> isStartEnabled
+            },
             colors = ButtonDefaults.buttonColors(
                 containerColor = when (timerState) {
                     TimerState.STARTED -> MaterialTheme.colorScheme.secondary
                     else -> MaterialTheme.colorScheme.primary
-                }
+                },
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -923,21 +934,25 @@ private fun ButtonSection(
             Text(
                 text = when (timerState) {
                     TimerState.STARTED -> "Pause"
-                    TimerState.STOPPED -> "Resume"
+                    TimerState.STOPPED -> if (selectedTopicId != null) "Resume" else "Select Topic"
                     else -> "Start"
                 },
                 style = MaterialTheme.typography.titleMedium
             )
         }
 
-        if (!isStartEnabled && timerState == TimerState.IDLE) {
+        val errorMessage = remember(selectedTopicId, subjectId, durationMinutes, timerState) {
+            when {
+                subjectId == null -> "Please select a subject"
+                selectedTopicId == null -> "Please select a topic"
+                durationMinutes <= 0 -> "Please set a duration"
+                else -> ""
+            }
+        }
+
+        if (errorMessage.isNotEmpty()) {
             Text(
-                text = when {
-                    subjectId == null -> "Please select a subject"
-                    selectedTopicId == null -> "Please select a topic"
-                    durationMinutes <= 0 -> "Please set a duration"
-                    else -> ""
-                },
+                text = errorMessage,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(start = 8.dp)
@@ -948,6 +963,8 @@ private fun ButtonSection(
             Button(
                 onClick = {
                     finishButtonClick()
+                    // Reset topic selection after finishing
+                    onEvent(SessionEvent.OnTopicSelect(null))
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
