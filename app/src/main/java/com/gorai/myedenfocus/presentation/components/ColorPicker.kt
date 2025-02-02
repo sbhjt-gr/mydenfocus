@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -88,14 +90,15 @@ private fun ColorGrid(
     selectedColor: Color,
     onColorSelected: (Color) -> Unit
 ) {
-    Row(
+    LazyRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        colors.forEach { color ->
+        items(colors) { color ->
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(45.dp)
                     .clip(CircleShape)
                     .background(color)
                     .border(

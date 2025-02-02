@@ -340,7 +340,7 @@ private fun DashboardScreen(
             }
             studySessionsList(
                 sectionTitle = "Recent Study Sessions",
-                emptyListText = "No study sessions\nStart a study session to begin recording your progress",
+                emptyListText = "No study sessions yet",
                 sessions = recentSessions,
                 onDeleteIconClick = { session ->
                     isDeleteSubjectDialogOpen = true

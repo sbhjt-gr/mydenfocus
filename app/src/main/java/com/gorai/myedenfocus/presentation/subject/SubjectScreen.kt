@@ -2,7 +2,6 @@ package com.gorai.myedenfocus.presentation.subject
 
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -47,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gorai.myedenfocus.domain.model.Subject
-import com.gorai.myedenfocus.presentation.components.AddSubjectDialog
 import com.gorai.myedenfocus.presentation.components.DeleteDialog
 import com.gorai.myedenfocus.presentation.components.EditSubjectDialog
 import com.gorai.myedenfocus.presentation.components.Speedometer
@@ -55,20 +52,16 @@ import com.gorai.myedenfocus.presentation.components.TasksList
 import com.gorai.myedenfocus.presentation.components.studySessionsList
 import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
+import com.gorai.myedenfocus.presentation.session.TimerState
 import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
+import com.gorai.myedenfocus.util.LocalTimerService
 import com.gorai.myedenfocus.util.NavAnimation
 import com.gorai.myedenfocus.util.SnackbarEvent
-import com.gorai.myedenfocus.util.formatHours
+import com.gorai.myedenfocus.util.formatTimeHoursMinutes
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
-import androidx.compose.material3.CircularProgressIndicator
-import com.gorai.myedenfocus.util.LocalTimerService
-import com.gorai.myedenfocus.presentation.session.TimerState
-import com.gorai.myedenfocus.util.formatTimeHoursMinutes
-import com.gorai.myedenfocus.util.secondsToHours
-import kotlinx.coroutines.delay
 
 data class SubjectScreenNavArgs(
     val subjectId: Int
@@ -278,7 +271,7 @@ private fun SubjectScreen(
             item {
                 TasksList(
                     sectionTitle = "Completed Topics",
-                    emptyListText = "No completed topics\nClick the checkboxes to complete topics",
+                    emptyListText = "No completed topics\nClick on the start button to complete topics",
                     tasks = state.completedTasks,
                     onTaskCardClick = onTaskCardClick,
                     onStartSession = null
