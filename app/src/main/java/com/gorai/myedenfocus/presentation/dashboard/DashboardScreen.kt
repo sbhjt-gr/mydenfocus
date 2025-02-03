@@ -63,7 +63,6 @@ import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestina
 import com.gorai.myedenfocus.presentation.destinations.SettingsScreenDestination
 import com.gorai.myedenfocus.presentation.destinations.SubjectScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
-import com.gorai.myedenfocus.presentation.session.TimerState
 import com.gorai.myedenfocus.presentation.subject.SubjectScreenNavArgs
 import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
 import com.gorai.myedenfocus.util.LocalTimerService
@@ -72,7 +71,6 @@ import com.gorai.myedenfocus.util.SnackbarEvent
 import com.gorai.myedenfocus.util.formatHours
 import com.gorai.myedenfocus.util.formatHoursFromString
 import com.gorai.myedenfocus.util.formatTimeHoursMinutes
-import com.gorai.myedenfocus.util.secondsToHours
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootNavGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator

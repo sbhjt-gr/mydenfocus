@@ -45,6 +45,8 @@ import com.gorai.myedenfocus.domain.model.Task
 @AndroidEntryPoint
 class StudySessionTimerService : Service() {
 
+    var onSessionComplete: (() -> Unit)? = null
+
     companion object {
         const val ACTION_STOP_ALARM = "STOP_ALARM"
         const val ACTION_SHOW_COMPLETION_DIALOG = "SHOW_COMPLETION_DIALOG"

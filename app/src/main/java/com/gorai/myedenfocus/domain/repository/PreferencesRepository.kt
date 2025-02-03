@@ -21,6 +21,9 @@ class PreferencesRepository @Inject constructor(
         val REMINDER_TIME = stringPreferencesKey("reminder_time")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val NOTIFICATION_PERMISSION_REQUESTED = booleanPreferencesKey("notification_permission_requested")
+        val COMPLETED_SESSIONS_COUNT = intPreferencesKey("completed_sessions_count")
+        val LAST_REVIEW_TIME = longPreferencesKey("last_review_time")
+        val HAS_RATED_APP = booleanPreferencesKey("has_rated_app")
     }
 
     val themeFlow: Flow<Theme> = dataStoreProvider.dataStore.data
@@ -86,6 +89,21 @@ class PreferencesRepository @Inject constructor(
             preferences[PreferencesKeys.NOTIFICATION_PERMISSION_REQUESTED] ?: false
         }
 
+    val completedSessionsCount: Flow<Int> = dataStoreProvider.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.COMPLETED_SESSIONS_COUNT] ?: 0
+        }
+
+    val lastReviewTime: Flow<Long> = dataStoreProvider.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.LAST_REVIEW_TIME] ?: 0L
+        }
+
+    val hasRatedApp: Flow<Boolean> = dataStoreProvider.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.HAS_RATED_APP] ?: false
+        }
+
     suspend fun saveTheme(theme: Theme) {
         dataStoreProvider.dataStore.edit { preferences ->
             preferences[PreferencesKeys.THEME] = theme.name
@@ -119,6 +137,25 @@ class PreferencesRepository @Inject constructor(
     suspend fun setNotificationPermissionRequested(requested: Boolean) {
         dataStoreProvider.dataStore.edit { preferences ->
             preferences[PreferencesKeys.NOTIFICATION_PERMISSION_REQUESTED] = requested
+        }
+    }
+
+    suspend fun incrementCompletedSessions() {
+        dataStoreProvider.dataStore.edit { preferences ->
+            val currentCount = preferences[PreferencesKeys.COMPLETED_SESSIONS_COUNT] ?: 0
+            preferences[PreferencesKeys.COMPLETED_SESSIONS_COUNT] = currentCount + 1
+        }
+    }
+
+    suspend fun updateLastReviewTime() {
+        dataStoreProvider.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LAST_REVIEW_TIME] = System.currentTimeMillis()
+        }
+    }
+
+    suspend fun setHasRatedApp(hasRated: Boolean) {
+        dataStoreProvider.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.HAS_RATED_APP] = hasRated
         }
     }
 } 

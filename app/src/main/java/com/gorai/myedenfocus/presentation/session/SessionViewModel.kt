@@ -9,6 +9,7 @@ import com.gorai.myedenfocus.domain.model.Task
 import com.gorai.myedenfocus.domain.repository.SessionRepository
 import com.gorai.myedenfocus.domain.repository.SubjectRepository
 import com.gorai.myedenfocus.domain.repository.TaskRepository
+import com.gorai.myedenfocus.domain.repository.PreferencesRepository
 import com.gorai.myedenfocus.util.SnackbarEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -28,7 +29,8 @@ class SessionViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val subjectRepository: SubjectRepository,
     private val sessionRepository: SessionRepository,
-    private val taskRepository: TaskRepository
+    private val taskRepository: TaskRepository,
+    private val preferencesRepository: PreferencesRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SessionState())
@@ -250,27 +252,15 @@ class SessionViewModel @Inject constructor(
                                     wasCompleted = true
                                 )
                             )
-
-                            taskRepository.upsertTask(
-                                task.copy(isComplete = true)
-                            )
-
-                            // Mark session as saved in preferences if timer exists
-                            if (completionTime > 0) {
-                                prefs.edit().putBoolean("session_saved", true).apply()
-                            }
-
-                            _snackbarEventFlow.emit(
-                                SnackbarEvent.ShowSnackbar(message = "Session saved and topic marked as complete")
-                            )
+                            preferencesRepository.incrementCompletedSessions()
                         }
                     }
                 }
             } catch (e: Exception) {
                 _snackbarEventFlow.emit(
                     SnackbarEvent.ShowSnackbar(
-                        "Couldn't save session",
-                        SnackbarDuration.Long
+                        message = "Couldn't save session. ${e.message}",
+                        duration = SnackbarDuration.Long
                     )
                 )
             }

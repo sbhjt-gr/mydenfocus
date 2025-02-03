@@ -19,7 +19,6 @@ import com.gorai.myedenfocus.domain.model.Theme
 import com.gorai.myedenfocus.util.NavAnimation
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import com.gorai.myedenfocus.presentation.components.ThemeDialog
 import com.gorai.myedenfocus.presentation.components.NotificationSettingsDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,43 +57,6 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Study Goals",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
-            )
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { /* Disabled */ },
-                enabled = false
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Daily Study Goal",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        )
-                        Text(
-                            text = "Set your daily study target",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        )
-                    }
-                    Text(
-                        text = "${state.dailyStudyGoal}h",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
-                    )
-                }
-            }
-
             Text(
                 text = "Appearance",
                 style = MaterialTheme.typography.titleMedium,

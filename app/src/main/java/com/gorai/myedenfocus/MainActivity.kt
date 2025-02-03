@@ -7,17 +7,20 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,7 +29,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.install.InstallStateUpdatedListener
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.InstallStatus
+import com.google.android.play.core.install.model.UpdateAvailability
+import com.google.android.play.core.review.ReviewManager
+import com.google.android.play.core.review.ReviewManagerFactory
 import com.gorai.myedenfocus.domain.repository.PreferencesRepository
 import com.gorai.myedenfocus.presentation.NavGraphs
 import com.gorai.myedenfocus.presentation.destinations.OnboardingScreenDestination
@@ -35,18 +48,22 @@ import com.gorai.myedenfocus.presentation.navigation.NavigationViewModel
 import com.gorai.myedenfocus.presentation.session.StudySessionTimerService
 import com.gorai.myedenfocus.presentation.theme.MyedenFocusTheme
 import com.gorai.myedenfocus.service.DailyStudyReminderService
+import com.gorai.myedenfocus.util.LocalTimerService
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.navigation.dependency
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
-import androidx.compose.runtime.CompositionLocalProvider
-import com.gorai.myedenfocus.util.LocalTimerService
-import androidx.compose.runtime.saveable.rememberSaveable
-import android.content.pm.ActivityInfo
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    private lateinit var appUpdateManager: AppUpdateManager
+    private lateinit var reviewManager: ReviewManager
+    private val updateRequestCode = 100
+    private val flexibleUpdateRequestCode = 101
 
     @Inject
     lateinit var preferencesRepository: PreferencesRepository
@@ -69,6 +86,14 @@ class MainActivity : ComponentActivity() {
 
     private var currentRoute: String? = null
 
+    private val updateResultLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) {
+            checkUpdate() // Retry update if failed
+        }
+    }
+
     override fun onStart() {
         super.onStart()
         Intent(this, StudySessionTimerService::class.java).also { intent ->
@@ -81,6 +106,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        
+        checkUpdate()
+        setupReviewManager()
         
         setContent {
             val isOnboardingCompleted by preferencesRepository.isOnboardingCompleted.collectAsStateWithLifecycle(initialValue = null)
@@ -134,13 +162,143 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun setupReviewManager() {
+        reviewManager = ReviewManagerFactory.create(this)
+    }
+
+    private fun checkAndShowReview() {
+        lifecycleScope.launch {
+            val hasRated = preferencesRepository.hasRatedApp.first()
+            val completedSessions = preferencesRepository.completedSessionsCount.first()
+            val lastReviewTime = preferencesRepository.lastReviewTime.first()
+            
+            val shouldShowReview = !hasRated && 
+                completedSessions >= 5 && 
+                (System.currentTimeMillis() - lastReviewTime >= 7 * 24 * 60 * 60 * 1000) // 7 days
+            
+            if (shouldShowReview) {
+                val request = reviewManager.requestReviewFlow()
+                request.addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        val reviewInfo = task.result
+                        val flow = reviewManager.launchReviewFlow(this@MainActivity, reviewInfo)
+                        flow.addOnCompleteListener {
+                            lifecycleScope.launch {
+                                preferencesRepository.updateLastReviewTime()
+                                if (it.isSuccessful) {
+                                    preferencesRepository.setHasRatedApp(true)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun checkUpdate() {
+        appUpdateManager = AppUpdateManagerFactory.create(this)
+        
+        appUpdateManager.appUpdateInfo.addOnSuccessListener { appUpdateInfo ->
+            when {
+                // For immediate updates (critical updates)
+                appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
+                    && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE) -> {
+                    try {
+                        appUpdateManager.startUpdateFlow(
+                            appUpdateInfo,
+                            this@MainActivity,
+                            AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build()
+                        ).addOnSuccessListener {
+                            // Update flow started successfully
+                        }.addOnFailureListener { e ->
+                            e.printStackTrace()
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+                // For flexible updates (non-critical updates)
+                appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
+                    && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE) -> {
+                    try {
+                        appUpdateManager.startUpdateFlow(
+                            appUpdateInfo,
+                            this@MainActivity,
+                            AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build()
+                        ).addOnSuccessListener {
+                            // Update flow started successfully
+                        }.addOnFailureListener { e ->
+                            e.printStackTrace()
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        }.addOnFailureListener { e ->
+            e.printStackTrace()
+        }
+
+        // Register a listener for flexible update state changes
+        appUpdateManager.registerListener(installStateUpdatedListener)
+    }
+
+    private val installStateUpdatedListener = InstallStateUpdatedListener { state ->
+        if (state.installStatus() == InstallStatus.DOWNLOADED) {
+            // Show snackbar or notification that update is ready
+            showUpdateCompleteNotification()
+        }
+    }
+
+    private fun showUpdateCompleteNotification() {
+        createNotificationChannel()
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            action = "COMPLETE_UPDATE"
+        }
+        
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Update Ready")
+            .setContentText("A new version of MyedenFocus is ready to install")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(UPDATE_NOTIFICATION_ID, notification)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        checkAndShowReview()
+
+        appUpdateManager.appUpdateInfo.addOnSuccessListener { appUpdateInfo ->
+            if (appUpdateInfo.installStatus() == InstallStatus.DOWNLOADED) {
+                showUpdateCompleteNotification()
+            }
+        }
+    }
+
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         setIntent(intent)
-        // Handle new intents while app is running
-        intent?.let { newIntent ->
-            if (newIntent.action == "OPEN_FROM_NOTIFICATION") {
+        when (intent?.action) {
+            "OPEN_FROM_NOTIFICATION" -> {
                 navigationViewModel.navigateTo(SessionScreenRouteDestination.route)
+            }
+            "COMPLETE_UPDATE" -> {
+                appUpdateManager.completeUpdate()
             }
         }
     }
@@ -221,8 +379,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        appUpdateManager.unregisterListener(installStateUpdatedListener)
+    }
+
     companion object {
         private const val CHANNEL_ID = "study_reminder_channel"
         private const val NOTIFICATION_ID = 2
+        private const val UPDATE_NOTIFICATION_ID = 3
     }
 }
