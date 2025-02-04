@@ -396,6 +396,7 @@ class MeditationTimerService : Service() {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                         Intent.FLAG_ACTIVITY_CLEAR_TOP or
                         Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra(MeditationCompleteActivity.EXTRA_DURATION, selectedDuration)
             }
             startActivity(intent)
 
@@ -419,6 +420,7 @@ class MeditationTimerService : Service() {
 
             val alarmIntent = Intent(this, MeditationCompleteActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(MeditationCompleteActivity.EXTRA_DURATION, selectedDuration)
             }
             val pendingIntent = PendingIntent.getActivity(
                 this,

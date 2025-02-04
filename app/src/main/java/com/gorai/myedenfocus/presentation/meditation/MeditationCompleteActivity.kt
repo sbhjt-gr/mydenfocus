@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -28,8 +29,20 @@ import com.gorai.myedenfocus.MainActivity
 
 @AndroidEntryPoint
 class MeditationCompleteActivity : ComponentActivity() {
+    private val viewModel: MeditationViewModel by viewModels()
+
+    companion object {
+        const val EXTRA_DURATION = "duration"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Get duration from intent
+        val duration = intent.getIntExtra(EXTRA_DURATION, 0)
+        
+        // Save the session
+        viewModel.addSession(duration)
 
         // Set window flags to show over lock screen
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
