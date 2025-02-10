@@ -13,21 +13,29 @@ import javax.inject.Inject
 class SessionRepositoryImpl @Inject constructor(
     private val sessionDao: SessionDao
 ): SessionRepository {
-    override suspend fun insertSession(session: Session) {
-        sessionDao.insertSession(session)
+    override suspend fun insertSession(session: Session): Long {
+        return sessionDao.insertSession(session)
     }
 
     override suspend fun deleteSession(session: Session) {
         sessionDao.deleteSession(session)
     }
 
+    override suspend fun getSessionById(sessionId: Long): Session? {
+        return sessionDao.getSessionById(sessionId)
+    }
+
+    override suspend fun updateSession(session: Session) {
+        sessionDao.updateSession(session)
+    }
+
     override fun getAllSessions(): Flow<List<Session>> {
-        return sessionDao.getAllSessions().map { sessions -> sessions.sortedByDescending { it.date } }
+        return sessionDao.getAllSessions().map { sessions -> sessions.sortedByDescending { it.startTime } }
     }
 
     override fun getRecentFiveSessions(subjectId: Int): Flow<List<Session>> {
         return sessionDao.getAllSessions()
-            .map { sessions -> sessions.sortedByDescending { it.date } }
+            .map { sessions -> sessions.sortedByDescending { it.startTime } }
             .take(count = 5)
     }
 
@@ -51,7 +59,7 @@ class SessionRepositoryImpl @Inject constructor(
         val startOfDay = calendar.timeInMillis
 
         return sessionDao.getAllSessions().map { sessions ->
-            sessions.filter { it.date >= startOfDay }
+            sessions.filter { it.startTime >= startOfDay }
                    .sumOf { it.duration.toDouble() }
                    .toFloat() / 60.0f
         }

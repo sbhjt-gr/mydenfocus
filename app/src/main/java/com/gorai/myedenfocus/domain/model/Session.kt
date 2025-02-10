@@ -8,7 +8,7 @@ import java.time.ZoneId
 @Entity
 data class Session(
     @PrimaryKey(autoGenerate = true)
-    val sessionId: Int = 0,
+    val sessionId: Long = 0L,
     
     // Subject and Topic Information
     val sessionSubjectId: Int,

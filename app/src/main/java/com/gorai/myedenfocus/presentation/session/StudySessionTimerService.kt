@@ -41,6 +41,8 @@ import kotlinx.coroutines.launch
 import android.util.Log
 import com.gorai.myedenfocus.domain.model.Session
 import com.gorai.myedenfocus.domain.model.Task
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 @AndroidEntryPoint
 class StudySessionTimerService : Service() {
@@ -116,6 +118,11 @@ class StudySessionTimerService : Service() {
     val sessionCompleted = _sessionCompleted.asStateFlow()
 
     private var wakeLock: PowerManager.WakeLock? = null
+
+    private val _minuteUpdateFlow = MutableSharedFlow<Int>()
+    val minuteUpdateFlow = _minuteUpdateFlow.asSharedFlow()
+
+    private var currentSessionId: Long? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -253,6 +260,15 @@ class StudySessionTimerService : Service() {
                     if (remainingSeconds <= 0) {
                         stopTimer(completed = true)
                     }
+
+                    val currentMinute = elapsedSeconds / 60
+                    if (currentMinute > lastSavedMinute) {
+                        lastSavedMinute = currentMinute
+                        serviceScope.launch {
+                            updateSessionProgress()
+                            _minuteUpdateFlow.emit(currentMinute)
+                        }
+                    }
                 }
             }
         }, 0, 1000)
@@ -285,24 +301,31 @@ class StudySessionTimerService : Service() {
 
         serviceScope.launch(Dispatchers.IO) {
             try {
-                // Save the final session
+                // Update the final session
                 if (finalElapsedTime > 0 && subjectId.value != null) {
                     val sessionDuration = (finalElapsedTime / 60).toLong() // Convert to minutes
-                    val session = Session(
-                        sessionSubjectId = subjectId.value!!,
-                        relatedToSubject = selectedTopicId?.let { topicId ->
-                            taskRepository.getTaskById(topicId)?.title
-                        } ?: "",
-                        topicName = selectedTopicId?.let { topicId ->
-                            taskRepository.getTaskById(topicId)?.title
-                        } ?: "",
-                        startTime = startTime,
-                        endTime = System.currentTimeMillis(),
-                        duration = sessionDuration,
-                        plannedDuration = totalDurationMinutes.toLong(),
-                        wasCompleted = completed
-                    )
-                    sessionRepository.insertSession(session)
+                    if (currentSessionId != null) {
+                        sessionRepository.getSessionById(currentSessionId!!)?.let { existingSession ->
+                            val updatedSession = existingSession.copy(
+                                endTime = System.currentTimeMillis(),
+                                duration = sessionDuration,
+                                wasCompleted = completed
+                            )
+                            sessionRepository.updateSession(updatedSession)
+                        }
+                    } else {
+                        val session = Session(
+                            sessionSubjectId = subjectId.value!!,
+                            relatedToSubject = selectedTopic.value?.title ?: "",
+                            topicName = selectedTopic.value?.title ?: "",
+                            startTime = startTime,
+                            endTime = System.currentTimeMillis(),
+                            duration = sessionDuration,
+                            plannedDuration = totalDurationMinutes.toLong(),
+                            wasCompleted = completed
+                        )
+                        currentSessionId = sessionRepository.insertSession(session)
+                    }
                 }
 
                 if (completed && selectedTopicId != null) {
@@ -317,6 +340,7 @@ class StudySessionTimerService : Service() {
                 Log.e("StudyTimer", "Error in stopTimer", e)
             } finally {
                 // Reset states
+                currentSessionId = null
                 currentTimerState.value = TimerState.IDLE
                 hours.value = "00"
                 minutes.value = "00"
@@ -584,6 +608,41 @@ class StudySessionTimerService : Service() {
     private fun handleSessionCompletion() {
         _sessionCompleted.value = true
         // ... existing code ...
+    }
+
+    private suspend fun updateSessionProgress() {
+        try {
+            if (subjectId.value != null) {
+                val currentMinutes = (elapsedSeconds / 60).toLong()
+                if (currentMinutes > 0) {
+                    if (currentSessionId == null) {
+                        // Create new session only if one doesn't exist
+                        val session = Session(
+                            sessionSubjectId = subjectId.value!!,
+                            relatedToSubject = selectedTopic.value?.title ?: "",
+                            topicName = selectedTopic.value?.title ?: "",
+                            startTime = startTime,
+                            endTime = System.currentTimeMillis(),
+                            duration = currentMinutes,
+                            plannedDuration = totalDurationMinutes.toLong(),
+                            wasCompleted = false
+                        )
+                        currentSessionId = sessionRepository.insertSession(session)
+                    } else {
+                        // Update existing session
+                        sessionRepository.getSessionById(currentSessionId!!)?.let { existingSession ->
+                            val updatedSession = existingSession.copy(
+                                endTime = System.currentTimeMillis(),
+                                duration = currentMinutes
+                            )
+                            sessionRepository.updateSession(updatedSession)
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("StudyTimer", "Error updating session progress", e)
+        }
     }
 }
 enum class TimerState {

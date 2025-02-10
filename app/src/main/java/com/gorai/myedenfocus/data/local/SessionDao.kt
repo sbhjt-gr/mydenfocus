@@ -4,19 +4,26 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import com.gorai.myedenfocus.domain.model.Session
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SessionDao {
     @Insert
-    suspend fun insertSession(session: Session)
+    suspend fun insertSession(session: Session): Long
 
     @Delete
     suspend fun deleteSession(session: Session)
 
     @Query("SELECT * FROM session")
     fun getAllSessions(): Flow<List<Session>>
+
+    @Query("SELECT * FROM session WHERE sessionId = :sessionId")
+    suspend fun getSessionById(sessionId: Long): Session?
+
+    @Update
+    suspend fun updateSession(session: Session)
 
     @Query("""
         SELECT * FROM session 

@@ -2,15 +2,17 @@ package com.gorai.myedenfocus.presentation.session
 
 import android.Manifest
 import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.IBinder
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -45,8 +47,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowCircleRight
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Pause
@@ -69,6 +69,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -86,6 +87,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gorai.myedenfocus.domain.model.Subject
@@ -95,7 +97,6 @@ import com.gorai.myedenfocus.presentation.components.MeditationReminderDialog
 import com.gorai.myedenfocus.presentation.components.SubjectListBottomSheet
 import com.gorai.myedenfocus.presentation.components.studySessionsList
 import com.gorai.myedenfocus.presentation.destinations.MeditationScreenDestination
-import com.gorai.myedenfocus.presentation.theme.Red
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_CANCEL
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_START
 import com.gorai.myedenfocus.util.Constants.ACTION_SERVICE_STOP
@@ -106,6 +107,7 @@ import com.gorai.myedenfocus.util.SnackbarEvent
 import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -113,7 +115,6 @@ import java.time.LocalDate
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlinx.coroutines.delay
 
 data class SessionScreenNavArgs(
     val preSelectedTopicId: Int? = null,
@@ -235,6 +236,28 @@ private fun SessionScreen(
     var showNotificationPermissionDialog by remember { mutableStateOf(false) }
     var permissionMessage by remember { mutableStateOf("") }
     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    val serviceConnection = remember {
+        object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                val binder = service as StudySessionTimerService.StudySessionTimerBinder
+                onEvent(SessionEvent.ServiceConnected(binder.getService()))
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                onEvent(SessionEvent.ServiceDisconnected)
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        val intent = Intent(context, StudySessionTimerService::class.java)
+        context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        
+        onDispose {
+            context.unbindService(serviceConnection)
+        }
+    }
 
     // Function to check DND permission
     fun checkDndPermission(): Boolean {

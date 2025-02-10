@@ -14,7 +14,6 @@ import android.os.IBinder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,13 +30,6 @@ import androidx.core.app.NotificationCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
-import com.google.android.play.core.appupdate.AppUpdateManager
-import com.google.android.play.core.appupdate.AppUpdateManagerFactory
-import com.google.android.play.core.appupdate.AppUpdateOptions
-import com.google.android.play.core.install.InstallStateUpdatedListener
-import com.google.android.play.core.install.model.AppUpdateType
-import com.google.android.play.core.install.model.InstallStatus
-import com.google.android.play.core.install.model.UpdateAvailability
 import com.google.android.play.core.review.ReviewManager
 import com.google.android.play.core.review.ReviewManagerFactory
 import com.gorai.myedenfocus.domain.repository.PreferencesRepository
@@ -60,10 +52,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    private lateinit var appUpdateManager: AppUpdateManager
     private lateinit var reviewManager: ReviewManager
-    private val updateRequestCode = 100
-    private val flexibleUpdateRequestCode = 101
 
     @Inject
     lateinit var preferencesRepository: PreferencesRepository
@@ -86,14 +75,6 @@ class MainActivity : ComponentActivity() {
 
     private var currentRoute: String? = null
 
-    private val updateResultLauncher = registerForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        if (result.resultCode != RESULT_OK) {
-            checkUpdate() // Retry update if failed
-        }
-    }
-
     override fun onStart() {
         super.onStart()
         Intent(this, StudySessionTimerService::class.java).also { intent ->
@@ -107,7 +88,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         
-        checkUpdate()
         setupReviewManager()
         
         setContent {
@@ -196,110 +176,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun checkUpdate() {
-        appUpdateManager = AppUpdateManagerFactory.create(this)
-        
-        appUpdateManager.appUpdateInfo.addOnSuccessListener { appUpdateInfo ->
-            when {
-                // For immediate updates (critical updates)
-                appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
-                    && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE) -> {
-                    try {
-                        appUpdateManager.startUpdateFlow(
-                            appUpdateInfo,
-                            this@MainActivity,
-                            AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build()
-                        ).addOnSuccessListener {
-                            // Update flow started successfully
-                        }.addOnFailureListener { e ->
-                            e.printStackTrace()
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
-                // For flexible updates (non-critical updates)
-                appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
-                    && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE) -> {
-                    try {
-                        appUpdateManager.startUpdateFlow(
-                            appUpdateInfo,
-                            this@MainActivity,
-                            AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build()
-                        ).addOnSuccessListener {
-                            // Update flow started successfully
-                        }.addOnFailureListener { e ->
-                            e.printStackTrace()
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
-            }
-        }.addOnFailureListener { e ->
-            e.printStackTrace()
-        }
-
-        // Register a listener for flexible update state changes
-        appUpdateManager.registerListener(installStateUpdatedListener)
-    }
-
-    private val installStateUpdatedListener = InstallStateUpdatedListener { state ->
-        if (state.installStatus() == InstallStatus.DOWNLOADED) {
-            // Show snackbar or notification that update is ready
-            showUpdateCompleteNotification()
-        }
-    }
-
-    private fun showUpdateCompleteNotification() {
-        createNotificationChannel()
-
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            action = "COMPLETE_UPDATE"
-        }
-        
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Update Ready")
-            .setContentText("A new version of MyedenFocus is ready to install")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .build()
-
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(UPDATE_NOTIFICATION_ID, notification)
-    }
-
     override fun onResume() {
         super.onResume()
         checkAndShowReview()
-
-        appUpdateManager.appUpdateInfo.addOnSuccessListener { appUpdateInfo ->
-            if (appUpdateInfo.installStatus() == InstallStatus.DOWNLOADED) {
-                showUpdateCompleteNotification()
-            }
-        }
     }
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         setIntent(intent)
-        when (intent?.action) {
-            "OPEN_FROM_NOTIFICATION" -> {
-                navigationViewModel.navigateTo(SessionScreenRouteDestination.route)
-            }
-            "COMPLETE_UPDATE" -> {
-                appUpdateManager.completeUpdate()
-            }
+        if (intent?.action == "OPEN_FROM_NOTIFICATION") {
+            navigationViewModel.navigateTo(SessionScreenRouteDestination.route)
         }
     }
 
@@ -379,14 +265,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        appUpdateManager.unregisterListener(installStateUpdatedListener)
-    }
-
     companion object {
         private const val CHANNEL_ID = "study_reminder_channel"
         private const val NOTIFICATION_ID = 2
-        private const val UPDATE_NOTIFICATION_ID = 3
     }
 }

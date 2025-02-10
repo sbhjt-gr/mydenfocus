@@ -16,4 +16,6 @@ sealed interface SessionEvent {
     object CheckSubjectId : SessionEvent
     object CancelSession : SessionEvent
     object RefreshScreen : SessionEvent
+    data class ServiceConnected(val service: StudySessionTimerService) : SessionEvent
+    object ServiceDisconnected : SessionEvent
 }

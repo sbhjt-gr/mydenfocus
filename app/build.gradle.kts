@@ -13,8 +13,8 @@ android {
         applicationId = "com.gorai.myedenfocus"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.0.6"
+        versionCode = 9
+        versionName = "1.0.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -115,10 +115,5 @@ dependencies {
 
     implementation("com.google.android.material:material:1.11.0")
 
-    implementation("com.google.android.play:app-update:2.1.0")
-
-    implementation("com.google.android.play:app-update-ktx:2.1.0")
-
     implementation("com.google.android.play:review-ktx:2.0.1")
-
 }

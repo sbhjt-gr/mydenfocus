@@ -50,12 +50,15 @@ class SessionViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
+    private var timerService: StudySessionTimerService? = null
+
     val state = combine(
         _state,
         subjects,
         topics,
-        sessionRepository.getRecentFiveSessions(subjectId = 0)
-    ) { state, subjects, topics, sessions ->
+        sessionRepository.getRecentFiveSessions(subjectId = 0),
+        _refreshTrigger
+    ) { state, subjects, topics, sessions, _ ->
         state.copy(
             subjects = subjects,
             topics = topics,
@@ -185,6 +188,12 @@ class SessionViewModel @Inject constructor(
             is SessionEvent.OnDurationSelected -> {
                 _state.update { it.copy(selectedDuration = event.minutes) }
             }
+            is SessionEvent.ServiceConnected -> {
+                onServiceConnected(event.service)
+            }
+            SessionEvent.ServiceDisconnected -> {
+                onServiceDisconnected()
+            }
         }
     }
 
@@ -288,5 +297,18 @@ class SessionViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun onServiceConnected(service: StudySessionTimerService) {
+        timerService = service
+        viewModelScope.launch {
+            service.minuteUpdateFlow.collect { minute ->
+                _refreshTrigger.value = minute
+            }
+        }
+    }
+
+    fun onServiceDisconnected() {
+        timerService = null
     }
 }

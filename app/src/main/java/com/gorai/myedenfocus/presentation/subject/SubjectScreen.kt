@@ -82,12 +82,10 @@ fun SubjectScreenRoute(
     val currentTimerState by timerService.currentTimerState
     val sessionCompleted by timerService.sessionCompleted.collectAsStateWithLifecycle()
 
-    // Initial load
     LaunchedEffect(Unit) {
         viewModel.refreshData()
     }
 
-    // Update counts in real-time when timer is running
     LaunchedEffect(elapsedTime, currentTimerState) {
         if (currentTimerState == TimerState.STARTED && timerService.subjectId.value == state.currentSubjectId) {
             viewModel.updateElapsedTime(elapsedTime)
