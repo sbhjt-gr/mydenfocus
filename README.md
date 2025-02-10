@@ -2,6 +2,8 @@
 
 MyedenFocus is a productivity app designed to enhance academic performance through focused study sessions, meditation, and task management. Built with modern Android development practices using Jetpack Compose.
 
+
+
 ## Features
 
 - **Study Session Timer**: Track study sessions with a customizable timer
