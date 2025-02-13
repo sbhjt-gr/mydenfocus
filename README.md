@@ -6,7 +6,7 @@ MyedenFocus is a productivity app designed to enhance academic performance throu
   <img src="https://github.com/user-attachments/assets/bdc18fc5-5a99-410c-b383-eaf9c737176e" alt="play_download" width="200"/>
 </a>
 
-<br><br>
+<br>
 
 ![Screenshot 2025-01-17 222010 - Copy](https://github.com/user-attachments/assets/8c6b43bf-119d-4300-be75-af1f9140555c)
 
