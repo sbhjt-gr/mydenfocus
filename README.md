@@ -64,7 +64,7 @@ Contributions are not needed for now but will be accepted in the future as the a
 
 ## License
 
-Distributed under a custom license. See `LICENSE` for more information.
+Distributed under AGPL-3.0. See `LICENSE` for more information.
 
 ## Contact
 
