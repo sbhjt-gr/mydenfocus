@@ -116,4 +116,11 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
 
     implementation("com.google.android.play:review-ktx:2.0.1")
+    
+    // Gemini API
+    implementation("com.google.ai.client.generativeai:generativeai:0.2.1")
+    
+    // Document handling
+    implementation("androidx.activity:activity-ktx:1.8.2")
+    implementation("androidx.documentfile:documentfile:1.0.1")
 }
