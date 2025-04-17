@@ -83,7 +83,8 @@ import kotlinx.coroutines.flow.collectLatest
 @RootNavGraph(start = true)
 @Destination(
     start = true,
-    style = NavAnimation::class
+    style = NavAnimation::class,
+    route = "schedule"
 )
 @Composable
 fun DashBoardScreenRoute(
@@ -230,6 +231,11 @@ private fun DashboardScreen(
                 onNavigate = { route ->
                     when (route) {
                         "meditate" -> navigator.navigate(MeditationScreenDestination) {
+                            popUpTo(route = "schedule") { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                        "chat" -> navigator.navigate("chat") {
                             popUpTo(route = "schedule") { saveState = true }
                             launchSingleTop = true
                             restoreState = true

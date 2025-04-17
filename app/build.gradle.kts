@@ -5,6 +5,17 @@ plugins {
     id("com.google.devtools.ksp") version "1.9.10-1.0.13"
 }
 
+// Add task to copy .env file to the app's assets directory
+android.applicationVariants.all {
+    val variantName = name
+    val task = project.tasks.register<Copy>("copy${variantName.capitalize()}EnvFile") {
+        from(rootProject.file(".env"))
+        into("$buildDir/generated/assets/src/$variantName/assets")
+    }
+    
+    project.tasks.findByName("merge${variantName.capitalize()}Assets")?.dependsOn(task)
+}
+
 android {
     namespace = "com.gorai.myedenfocus"
     compileSdk = 34
@@ -55,6 +66,14 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE"
+            excludes += "META-INF/LICENSE.txt"
+            excludes += "META-INF/license.txt"
+            excludes += "META-INF/NOTICE"
+            excludes += "META-INF/NOTICE.txt"
+            excludes += "META-INF/notice.txt"
+            excludes += "META-INF/*.kotlin_module"
         }
     }
 }
@@ -120,7 +139,19 @@ dependencies {
     // Gemini API
     implementation("com.google.ai.client.generativeai:generativeai:0.2.1")
     
+    // OkHttp
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    
     // Document handling
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("androidx.documentfile:documentfile:1.0.1")
+    
+    // PDF Processing
+    implementation("org.apache.pdfbox:pdfbox:2.0.27")
+    implementation("org.apache.pdfbox:fontbox:2.0.27")
+    
+    // Word Document Processing (DOC and DOCX)
+    implementation("org.apache.poi:poi:5.2.3")
+    implementation("org.apache.poi:poi-ooxml:5.2.3")
+    implementation("org.apache.poi:poi-scratchpad:5.2.3")
 }
