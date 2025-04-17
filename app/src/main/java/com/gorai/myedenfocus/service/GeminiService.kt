@@ -35,13 +35,10 @@ class GeminiService @Inject constructor(
         EnvConfig.init(context)
         validateApiKey()
         
-        // As a fallback, try to save API key to SharedPreferences
         saveApiKeyToPrefs()
     }
 
-    // Instead of using lazy initialization with an exception, get the API key when needed
     private fun getApiKey(): String {
-        // First try to get from EnvConfig
         var key = EnvConfig.get("GEMINI_API_KEY")
         
         // If not found, try from SharedPreferences as fallback
@@ -61,7 +58,6 @@ class GeminiService @Inject constructor(
     
     private fun saveApiKeyToPrefs() {
         try {
-            // Try to manually read from .env file in root directory
             val rootEnvFile = File(".env")
             if (rootEnvFile.exists() && rootEnvFile.canRead()) {
                 val content = rootEnvFile.readText()
@@ -79,13 +75,6 @@ class GeminiService @Inject constructor(
                     }
                 }
             } else {
-                // Try the hardcoded key from the file you shared earlier
-                val hardcodedKey = "AIzaSyAErIRmuqDClgRmqAgnu1qsdnhQGi2oa7E"
-                Log.d(TAG, "Setting hardcoded API key to SharedPreferences as last resort")
-                context.getSharedPreferences("api_settings", Context.MODE_PRIVATE)
-                    .edit()
-                    .putString("GEMINI_API_KEY", hardcodedKey)
-                    .apply()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error saving API key to SharedPreferences", e)
@@ -108,7 +97,6 @@ class GeminiService @Inject constructor(
                 Log.e(TAG, "API key is null or blank. Please check your .env file.")
             } else {
                 Log.d(TAG, "API key found and not blank")
-                // Log a few characters of the API key for verification (never log full API keys)
                 val maskedKey = key.take(4) + "..." + key.takeLast(4)
                 Log.d(TAG, "API key starts/ends with: $maskedKey")
             }
@@ -139,14 +127,12 @@ class GeminiService @Inject constructor(
     
     private fun extractTextFromInputStream(inputStream: InputStream): String {
         return try {
-            // Attempt to parse as PDF first
             val pdfDoc = PDDocument.load(inputStream)
             val text = PDFTextStripper().getText(pdfDoc)
             pdfDoc.close()
             text
         } catch (e: Exception) {
             try {
-                // If not a PDF, try reading as DOCX
                 val docx = XWPFDocument(inputStream)
                 val docxExtractor = XWPFWordExtractor(docx)
                 val text = docxExtractor.text
@@ -155,7 +141,6 @@ class GeminiService @Inject constructor(
                 text
             } catch (e: Exception) {
                 try {
-                    // If not DOCX, try reading as DOC
                     val doc = HWPFDocument(inputStream)
                     val docExtractor = WordExtractor(doc)
                     val text = docExtractor.text
@@ -164,7 +149,6 @@ class GeminiService @Inject constructor(
                     text
                 } catch (e: Exception) {
                     try {
-                        // Finally try as plain text
                         inputStream.bufferedReader().use { it.readText() }
                     } catch (e: Exception) {
                         throw IllegalArgumentException("Unable to extract text from the provided document")
@@ -295,17 +279,15 @@ class GeminiService @Inject constructor(
         Log.d(TAG, "sendChatMessage called with message length: ${message.length}, history items: ${chatHistory.size}")
         
         try {
-            val apiKey = getApiKey() // Get the API key directly when needed
+            val apiKey = getApiKey()
             
             val contentsArray = JSONArray()
             
-            // Add chat history
             if (chatHistory.isNotEmpty()) {
                 val historyObject = JSONObject()
                 val historyParts = JSONArray()
                 
                 for ((userMessage, aiResponse) in chatHistory) {
-                    // Add user message
                     val userObject = JSONObject()
                     val userParts = JSONArray()
                     userParts.put(JSONObject().apply {
@@ -315,7 +297,6 @@ class GeminiService @Inject constructor(
                     userObject.put("parts", userParts)
                     contentsArray.put(userObject)
                     
-                    // Add AI response
                     val aiObject = JSONObject()
                     val aiParts = JSONArray()
                     aiParts.put(JSONObject().apply {
@@ -327,7 +308,6 @@ class GeminiService @Inject constructor(
                 }
             }
             
-            // Add current user message
             val currentMessageObject = JSONObject()
             val currentMessageParts = JSONArray()
             currentMessageParts.put(JSONObject().apply {

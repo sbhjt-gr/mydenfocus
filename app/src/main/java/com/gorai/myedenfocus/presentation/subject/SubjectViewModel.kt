@@ -34,7 +34,6 @@ class SubjectViewModel @Inject constructor(
     private val _snackbarEventFlow = MutableSharedFlow<SnackbarEvent>()
     val snackbarEventFlow = _snackbarEventFlow.asSharedFlow()
 
-    // Add a trigger to refresh data
     private val _refreshTrigger = MutableStateFlow(0)
 
     private val upcomingTasks = combine(

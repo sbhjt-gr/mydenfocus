@@ -632,7 +632,6 @@ private fun SessionScreen(
                             context = context,
                             action = ACTION_SERVICE_CANCEL
                         )
-                        // Add task completion event
                         state.selectedTopicId?.let { topicId ->
                             onEvent(SessionEvent.CompleteTask(topicId))
                         }

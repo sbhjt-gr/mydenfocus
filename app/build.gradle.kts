@@ -5,7 +5,6 @@ plugins {
     id("com.google.devtools.ksp") version "1.9.10-1.0.13"
 }
 
-// Add task to copy .env file to the app's assets directory
 android.applicationVariants.all {
     val variantName = name
     val task = project.tasks.register<Copy>("copy${variantName.capitalize()}EnvFile") {

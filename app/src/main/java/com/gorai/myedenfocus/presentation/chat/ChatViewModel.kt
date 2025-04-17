@@ -107,7 +107,6 @@ class ChatViewModel @Inject constructor(
                     content = documentContent
                 )
                 
-                // Add system message indicating document was loaded
                 val systemMessage = ChatMessage(
                     content = "Document loaded: $documentName (${formatFileSize(documentContent.length)})",
                     isFromUser = false
@@ -183,7 +182,6 @@ class ChatViewModel @Inject constructor(
         
         Log.d(TAG, "Sending message: ${message.take(20)}...")
         
-        // Add user message to chat
         val userMessage = ChatMessage(
             content = message,
             isFromUser = true
@@ -224,8 +222,7 @@ class ChatViewModel @Inject constructor(
                 
                 val response = geminiService.sendChatMessage(finalMessage, chatHistory)
                 Log.d(TAG, "Received response from GeminiService")
-                
-                // Add AI response to chat
+            
                 val aiMessage = ChatMessage(
                     content = response,
                     isFromUser = false
@@ -257,7 +254,6 @@ class ChatViewModel @Inject constructor(
                     ) 
                 }
                 
-                // Add an error message to the chat
                 val errorChatMessage = ChatMessage(
                     content = "Error: Unable to get response. $errorMessage",
                     isFromUser = false

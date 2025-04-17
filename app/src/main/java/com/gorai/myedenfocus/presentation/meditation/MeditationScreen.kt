@@ -151,7 +151,6 @@ fun MeditationTimer(
     remainingSeconds: Int,
     isRunning: Boolean
 ) {
-    // Add debug logging
     LaunchedEffect(remainingSeconds) {
         println("Timer Update - Total: $totalSeconds, Remaining: $remainingSeconds, Running: $isRunning")
     }
@@ -664,7 +663,6 @@ fun MeditationScreen(
         ChronoUnit.DAYS.between(session.timestamp, now) > 7
     }
 
-    // Add the delete confirmation dialog
     sessionToDelete?.let { session ->
         AlertDialog(
             onDismissRequest = { sessionToDelete = null },
@@ -707,7 +705,6 @@ fun MeditationScreen(
         }
     }
 
-    // Add headphone dialog
     if (showHeadphoneDialog) {
         AlertDialog(
             onDismissRequest = { showHeadphoneDialog = false },
@@ -796,7 +793,6 @@ fun MeditationScreen(
         )
     }
 
-    // Add DND permission dialog
     if (showDndPermissionDialog) {
         AlertDialog(
             onDismissRequest = { showDndPermissionDialog = false },
