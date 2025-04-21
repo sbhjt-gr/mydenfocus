@@ -56,7 +56,6 @@ MyedenFocus is a productivity app designed to enhance academic performance throu
     - **service/**: Background services for timers
     - **util/**: Helper classes and extensions
   - **res/**: Resources (layouts, drawables, values)
-  - **AndroidManifest.xml**: App configuration
 
 ## License
 
