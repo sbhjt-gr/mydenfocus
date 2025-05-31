@@ -27,11 +27,11 @@ fun BottomBar(
             route = "meditate",
             icon = Icons.Default.SelfImprovement
         ),
-        BottomNavItem(
-            name = "Chat",
-            route = "chat",
-            icon = Icons.Default.Chat
-        )
+//        BottomNavItem(
+//            name = "Chat",
+//            route = "chat",
+//            icon = Icons.Default.Chat
+//        )
     )
 
     NavigationBar {
