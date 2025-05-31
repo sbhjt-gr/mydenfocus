@@ -125,7 +125,7 @@ data class SessionScreenNavArgs(
     deepLinks = [
         DeepLink(
             action = Intent.ACTION_VIEW,
-            uriPattern = "myedenfocus://dashboard/session"
+            uriPattern = "mydenfocus://dashboard/session"
         )
     ],
     style = NavAnimation::class
@@ -632,7 +632,6 @@ private fun SessionScreen(
                             context = context,
                             action = ACTION_SERVICE_CANCEL
                         )
-                        // Add task completion event
                         state.selectedTopicId?.let { topicId ->
                             onEvent(SessionEvent.CompleteTask(topicId))
                         }

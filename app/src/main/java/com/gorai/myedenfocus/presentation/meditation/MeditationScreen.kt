@@ -135,7 +135,7 @@ private fun DashboardScreenTopBar() {
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "MyedenFocus",
+                    text = "MydenFocus",
                     style = MaterialTheme.typography.headlineMedium
                 )
             }
@@ -151,7 +151,6 @@ fun MeditationTimer(
     remainingSeconds: Int,
     isRunning: Boolean
 ) {
-    // Add debug logging
     LaunchedEffect(remainingSeconds) {
         println("Timer Update - Total: $totalSeconds, Remaining: $remainingSeconds, Running: $isRunning")
     }
@@ -487,7 +486,7 @@ private fun PulsingStopButton(onClick: () -> Unit) {
     style = NavigationStyles.SlideTransition::class,
     deepLinks = [
         DeepLink(
-            uriPattern = "myedenfocus://meditation"
+            uriPattern = "mydenfocus://meditation"
         )
     ]
 )
@@ -571,7 +570,7 @@ fun MeditationScreen(
             // Check alarm permissions
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (!alarmManager.canScheduleExactAlarms()) {
-                    permissionMessage = "Please allow MyedenFocus to schedule alarms for the meditation timer."
+                    permissionMessage = "Please allow MydenFocus to schedule alarms for the meditation timer."
                     showPermissionDialog = true
                     return
                 }
@@ -664,7 +663,6 @@ fun MeditationScreen(
         ChronoUnit.DAYS.between(session.timestamp, now) > 7
     }
 
-    // Add the delete confirmation dialog
     sessionToDelete?.let { session ->
         AlertDialog(
             onDismissRequest = { sessionToDelete = null },
@@ -707,7 +705,6 @@ fun MeditationScreen(
         }
     }
 
-    // Add headphone dialog
     if (showHeadphoneDialog) {
         AlertDialog(
             onDismissRequest = { showHeadphoneDialog = false },
@@ -796,7 +793,6 @@ fun MeditationScreen(
         )
     }
 
-    // Add DND permission dialog
     if (showDndPermissionDialog) {
         AlertDialog(
             onDismissRequest = { showDndPermissionDialog = false },
@@ -808,7 +804,7 @@ fun MeditationScreen(
             },
             text = {
                 Text(
-                    text = "To ensure a distraction-free meditation session, please allow MyedenFocus to manage Do Not Disturb settings.",
+                    text = "To ensure a distraction-free meditation session, please allow MydenFocus to manage Do Not Disturb settings.",
                     style = MaterialTheme.typography.bodyLarge
                 )
             },
@@ -861,6 +857,11 @@ fun MeditationScreen(
                 onNavigate = { route ->
                     when (route) {
                         "schedule" -> navigator.navigateUp()
+                        "chat" -> navigator.navigate("chat") {
+                            popUpTo(route = "meditate") { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                         else -> Unit
                     }
                 }

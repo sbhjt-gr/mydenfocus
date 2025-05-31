@@ -82,7 +82,7 @@ private val darkColors = darkColorScheme(
 )
 
 @Composable
-fun MyedenFocusTheme(
+fun MydenFocusTheme(
     themeViewModel: ThemeViewModel = hiltViewModel(),
     content: @Composable () -> Unit
 ) {

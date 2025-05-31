@@ -1,6 +1,7 @@
 package com.gorai.myedenfocus.presentation.dashboard
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
@@ -62,6 +64,7 @@ import com.gorai.myedenfocus.presentation.destinations.MeditationScreenDestinati
 import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.SettingsScreenDestination
 import com.gorai.myedenfocus.presentation.destinations.SubjectScreenRouteDestination
+import com.gorai.myedenfocus.presentation.destinations.SyllabusUploadScreenDestination
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
 import com.gorai.myedenfocus.presentation.subject.SubjectScreenNavArgs
 import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
@@ -76,12 +79,12 @@ import com.ramcosta.composedestinations.annotation.RootNavGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
-import androidx.compose.foundation.isSystemInDarkTheme
 
 @RootNavGraph(start = true)
 @Destination(
     start = true,
-    style = NavAnimation::class
+    style = NavAnimation::class,
+    route = "schedule"
 )
 @Composable
 fun DashBoardScreenRoute(
@@ -232,6 +235,11 @@ private fun DashboardScreen(
                             launchSingleTop = true
                             restoreState = true
                         }
+                        "chat" -> navigator.navigate("chat") {
+                            popUpTo(route = "schedule") { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                         else -> Unit
                     }
                 }
@@ -323,6 +331,46 @@ private fun DashboardScreen(
             }
 
             item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "My Subjects",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Row {
+//                        Button(
+//                            onClick = { navigator.navigate(SyllabusUploadScreenDestination()) },
+//                            modifier = Modifier.padding(end = 8.dp)
+//                        ) {
+//                            Icon(
+//                                imageVector = Icons.Default.CloudUpload,
+//                                contentDescription = "Upload Syllabus",
+//                                modifier = Modifier.size(20.dp)
+//                            )
+//                            Spacer(modifier = Modifier.width(4.dp))
+//                            Text("Upload Syllabus")
+//                        }
+                        
+                        IconButton(onClick = { showAddSubjectDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add Subject"
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
                 SubjectCardSection(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -386,7 +434,7 @@ private fun DashboardScreenTopBar(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "MyedenFocus",
+                    text = "MydenFocus",
                     style = MaterialTheme.typography.headlineMedium
                 )
             }

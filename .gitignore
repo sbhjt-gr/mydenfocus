@@ -16,3 +16,7 @@
 local.properties
 .env
 .cursorrules
+.env*.local
+.env*
+pr/
+google-services.json

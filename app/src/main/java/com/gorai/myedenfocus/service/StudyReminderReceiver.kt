@@ -23,7 +23,7 @@ class StudyReminderReceiver : BroadcastReceiver() {
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
             val wakeLock = powerManager.newWakeLock(
                 PowerManager.PARTIAL_WAKE_LOCK,
-                "MyedenFocus:StudyReminderWakeLock"
+                "MydenFocus:StudyReminderWakeLock"
             )
             wakeLock.acquire(WAKE_LOCK_TIMEOUT)
             

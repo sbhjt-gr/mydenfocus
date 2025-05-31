@@ -38,7 +38,7 @@ import com.gorai.myedenfocus.presentation.destinations.OnboardingScreenDestinati
 import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestination
 import com.gorai.myedenfocus.presentation.navigation.NavigationViewModel
 import com.gorai.myedenfocus.presentation.session.StudySessionTimerService
-import com.gorai.myedenfocus.presentation.theme.MyedenFocusTheme
+import com.gorai.myedenfocus.presentation.theme.MydenFocusTheme
 import com.gorai.myedenfocus.service.DailyStudyReminderService
 import com.gorai.myedenfocus.util.LocalTimerService
 import com.ramcosta.composedestinations.DestinationsNavHost
@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             
             if (isOnboardingCompleted != null) {
-                MyedenFocusTheme {
+                MydenFocusTheme {
                     if (isBound) {
                         CompositionLocalProvider(LocalTimerService provides timerService) {
                             DestinationsNavHost(

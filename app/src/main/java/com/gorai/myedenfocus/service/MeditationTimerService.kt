@@ -103,7 +103,7 @@ class MeditationTimerService : Service() {
         private fun createPendingIntent(context: Context): PendingIntent {
             val deepLinkIntent = Intent(
                 Intent.ACTION_VIEW,
-                "myedenfocus://meditation".toUri(),
+                "mydenfocus://meditation".toUri(),
                 context,
                 MainActivity::class.java
             ).apply {
@@ -339,7 +339,6 @@ class MeditationTimerService : Service() {
             .setSilent(true)
             .setContentIntent(createPendingIntent(this))
 
-        // Add action buttons based on timer state
         if (_isPaused.value) {
             builder.addAction(R.drawable.ic_launcher_foreground, "Resume", resumePendingIntent)
             builder.addAction(R.drawable.ic_launcher_foreground, "Reset", resetPendingIntent)
