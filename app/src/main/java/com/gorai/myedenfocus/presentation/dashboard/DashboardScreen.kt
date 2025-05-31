@@ -347,18 +347,18 @@ private fun DashboardScreen(
                         style = MaterialTheme.typography.titleMedium
                     )
                     Row {
-                        Button(
-                            onClick = { navigator.navigate(SyllabusUploadScreenDestination()) },
-                            modifier = Modifier.padding(end = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CloudUpload,
-                                contentDescription = "Upload Syllabus",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Upload Syllabus")
-                        }
+//                        Button(
+//                            onClick = { navigator.navigate(SyllabusUploadScreenDestination()) },
+//                            modifier = Modifier.padding(end = 8.dp)
+//                        ) {
+//                            Icon(
+//                                imageVector = Icons.Default.CloudUpload,
+//                                contentDescription = "Upload Syllabus",
+//                                modifier = Modifier.size(20.dp)
+//                            )
+//                            Spacer(modifier = Modifier.width(4.dp))
+//                            Text("Upload Syllabus")
+//                        }
                         
                         IconButton(onClick = { showAddSubjectDialog = true }) {
                             Icon(
