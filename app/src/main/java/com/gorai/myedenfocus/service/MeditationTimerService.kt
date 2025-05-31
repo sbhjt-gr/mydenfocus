@@ -103,7 +103,7 @@ class MeditationTimerService : Service() {
         private fun createPendingIntent(context: Context): PendingIntent {
             val deepLinkIntent = Intent(
                 Intent.ACTION_VIEW,
-                "myedenfocus://meditation".toUri(),
+                "mydenfocus://meditation".toUri(),
                 context,
                 MainActivity::class.java
             ).apply {

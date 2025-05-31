@@ -135,7 +135,7 @@ private fun DashboardScreenTopBar() {
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "MyedenFocus",
+                    text = "MydenFocus",
                     style = MaterialTheme.typography.headlineMedium
                 )
             }
@@ -486,7 +486,7 @@ private fun PulsingStopButton(onClick: () -> Unit) {
     style = NavigationStyles.SlideTransition::class,
     deepLinks = [
         DeepLink(
-            uriPattern = "myedenfocus://meditation"
+            uriPattern = "mydenfocus://meditation"
         )
     ]
 )
@@ -570,7 +570,7 @@ fun MeditationScreen(
             // Check alarm permissions
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (!alarmManager.canScheduleExactAlarms()) {
-                    permissionMessage = "Please allow MyedenFocus to schedule alarms for the meditation timer."
+                    permissionMessage = "Please allow MydenFocus to schedule alarms for the meditation timer."
                     showPermissionDialog = true
                     return
                 }
@@ -804,7 +804,7 @@ fun MeditationScreen(
             },
             text = {
                 Text(
-                    text = "To ensure a distraction-free meditation session, please allow MyedenFocus to manage Do Not Disturb settings.",
+                    text = "To ensure a distraction-free meditation session, please allow MydenFocus to manage Do Not Disturb settings.",
                     style = MaterialTheme.typography.bodyLarge
                 )
             },

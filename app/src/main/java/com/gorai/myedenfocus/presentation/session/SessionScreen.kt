@@ -125,7 +125,7 @@ data class SessionScreenNavArgs(
     deepLinks = [
         DeepLink(
             action = Intent.ACTION_VIEW,
-            uriPattern = "myedenfocus://dashboard/session"
+            uriPattern = "mydenfocus://dashboard/session"
         )
     ],
     style = NavAnimation::class

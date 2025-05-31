@@ -55,7 +55,7 @@ fun getOnboardingPages(): List<OnboardingPage> {
 
     return listOf(
         OnboardingPage(
-            title = "Welcome to MyedenFocus",
+            title = "Welcome to MydenFocus",
             description = "Your personal study companion for better focus and productivity",
             image = R.drawable.logo,
             backgroundColor = Color(0xFF1565C0)

@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MyedenFocus"
+rootProject.name = "MydenFocus"
 include(":app")

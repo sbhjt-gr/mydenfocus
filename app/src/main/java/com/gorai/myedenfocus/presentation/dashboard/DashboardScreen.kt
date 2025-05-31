@@ -434,7 +434,7 @@ private fun DashboardScreenTopBar(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "MyedenFocus",
+                    text = "MydenFocus",
                     style = MaterialTheme.typography.headlineMedium
                 )
             }
