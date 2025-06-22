@@ -92,7 +92,7 @@ object EnvConfig {
                 // Log all loaded properties (without showing actual values)
                 properties?.let { props ->
                     Log.d(TAG, "Loaded properties: ${props.stringPropertyNames().joinToString()}")
-                    Log.d(TAG, "GEMINI_API_KEY exists: ${props.getProperty("GEMINI_API_KEY") != null}")
+
                 }
                 
             } catch (e: Exception) {

@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CloudUpload
+
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
@@ -64,7 +64,7 @@ import com.gorai.myedenfocus.presentation.destinations.MeditationScreenDestinati
 import com.gorai.myedenfocus.presentation.destinations.SessionScreenRouteDestination
 import com.gorai.myedenfocus.presentation.destinations.SettingsScreenDestination
 import com.gorai.myedenfocus.presentation.destinations.SubjectScreenRouteDestination
-import com.gorai.myedenfocus.presentation.destinations.SyllabusUploadScreenDestination
+
 import com.gorai.myedenfocus.presentation.destinations.TaskScreenRouteDestination
 import com.gorai.myedenfocus.presentation.subject.SubjectScreenNavArgs
 import com.gorai.myedenfocus.presentation.task.TaskScreenNavArgs
@@ -235,11 +235,7 @@ private fun DashboardScreen(
                             launchSingleTop = true
                             restoreState = true
                         }
-                        "chat" -> navigator.navigate("chat") {
-                            popUpTo(route = "schedule") { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+
                         else -> Unit
                     }
                 }
@@ -346,26 +342,11 @@ private fun DashboardScreen(
                         text = "My Subjects",
                         style = MaterialTheme.typography.titleMedium
                     )
-                    Row {
-//                        Button(
-//                            onClick = { navigator.navigate(SyllabusUploadScreenDestination()) },
-//                            modifier = Modifier.padding(end = 8.dp)
-//                        ) {
-//                            Icon(
-//                                imageVector = Icons.Default.CloudUpload,
-//                                contentDescription = "Upload Syllabus",
-//                                modifier = Modifier.size(20.dp)
-//                            )
-//                            Spacer(modifier = Modifier.width(4.dp))
-//                            Text("Upload Syllabus")
-//                        }
-                        
-                        IconButton(onClick = { showAddSubjectDialog = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Add Subject"
-                            )
-                        }
+                    IconButton(onClick = { showAddSubjectDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add Subject"
+                        )
                     }
                 }
             }

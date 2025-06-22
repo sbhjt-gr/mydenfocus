@@ -857,11 +857,7 @@ fun MeditationScreen(
                 onNavigate = { route ->
                     when (route) {
                         "schedule" -> navigator.navigateUp()
-                        "chat" -> navigator.navigate("chat") {
-                            popUpTo(route = "meditate") { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+
                         else -> Unit
                     }
                 }

@@ -1,7 +1,6 @@
 package com.gorai.myedenfocus.presentation.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material3.Icon
@@ -26,12 +25,7 @@ fun BottomBar(
             name = "Meditate",
             route = "meditate",
             icon = Icons.Default.SelfImprovement
-        ),
-//        BottomNavItem(
-//            name = "Chat",
-//            route = "chat",
-//            icon = Icons.Default.Chat
-//        )
+        )
     )
 
     NavigationBar {

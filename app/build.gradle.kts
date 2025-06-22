@@ -23,8 +23,8 @@ android {
         applicationId = "com.gorai.myedenfocus"
         minSdk = 26
         targetSdk = 34
-        versionCode = 9
-        versionName = "1.0.9"
+        versionCode = 10
+        versionName = "1.0.10"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -135,22 +135,5 @@ dependencies {
 
     implementation("com.google.android.play:review-ktx:2.0.1")
     
-    // Gemini API
-    implementation("com.google.ai.client.generativeai:generativeai:0.2.1")
-    
-    // OkHttp
-    implementation("com.squareup.okhttp3:okhttp:4.11.0")
-    
-    // Document handling
-    implementation("androidx.activity:activity-ktx:1.8.2")
-    implementation("androidx.documentfile:documentfile:1.0.1")
-    
-    // PDF Processing
-    implementation("org.apache.pdfbox:pdfbox:2.0.27")
-    implementation("org.apache.pdfbox:fontbox:2.0.27")
-    
-    // Word Document Processing (DOC and DOCX)
-    implementation("org.apache.poi:poi:5.2.3")
-    implementation("org.apache.poi:poi-ooxml:5.2.3")
-    implementation("org.apache.poi:poi-scratchpad:5.2.3")
+
 }
